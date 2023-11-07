@@ -23,9 +23,9 @@ Renders simple text using a seven-segment LED style pattern. Only really good
 for numbers and a limited number of other characters.
 */
 
-import {Material} from '../material.js';
-import {Node} from '../node.js';
-import {Primitive, PrimitiveAttribute} from '../primitive.js';
+import {Material} from '../core/material.js';
+import {Node} from '../core/node.js';
+import {Primitive, PrimitiveAttribute} from '../core/primitive.js';
 
 const TEXT_KERNING = 2.0;
 

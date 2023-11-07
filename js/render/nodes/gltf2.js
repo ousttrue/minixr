@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Node} from '../node.js';
+import {Node} from '../core/node.js';
 import {Gltf2Loader} from '../loaders/gltf2.js';
 
 // Using a weak map here allows us to cache a loader per-renderer without

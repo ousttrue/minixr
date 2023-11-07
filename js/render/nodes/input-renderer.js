@@ -18,11 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Material, RENDER_ORDER} from '../material.js';
-import {Node} from '../node.js';
-import {Primitive, PrimitiveAttribute} from '../primitive.js';
-import {DataTexture} from '../texture.js';
-import {Gltf2Node} from '../gltf2.js';
+import {Material, RENDER_ORDER} from '../core/material.js';
+import {Node} from '../core/node.js';
+import {Primitive, PrimitiveAttribute} from '../core/primitive.js';
+import {DataTexture} from '../core/texture.js';
+import {Gltf2Node} from '../nodes/gltf2.js';
 
 // This library matches XRInputSource profiles to available controller models for us.
 import { fetchProfile } from 'https://cdn.jsdelivr.net/npm/@webxr-input-profiles/motion-controllers@1.0/dist/motion-controllers.module.js';

@@ -25,9 +25,9 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
-import {Material} from '../material.js';
-import {Node} from '../node.js';
-import {Primitive, PrimitiveAttribute} from '../primitive.js';
+import {Material} from '../core/material.js';
+import {Node} from '../core/node.js';
+import {Primitive, PrimitiveAttribute} from '../core/primitive.js';
 import {SevenSegmentText} from './seven-segment-text.js';
 
 const SEGMENTS = 30;
