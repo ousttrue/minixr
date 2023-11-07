@@ -1,14 +1,14 @@
-import { WebXRButton } from './js/util/webxr-button.js';
-import { Scene } from './js/render/scenes/scene.js';
-import { Node } from './js/render/core/node.js';
-import { Renderer, createWebGLContext } from './js/render/core/renderer.js';
-import { Gltf2Node } from './js/render/nodes/gltf2.js';
-import { SkyboxNode } from './js/render/nodes/skybox.js';
-import { BoxBuilder } from './js/render/geometry/box-builder.js';
-import { PbrMaterial } from './js/render/materials/pbr.js';
-import { mat4 } from './js/render/math/gl-matrix.js';
-import { vec3 } from './js/render/math/gl-matrix.js';
-import { Ray } from './js/render/math/ray.js';
+import { WebXRButton } from './js/util/webxr-button.mjs';
+import { Scene } from './js/render/scenes/scene.mjs';
+import { Node } from './js/render/core/node.mjs';
+import { Renderer, createWebGLContext } from './js/render/core/renderer.mjs';
+import { Gltf2Node } from './js/render/nodes/gltf2.mjs';
+import { SkyboxNode } from './js/render/nodes/skybox.mjs';
+import { BoxBuilder } from './js/render/geometry/box-builder.mjs';
+import { PbrMaterial } from './js/render/materials/pbr.mjs';
+import { mat4 } from './js/render/math/gl-matrix.mjs';
+import { vec3 } from './js/render/math/gl-matrix.mjs';
+import { Ray } from './js/render/math/ray.mjs';
 
 // XR globals.
 let xrButton = null;
@@ -33,8 +33,7 @@ let rightInteractionBox = null;
 let gl = null;
 let renderer = null;
 let scene = new Scene();
-scene.addNode(new Gltf2Node({ url: './media/gltf/space/space.gltf' }));
-scene.addNode(new SkyboxNode({ url: './media/textures/milky-way-4k.png' }));
+scene.addNode(new Gltf2Node({ url: './assets/gltf/space/space.gltf' }));
 
 function createBoxPrimitive(r, g, b) {
   let boxBuilder = new BoxBuilder();
