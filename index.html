@@ -3,44 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <title>MiniXR</title>
-    <script type="module">
-      import { MiniXRRunSession } from "./index.mts";
-
-      let session = null;
-
-      function onLoad(ev) {
-        console.log('onLoad');
-        const button = document.getElementById("start");
-        if (!navigator.xr) {
-          button.disabled = true;
-          console.error("no navigator.xr");
-          return;
-        }
-        button.disabled = false;
-
-        button.addEventListener("click", async (ev) => {
-          console.log('click');
-          if (session) {
-            session.end();
-            session = null;
-            button.innerText = "start";
-          } else {
-            const XR_SESSION_TYPE = "immersive-vr";
-            // const XR_SESSION_TYPE = 'inline';
-            session = await navigator.xr.requestSession(XR_SESSION_TYPE);
-            session.addEventListener("end", (ev) => {
-              console.log("XRSession end");
-            });
-            MiniXRRunSession(session);
-            button.innerText = "stop";
-          }
-        });
-      }
-
-      document.addEventListener("DOMContentLoaded", onLoad);
-    </script>
+    <link rel="stylesheet" href="./common.css" />
   </head>
   <body>
-    <button id="start" disabled>start webxr</button>
+    <header>
+      <details open>
+        <summary>Immersive AR Session</summary>
+        <p>
+          This sample demonstrates how to use an 'immersive-ar' XRSession to
+          present a simple WebGL scene to a transparent or passthrough XR
+          device. The logic is largely the same as the corresponding VR sample,
+          with the primary difference being that no background is rendered and
+          the model is scaled down for easier viewing in a real-world space.
+        </p>
+      </details>
+    </header>
+    <script type="module" src="./index.mts"></script>
   </body>
 </html>
