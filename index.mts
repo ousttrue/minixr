@@ -1,9 +1,10 @@
 import { WebXRButton } from './js/util/webxr-button.mjs';
 import App from './app.mjs';
 
-let xrButton: WebXRButton | null = null;
+// @ts-ignore
+let xrButton: WebXRButton = null;
 let isAR = false;
-let app: App | null = null;
+let g_app: App | null = null;
 
 // Called when the user selects a device to present to. In response we
 // will request an exclusive session from that device.
@@ -19,14 +20,14 @@ async function onRequestSession() {
   // onEndSession()) or when the UA has ended the session for any reason.
   // At this point the session object is no longer usable and should be
   // discarded.
-  function onSessionEnded(event) {
+  function onSessionEnded(_event: Event) {
     console.log('onSessionEnded');
 
     xrButton.setSession(null);
 
     // In this simple case discard the WebGL context too, since we're not
     // rendering anything else to the screen with it.
-    app = null;
+    g_app = null;
   }
 
   // Listen for the sessions 'end' event so we can respond if the user
@@ -35,7 +36,8 @@ async function onRequestSession() {
 
   // Called when we've successfully acquired a XRSession. In response we
   // will set up the necessary session state and kick off the frame loop.
-  app = new App(session);
+  const app = new App(session);
+  g_app = app;
   await app.initAsync(session);
 
   // Inform the session that we're ready to begin drawing.
