@@ -18,14 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {mat3, vec3} from './gl-matrix.mjs';
+import { mat3, vec3 } from './gl-matrix.mjs';
 
 let normalMat = mat3.create();
 
 const RAY_INTERSECTION_OFFSET = 0.02;
 
 export class Ray {
-  constructor(matrix = null) {
+  origin: any[] | Float32Array;
+
+  constructor(matrix: XRRigidTransform | null = null) {
     this.origin = vec3.create();
 
     this._dir = vec3.create();
@@ -70,9 +72,9 @@ export class Ray {
     let bounds = [min, max];
 
     let tmin = (bounds[r.sign[0]][0] - r.origin[0]) * r.inv_dir[0];
-    let tmax = (bounds[1-r.sign[0]][0] - r.origin[0]) * r.inv_dir[0];
+    let tmax = (bounds[1 - r.sign[0]][0] - r.origin[0]) * r.inv_dir[0];
     let tymin = (bounds[r.sign[1]][1] - r.origin[1]) * r.inv_dir[1];
-    let tymax = (bounds[1-r.sign[1]][1] - r.origin[1]) * r.inv_dir[1];
+    let tymax = (bounds[1 - r.sign[1]][1] - r.origin[1]) * r.inv_dir[1];
 
     if ((tmin > tymax) || (tymin > tmax)) {
       return null;
@@ -85,7 +87,7 @@ export class Ray {
     }
 
     let tzmin = (bounds[r.sign[2]][2] - r.origin[2]) * r.inv_dir[2];
-    let tzmax = (bounds[1-r.sign[2]][2] - r.origin[2]) * r.inv_dir[2];
+    let tzmax = (bounds[1 - r.sign[2]][2] - r.origin[2]) * r.inv_dir[2];
 
     if ((tmin > tzmax) || (tzmin > tmax)) {
       return null;

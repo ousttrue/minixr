@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {RenderView} from '../core/renderer.mjs';
-import {InputRenderer} from '../nodes/input-renderer.mjs';
-import {StatsViewer} from '../nodes/stats-viewer.mjs';
-import {Node} from '../core/node.mjs';
-import {vec3, quat} from '../math/gl-matrix.mjs';
-import {Ray} from '../math/ray.mjs';
+import { RenderView } from '../core/renderer.mjs';
+import { InputRenderer } from '../nodes/input-renderer.mjs';
+import { StatsViewer } from '../nodes/stats-viewer.mjs';
+import { Node } from '../core/node.mjs';
+import { vec3, quat } from '../math/gl-matrix.mjs';
+import { Ray } from '../math/ray.mjs';
 
 export class WebXRView extends RenderView {
   constructor(view, layer, viewport) {
@@ -121,15 +121,15 @@ export class Scene extends Node {
         let targetRay = new Ray(targetRayPose.transform.matrix);
         let cursorDistance = 1.0;
         let cursorPos = vec3.fromValues(
-            targetRay.origin[0], //x
-            targetRay.origin[1], //y
-            targetRay.origin[2]  //z
-            );
+          targetRay.origin[0], //x
+          targetRay.origin[1], //y
+          targetRay.origin[2]  //z
+        );
         vec3.add(cursorPos, cursorPos, [
-            targetRay.direction[0] * cursorDistance,
-            targetRay.direction[1] * cursorDistance,
-            targetRay.direction[2] * cursorDistance,
-            ]);
+          targetRay.direction[0] * cursorDistance,
+          targetRay.direction[1] * cursorDistance,
+          targetRay.direction[2] * cursorDistance,
+        ]);
         // let cursorPos = vec3.fromValues(0, 0, -1.0);
         // vec3.transformMat4(cursorPos, cursorPos, inputPose.targetRay);
         this.inputRenderer.addCursor(cursorPos);
@@ -218,7 +218,7 @@ export class Scene extends Node {
     }
   }
 
-  draw(projectionMatrix, viewTransform, eye) {
+  draw(projectionMatrix, viewTransform, eye = undefined) {
     let view = new RenderView(projectionMatrix, viewTransform);
     if (eye) {
       view.eye = eye;
