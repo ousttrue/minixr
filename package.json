@@ -1,10 +1,12 @@
 {
   "type": "module",
   "dependencies": {
-    "json2ts": "^0.0.7",
-    "vite": "^4.5.0"
+    "json2ts": "^0.0.7"
   },
   "devDependencies": {
-    "@types/webxr": "^0.5.7"
-  }
+    "@types/webxr": "^0.5.7",
+    "vite": "^4.5.0",
+    "vitest": "^0.34.6"
+  },
+  "scripts": {}
 }
