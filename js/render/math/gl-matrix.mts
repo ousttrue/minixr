@@ -18,14 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// export * as glMatrix from '../../third-party/gl-matrix/src/gl-matrix/common.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/mat2.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/mat2d.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/mat3.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/mat4.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/quat.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/quat2.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/vec2.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/vec3.mjs';
-export * from '../../third-party/gl-matrix/src/gl-matrix/vec4.mjs';
+export * from './common.mjs';
+export * from './mat2.mjs';
+export * from './mat2d.mjs';
+export * from './mat3.mjs';
+export * from './mat4.mjs';
+export * from './quat.mjs';
+export * from './quat2.mjs';
+export * from './vec2.mjs';
+export * from './vec3.mjs';
+export * from './vec4.mjs';
+export * from './ray.mjs';
+export * from './transform.mjs';
 

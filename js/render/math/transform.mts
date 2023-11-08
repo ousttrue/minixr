@@ -6,7 +6,7 @@ const DEFAULT_ROTATION = quat.create(0, 0, 0, 1);
 const DEFAULT_SCALE = vec3.create(1, 1, 1);
 
 
-export default class Transform {
+export class Transform {
   private _matrix = mat4.create(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
   private _dirtyTRS: boolean = false;
   private _translation = vec3.create(0, 0, 0);
