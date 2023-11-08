@@ -154,7 +154,7 @@ export class RenderView {
   }
 }
 
-class RenderBuffer {
+export class RenderBuffer {
   constructor(target, usage, buffer, length = 0) {
     this._target = target;
     this._usage = usage;

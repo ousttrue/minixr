@@ -6,10 +6,11 @@ import { mat4 } from './js/render/math/gl-matrix.mjs';
 
 
 export function addBox(
+  name: string,
   renderer: Renderer,
   r: number, g: number, b: number): Node {
   let boxRenderPrimitive = createBoxPrimitive(renderer, r, g, b);
-  let boxNode = new Node();
+  let boxNode = new Node(name);
   boxNode.addRenderPrimitive(boxRenderPrimitive);
   // Marks the node as one that needs to be checked when hit testing.
   boxNode.selectable = true;
@@ -27,9 +28,9 @@ export function createBoxPrimitive(renderer: Renderer, r: number, g: number, b: 
 
 function Distance(nodeA: Node, nodeB: Node): number {
   return Math.sqrt(
-    Math.pow(nodeA.translation[0] - nodeB.translation[0], 2) +
-    Math.pow(nodeA.translation[1] - nodeB.translation[1], 2) +
-    Math.pow(nodeA.translation[2] - nodeB.translation[2], 2));
+    Math.pow(nodeA.local.translation[0] - nodeB.local.translation[0], 2) +
+    Math.pow(nodeA.local.translation[1] - nodeB.local.translation[1], 2) +
+    Math.pow(nodeA.local.translation[2] - nodeB.local.translation[2], 2));
 }
 
 export class Interaction {
@@ -37,10 +38,10 @@ export class Interaction {
   lastTime: number = 0;
 
   constructor(renderer: Renderer, color: { r: number, g: number, b: number }) {
-    this.interactionBox = new Node();
+    this.interactionBox = new Node('rotation cube');
     this.interactionBox.addRenderPrimitive(createBoxPrimitive(renderer, color.r, color.g, color.b));
-    this.interactionBox.translation = [0, 0, -0.65];
-    this.interactionBox.scale = [0.25, 0.25, 0.25];
+    this.interactionBox.local.translation = new Float32Array([0, 0, -0.65]);
+    this.interactionBox.local.scale = new Float32Array([0.25, 0.25, 0.25]);
   }
 
   update(time: number) {
@@ -58,8 +59,12 @@ export class Interaction {
       // }
       // interactionBox.visible = !(leftInteractionBox.visible || rightInteractionBox.visible);
 
-      mat4.rotateX(this.interactionBox.matrix, this.interactionBox.matrix, delta / 1000);
-      mat4.rotateY(this.interactionBox.matrix, this.interactionBox.matrix, delta / 1500);
+      this.interactionBox.local.matrix = mat4.rotateX(
+        this.interactionBox.local.matrix,
+        this.interactionBox.local.matrix, delta / 1000);
+      this.interactionBox.local.matrix = mat4.rotateY(
+        this.interactionBox.local.matrix,
+        this.interactionBox.local.matrix, delta / 1500);
     }
     this.lastTime = time;
   }

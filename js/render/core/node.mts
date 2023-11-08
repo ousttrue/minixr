@@ -18,13 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+import Transform from './transform.mjs';
 import { Renderer, RenderPrimitive } from './renderer.mjs'
 import { Ray } from '../math/ray.mjs';
 import { mat4, vec3, quat } from '../math/gl-matrix.mjs';
-
-const DEFAULT_TRANSLATION = new Float32Array([0, 0, 0]);
-const DEFAULT_ROTATION = new Float32Array([0, 0, 0, 1]);
-const DEFAULT_SCALE = new Float32Array([1, 1, 1]);
 
 let tmpRayMatrix = mat4.create();
 
@@ -35,24 +32,22 @@ type NodeIntersection = {
 };
 
 export class Node {
-  name: string | null = null;
   children: Node[] = [];
   parent: Node | null = null;
   visible: boolean = true;
   selectable: boolean = false;
-  private _matrix: Float32Array | null = mat4.create();
-  private _dirtyTRS: boolean = false;
-  private _translation: Float32Array | null = null;
-  private _rotation: Float32Array | null = null;
-  private _scale: Float32Array | null = null;
-  private _dirtyWorldMatrix: boolean = false;
-  private _worldMatrix: Float32Array | null = null;
+  local: Transform = new Transform();
   private _activeFrameId: number = -1;
   private _hoverFrameId: number = -1;
   private _renderPrimitives: RenderPrimitive[] = [];
   private _renderer: Renderer | null = null;
   private _selectHandler: Function | null = null;
-  constructor() {
+  private _worldMatrix: Float32Array | null = null;
+  private _dirtyWorldMatrix = false;
+  constructor(public name: string) {
+    this.local.onInvalidated.push(() => {
+      this.setMatrixDirty();
+    });
   }
 
   _setRenderer(renderer: Renderer) {
@@ -84,45 +79,15 @@ export class Node {
   // RenderPrimitives, the cloned nodes will be treated as new instances of the
   // geometry.
   clone(): Node {
-    let cloneNode = new Node();
-    cloneNode.name = this.name;
+    let cloneNode = new Node(this.name);
     cloneNode.visible = this.visible;
     cloneNode._renderer = this._renderer;
-
-    cloneNode._dirtyTRS = this._dirtyTRS;
-
-    if (this._translation) {
-      cloneNode._translation = vec3.create();
-      vec3.copy(cloneNode._translation, this._translation);
-    }
-
-    if (this._rotation) {
-      cloneNode._rotation = quat.create();
-      quat.copy(cloneNode._rotation, this._rotation);
-    }
-
-    if (this._scale) {
-      cloneNode._scale = vec3.create();
-      vec3.copy(cloneNode._scale, this._scale);
-    }
-
-    // Only copy the matrices if they're not already dirty.
-    if (!cloneNode._dirtyTRS && this._matrix) {
-      cloneNode._matrix = mat4.create();
-      mat4.copy(cloneNode._matrix, this._matrix);
-    }
-
-    cloneNode._dirtyWorldMatrix = this._dirtyWorldMatrix;
-    if (!cloneNode._dirtyWorldMatrix && this._worldMatrix) {
-      cloneNode._worldMatrix = mat4.create();
-      mat4.copy(cloneNode._worldMatrix, this._worldMatrix);
-    }
+    cloneNode.local = this.local.clone();
 
     this.waitForComplete().then(() => {
       for (let primitive of this._renderPrimitives) {
         cloneNode.addRenderPrimitive(primitive);
       }
-
       for (let child of this.children) {
         cloneNode.addNode(child.clone());
       }
@@ -185,115 +150,25 @@ export class Node {
     }
   }
 
-  _updateLocalMatrix() {
-    if (!this._matrix) {
-      this._matrix = mat4.create();
-    }
-
-    if (this._dirtyTRS) {
-      this._dirtyTRS = false;
-      mat4.fromRotationTranslationScale(
-        this._matrix,
-        this._rotation || DEFAULT_ROTATION,
-        this._translation || DEFAULT_TRANSLATION,
-        this._scale || DEFAULT_SCALE);
-    }
-
-    return this._matrix;
-  }
-
-  set matrix(value) {
-    if (value) {
-      if (!this._matrix) {
-        this._matrix = mat4.create();
-      }
-      mat4.copy(this._matrix, value);
-    } else {
-      this._matrix = null;
-    }
-    this.setMatrixDirty();
-    this._dirtyTRS = false;
-    this._translation = null;
-    this._rotation = null;
-    this._scale = null;
-  }
-
-  get matrix() {
-    this.setMatrixDirty();
-
-    return this._updateLocalMatrix();
-  }
-
-  get worldMatrix() {
+  get worldMatrix(): Float32Array {
     if (!this._worldMatrix) {
       this._dirtyWorldMatrix = true;
       this._worldMatrix = mat4.create();
     }
 
-    if (this._dirtyWorldMatrix || this._dirtyTRS) {
+    if (this._dirtyWorldMatrix) {
+      this._dirtyWorldMatrix = false;
+      const local = this.local.matrix;
       if (this.parent) {
         // TODO: Some optimizations that could be done here if the node matrix
         // is an identity matrix.
-        mat4.mul(this._worldMatrix, this.parent.worldMatrix, this._updateLocalMatrix());
+        mat4.mul(this._worldMatrix, this.parent.worldMatrix, local);
       } else {
-        mat4.copy(this._worldMatrix, this._updateLocalMatrix());
+        mat4.copy(this._worldMatrix, local);
       }
-      this._dirtyWorldMatrix = false;
     }
 
     return this._worldMatrix;
-  }
-
-  // TODO: Decompose matrix when fetching these?
-  set translation(value) {
-    if (value != null) {
-      this._dirtyTRS = true;
-      this.setMatrixDirty();
-    }
-    this._translation = value;
-  }
-
-  get translation() {
-    this._dirtyTRS = true;
-    this.setMatrixDirty();
-    if (!this._translation) {
-      this._translation = vec3.clone(DEFAULT_TRANSLATION);
-    }
-    return this._translation;
-  }
-
-  set rotation(value) {
-    if (value != null) {
-      this._dirtyTRS = true;
-      this.setMatrixDirty();
-    }
-    this._rotation = value;
-  }
-
-  get rotation() {
-    this._dirtyTRS = true;
-    this.setMatrixDirty();
-    if (!this._rotation) {
-      this._rotation = quat.clone(DEFAULT_ROTATION);
-    }
-    return this._rotation;
-  }
-
-  set scale(value) {
-    if (value != null) {
-      this._dirtyTRS = true;
-      this.setMatrixDirty();
-    }
-    this._scale = value;
-  }
-
-  get scale() {
-    this._dirtyTRS = true;
-    this.setMatrixDirty();
-    if (!this._scale) {
-      this._scale = vec3.clone(DEFAULT_SCALE);
-    }
-    return this._scale;
   }
 
   async waitForComplete() {

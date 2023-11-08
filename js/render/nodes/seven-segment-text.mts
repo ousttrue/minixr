@@ -23,9 +23,10 @@ Renders simple text using a seven-segment LED style pattern. Only really good
 for numbers and a limited number of other characters.
 */
 
-import {Material} from '../core/material.mjs';
-import {Node} from '../core/node.mjs';
-import {Primitive, PrimitiveAttribute} from '../core/primitive.mjs';
+import { Material } from '../core/material.mjs';
+import { Node } from '../core/node.mjs';
+import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
+import { Renderer } from '../core/renderer.mjs';
 
 const TEXT_KERNING = 2.0;
 
@@ -55,40 +56,43 @@ class SevenSegmentMaterial extends Material {
 }
 
 export class SevenSegmentText extends Node {
+  private _text: string;
+  private _charNodes: Node[];
   constructor() {
-    super();
+    super('SevenSegmentText');
 
     this._text = '';
     this._charNodes = [];
   }
 
-  onRendererChanged(renderer) {
+  onRendererChanged(renderer: Renderer) {
     this.clearNodes();
     this._charNodes = [];
 
-    let vertices = [];
+    let vertices: number[] = [];
     let segmentIndices = {};
-    let indices = [];
+    let indices: number[] = [];
 
     const width = 0.5;
     const thickness = 0.25;
 
-    function defineSegment(id, left, top, right, bottom) {
+    function defineSegment(id: number,
+      left: number, top: number, right: number, bottom: number) {
       let idx = vertices.length / 2;
       vertices.push(
-          left, top,
-          right, top,
-          right, bottom,
-          left, bottom);
+        left, top,
+        right, top,
+        right, bottom,
+        left, bottom);
 
       segmentIndices[id] = [
-        idx, idx+2, idx+1,
-        idx, idx+3, idx+2,
+        idx, idx + 2, idx + 1,
+        idx, idx + 3, idx + 2,
       ];
     }
 
     let characters = {};
-    function defineCharacter(c, segments) {
+    function defineCharacter(c: string, segments: string | any[]) {
       let character = {
         character: c,
         offset: indices.length * 2,
@@ -115,13 +119,13 @@ export class SevenSegmentText extends Node {
 
     */
 
-    defineSegment(0, -1, 1, width, 1-thickness);
-    defineSegment(1, -1, thickness*0.5, width, -thickness*0.5);
-    defineSegment(2, -1, -1+thickness, width, -1);
-    defineSegment(3, -1, 1, -1+thickness, -thickness*0.5);
-    defineSegment(4, width-thickness, 1, width, -thickness*0.5);
-    defineSegment(5, -1, thickness*0.5, -1+thickness, -1);
-    defineSegment(6, width-thickness, thickness*0.5, width, -1);
+    defineSegment(0, -1, 1, width, 1 - thickness);
+    defineSegment(1, -1, thickness * 0.5, width, -thickness * 0.5);
+    defineSegment(2, -1, -1 + thickness, width, -1);
+    defineSegment(3, -1, 1, -1 + thickness, -thickness * 0.5);
+    defineSegment(4, width - thickness, 1, width, -thickness * 0.5);
+    defineSegment(5, -1, thickness * 0.5, -1 + thickness, -1);
+    defineSegment(6, width - thickness, thickness * 0.5, width, -1);
 
 
     defineCharacter('0', [0, 2, 3, 4, 5, 6]);
@@ -186,10 +190,10 @@ export class SevenSegmentText extends Node {
       }
 
       if (this._charNodes.length <= i) {
-        let node = new Node();
+        let node = new Node('');
         node.addRenderPrimitive(charPrimitive);
         let offset = i * TEXT_KERNING;
-        node.translation = [offset, 0, 0];
+        node.local.translation = new Float32Array([offset, 0, 0]);
         this._charNodes.push(node);
         this.addNode(node);
       } else {

@@ -296,20 +296,23 @@ export class Gltf2Loader {
       }
     }
 
-    let sceneNode = new Node();
-    let scene = json.scenes[json.scene];
-    for (let nodeId of scene.nodes) {
-      let node = json.nodes[nodeId];
-      sceneNode.addNode(
-        this.processNodes(node, json.nodes, meshes));
+    let sceneNode = new Node('gltf.scene');
+    if (json.nodes && json.scenes) {
+      let scene = json.scenes[json.scene ?? 0];
+      if (scene.nodes) {
+        for (let nodeId of scene.nodes) {
+          let node = json.nodes[nodeId];
+          sceneNode.addNode(
+            this.processNodes(node, json.nodes, meshes));
+        }
+      }
     }
 
     return sceneNode;
   }
 
-  processNodes(node, nodes, meshes) {
-    let glNode = new Node();
-    glNode.name = node.name;
+  processNodes(node: GLTF2.Node, nodes: GLTF2.Node[], meshes: Gltf2Mesh[]) {
+    let glNode = new Node(node.name);
 
     if ('mesh' in node) {
       let mesh = meshes[node.mesh];
@@ -319,18 +322,18 @@ export class Gltf2Loader {
     }
 
     if (node.matrix) {
-      glNode.matrix = new Float32Array(node.matrix);
+      glNode.local.matrix = new Float32Array(node.matrix);
     } else if (node.translation || node.rotation || node.scale) {
       if (node.translation) {
-        glNode.translation = new Float32Array(node.translation);
+        glNode.local.translation = new Float32Array(node.translation);
       }
 
       if (node.rotation) {
-        glNode.rotation = new Float32Array(node.rotation);
+        glNode.local.rotation = new Float32Array(node.rotation);
       }
 
       if (node.scale) {
-        glNode.scale = new Float32Array(node.scale);
+        glNode.local.scale = new Float32Array(node.scale);
       }
     }
 
@@ -346,8 +349,8 @@ export class Gltf2Loader {
 }
 
 class Gltf2Mesh {
+  primitives: never[] = [];
   constructor() {
-    this.primitives = [];
   }
 }
 

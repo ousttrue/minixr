@@ -24,6 +24,7 @@ import { StatsViewer } from '../nodes/stats-viewer.mjs';
 import { Node } from '../core/node.mjs';
 import { vec3, quat } from '../math/gl-matrix.mjs';
 import { Ray } from '../math/ray.mjs';
+import { Renderer } from '../core/renderer.mjs';
 
 export class WebXRView extends RenderView {
   constructor(view, layer, viewport) {
@@ -37,28 +38,24 @@ export class WebXRView extends RenderView {
 }
 
 export class Scene extends Node {
+  private _timestamp: number = -1;
+  private _frameDelta: number = 0;
+  private _statsStanding: boolean = false;
+  private _statsEnabled: boolean = false;
+  private _stats: StatsViewer | null = null;
+  private _inputRenderer: null;
+  private _resetInputEndFrame: boolean = true;
+  private _lastTimestamp: number = 0;
+  private _hoverFrame: number = 0;
+  private _hoveredNodes: never[] = [];
+  clear: boolean = true;
   constructor() {
-    super();
-
-    this._timestamp = -1;
-    this._frameDelta = 0;
-    this._statsStanding = false;
-    this._stats = null;
-    this._statsEnabled = false;
+    super("stats");
     this.enableStats(true); // Ensure the stats are added correctly by default.
-
     this._inputRenderer = null;
-    this._resetInputEndFrame = true;
-
-    this._lastTimestamp = 0;
-
-    this._hoverFrame = 0;
-    this._hoveredNodes = [];
-
-    this.clear = true;
   }
 
-  setRenderer(renderer) {
+  setRenderer(renderer: Renderer) {
     this._setRenderer(renderer);
   }
 
@@ -178,7 +175,7 @@ export class Scene extends Node {
     }
   }
 
-  enableStats(enable) {
+  enableStats(enable: boolean) {
     if (enable == this._statsEnabled) {
       return;
     }
@@ -191,12 +188,12 @@ export class Scene extends Node {
       this.addNode(this._stats);
 
       if (this._statsStanding) {
-        this._stats.translation = [0, 1.4, -0.75];
+        this._stats.local.translation = new Float32Array([0, 1.4, -0.75]);
       } else {
-        this._stats.translation = [0, -0.3, -0.5];
+        this._stats.local.translation = new Float32Array([0, -0.3, -0.5]);
       }
-      this._stats.scale = [0.3, 0.3, 0.3];
-      quat.fromEuler(this._stats.rotation, -45.0, 0.0, 0.0);
+      this._stats.local.scale = new Float32Array([0.3, 0.3, 0.3]);
+      quat.fromEuler(this._stats.local.rotation, -45.0, 0.0, 0.0);
     } else if (!enable) {
       if (this._stats) {
         this.removeNode(this._stats);
@@ -205,16 +202,16 @@ export class Scene extends Node {
     }
   }
 
-  standingStats(enable) {
+  standingStats(enable: boolean) {
     this._statsStanding = enable;
     if (this._stats) {
       if (this._statsStanding) {
-        this._stats.translation = [0, 1.4, -0.75];
+        this._stats.local.translation = new Float32Array([0, 1.4, -0.75]);
       } else {
-        this._stats.translation = [0, -0.3, -0.5];
+        this._stats.local.translation = new Float32Array([0, -0.3, -0.5]);
       }
-      this._stats.scale = [0.3, 0.3, 0.3];
-      quat.fromEuler(this._stats.rotation, -45.0, 0.0, 0.0);
+      this._stats.local.scale = new Float32Array([0.3, 0.3, 0.3]);
+      quat.fromEuler(this._stats.local.rotation, -45.0, 0.0, 0.0);
     }
   }
 

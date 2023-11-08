@@ -25,10 +25,11 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
-import {Material} from '../core/material.mjs';
-import {Node} from '../core/node.mjs';
-import {Primitive, PrimitiveAttribute} from '../core/primitive.mjs';
-import {SevenSegmentText} from './seven-segment-text.mjs';
+import { Material } from '../core/material.mjs';
+import { Node } from '../core/node.mjs';
+import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
+import { SevenSegmentText } from './seven-segment-text.mjs';
+import { Renderer, RenderBuffer } from '../core/renderer.mjs';
 
 const SEGMENTS = 30;
 const MAX_FPS = 90;
@@ -61,48 +62,44 @@ class StatsMaterial extends Material {
   }
 }
 
-function segmentToX(i) {
-  return ((0.9/SEGMENTS) * i) - 0.45;
+function segmentToX(i: number): number {
+  return ((0.9 / SEGMENTS) * i) - 0.45;
 }
 
-function fpsToY(value) {
+function fpsToY(value: number): number {
   return (Math.min(value, MAX_FPS) * (0.7 / MAX_FPS)) - 0.45;
 }
 
-function fpsToRGB(value) {
+function fpsToRGB(value: number): { r: Number, g: Number, b: Number } {
   return {
-    r: Math.max(0.0, Math.min(1.0, 1.0 - (value/60))),
-    g: Math.max(0.0, Math.min(1.0, ((value-15)/(MAX_FPS-15)))),
-    b: Math.max(0.0, Math.min(1.0, ((value-15)/(MAX_FPS-15)))),
+    r: Math.max(0.0, Math.min(1.0, 1.0 - (value / 60))),
+    g: Math.max(0.0, Math.min(1.0, ((value - 15) / (MAX_FPS - 15)))),
+    b: Math.max(0.0, Math.min(1.0, ((value - 15) / (MAX_FPS - 15)))),
   };
 }
 
 let now = (window.performance && performance.now) ? performance.now.bind(performance) : Date.now;
 
 export class StatsViewer extends Node {
+  private _performanceMonitoring: boolean = false;
+  private _startTime: number = now();
+  private _prevFrameTime: number = this._startTime;
+  private _prevGraphUpdateTime: number = this._startTime;
+  private _frames: number = 0;
+  private _fpsAverage: number = 0;
+  private _fpsMin: number = 0;
+  private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
+  private _lastSegment: number = 0;
+  private _fpsVertexBuffer: RenderBuffer | null = null;
+  private _fpsNode: Node | null = null;
+  private _sevenSegmentNode: SevenSegmentText = new SevenSegmentText();
   constructor() {
-    super();
+    super('__stats__');
 
-    this._performanceMonitoring = false;
-
-    this._startTime = now();
-    this._prevFrameTime = this._startTime;
-    this._prevGraphUpdateTime = this._startTime;
-    this._frames = 0;
-    this._fpsAverage = 0;
-    this._fpsMin = 0;
-    this._fpsStep = this._performanceMonitoring ? 1000 : 250;
-    this._lastSegment = 0;
-
-    this._fpsVertexBuffer = null;
-    this._fpsRenderPrimitive = null;
-    this._fpsNode = null;
-
-    this._sevenSegmentNode = new SevenSegmentText();
     // Hard coded because it doesn't change:
     // Scale by 0.075 in X and Y
     // Translate into upper left corner w/ z = 0.02
-    this._sevenSegmentNode.matrix = new Float32Array([
+    this._sevenSegmentNode.local.matrix = new Float32Array([
       0.075, 0, 0, 0,
       0, 0.075, 0, 0,
       0, 0, 1, 0,
@@ -110,7 +107,7 @@ export class StatsViewer extends Node {
     ]);
   }
 
-  onRendererChanged(renderer) {
+  onRendererChanged(renderer: Renderer) {
     this.clearNodes();
 
     let gl = renderer.gl;
@@ -122,18 +119,20 @@ export class StatsViewer extends Node {
     for (let i = 0; i < SEGMENTS; ++i) {
       // Bar top
       fpsVerts.push(segmentToX(i), fpsToY(0), 0.02, 0.0, 1.0, 1.0);
-      fpsVerts.push(segmentToX(i+1), fpsToY(0), 0.02, 0.0, 1.0, 1.0);
+      fpsVerts.push(segmentToX(i + 1), fpsToY(0), 0.02, 0.0, 1.0, 1.0);
 
       // Bar bottom
       fpsVerts.push(segmentToX(i), fpsToY(0), 0.02, 0.0, 1.0, 1.0);
-      fpsVerts.push(segmentToX(i+1), fpsToY(0), 0.02, 0.0, 1.0, 1.0);
+      fpsVerts.push(segmentToX(i + 1), fpsToY(0), 0.02, 0.0, 1.0, 1.0);
 
       let idx = i * 4;
-      fpsIndices.push(idx, idx+3, idx+1,
-                       idx+3, idx, idx+2);
+      fpsIndices.push(idx, idx + 3, idx + 1,
+        idx + 3, idx, idx + 2);
     }
 
-    function addBGSquare(left, bottom, right, top, z, r, g, b) {
+    function addBGSquare(
+      left: number, bottom: number, right: number, top: number,
+      z: number, r: number, g: number, b: number) {
       let idx = fpsVerts.length / 6;
 
       fpsVerts.push(left, bottom, z, r, g, b);
@@ -141,8 +140,8 @@ export class StatsViewer extends Node {
       fpsVerts.push(left, top, z, r, g, b);
       fpsVerts.push(right, bottom, z, r, g, b);
 
-      fpsIndices.push(idx, idx+1, idx+2,
-                       idx, idx+3, idx+1);
+      fpsIndices.push(idx, idx + 1, idx + 2,
+        idx, idx + 3, idx + 1);
     }
 
     // Panel Background
@@ -170,7 +169,7 @@ export class StatsViewer extends Node {
     fpsPrimitive.setBounds([-0.5, -0.5, 0.0], [0.5, 0.5, 0.015]);
 
     this._fpsRenderPrimitive = renderer.createRenderPrimitive(fpsPrimitive, new StatsMaterial());
-    this._fpsNode = new Node();
+    this._fpsNode = new Node('fps');
     this._fpsNode.addRenderPrimitive(this._fpsRenderPrimitive);
 
     this.addNode(this._fpsNode);
@@ -215,7 +214,7 @@ export class StatsViewer extends Node {
     }
   }
 
-  _updateGraph(valueLow, valueHigh) {
+  _updateGraph(valueLow: number, valueHigh: number) {
     let color = fpsToRGB(valueLow);
     // Draw a range from the low to high value. Artificially widen the
     // range a bit to ensure that near-equal values still remain
@@ -228,9 +227,9 @@ export class StatsViewer extends Node {
     // Update the current segment with the new FPS value
     let updateVerts = [
       segmentToX(this._lastSegment), y1, 0.02, color.r, color.g, color.b,
-      segmentToX(this._lastSegment+1), y1, 0.02, color.r, color.g, color.b,
+      segmentToX(this._lastSegment + 1), y1, 0.02, color.r, color.g, color.b,
       segmentToX(this._lastSegment), y0, 0.02, color.r, color.g, color.b,
-      segmentToX(this._lastSegment+1), y0, 0.02, color.r, color.g, color.b,
+      segmentToX(this._lastSegment + 1), y0, 0.02, color.r, color.g, color.b,
     ];
 
     // Re-shape the next segment into the green "progress" line
@@ -242,7 +241,7 @@ export class StatsViewer extends Node {
       // If we're updating the last segment we need to do two bufferSubDatas
       // to update the segment and turn the first segment into the progress line.
       this._renderer.updateRenderBuffer(this._fpsVertexBuffer, new Float32Array(updateVerts),
-                                        this._lastSegment * 24 * 4);
+        this._lastSegment * 24 * 4);
       updateVerts = [
         segmentToX(0), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
         segmentToX(.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
@@ -252,16 +251,16 @@ export class StatsViewer extends Node {
       this._renderer.updateRenderBuffer(this._fpsVertexBuffer, new Float32Array(updateVerts), 0);
     } else {
       updateVerts.push(
-        segmentToX(this._lastSegment+1), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
-        segmentToX(this._lastSegment+1.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
-        segmentToX(this._lastSegment+1), fpsToY(0), 0.02, color.r, color.g, color.b,
-        segmentToX(this._lastSegment+1.25), fpsToY(0), 0.02, color.r, color.g, color.b
+        segmentToX(this._lastSegment + 1), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
+        segmentToX(this._lastSegment + 1.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
+        segmentToX(this._lastSegment + 1), fpsToY(0), 0.02, color.r, color.g, color.b,
+        segmentToX(this._lastSegment + 1.25), fpsToY(0), 0.02, color.r, color.g, color.b
       );
       this._renderer.updateRenderBuffer(this._fpsVertexBuffer, new Float32Array(updateVerts),
-                                        this._lastSegment * 24 * 4);
+        this._lastSegment * 24 * 4);
     }
 
-    this._lastSegment = (this._lastSegment+1) % SEGMENTS;
+    this._lastSegment = (this._lastSegment + 1) % SEGMENTS;
 
     this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
   }

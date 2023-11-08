@@ -17,9 +17,9 @@ export default class Hand {
       const r = .6 + Math.random() * .4;
       const g = .6 + Math.random() * .4;
       const b = .6 + Math.random() * .4;
-      this.boxes.push(addBox(renderer, r, g, b));
+      this.boxes.push(addBox(`f${i}`, renderer, r, g, b));
     }
-    this.indexFingerBoxes = addBox(renderer, color.r, color.g, color.b);
+    this.indexFingerBoxes = addBox('index', renderer, color.r, color.g, color.b);
   }
 
   disable(scene: Scene) {
@@ -62,9 +62,9 @@ export default class Hand {
       let matrix = this._positions.slice(offset * 16, (offset + 1) * 16);
       let jointRadius = this._radii[offset];
       offset++;
-      mat4.getTranslation(box.translation, matrix);
-      mat4.getRotation(box.rotation, matrix);
-      box.scale = [jointRadius, jointRadius, jointRadius];
+      mat4.getTranslation(box.local.translation, matrix);
+      mat4.getRotation(box.local.rotation, matrix);
+      box.local.scale = new Float32Array([jointRadius, jointRadius, jointRadius]);
     }
 
     // Render a special box for each index finger on each hand	
@@ -75,9 +75,9 @@ export default class Hand {
     let jointPose = frame.getJointPose(joint, refSpace);
     if (jointPose) {
       let matrix = jointPose.transform.matrix;
-      mat4.getTranslation(this.indexFingerBoxes.translation, matrix);
-      mat4.getRotation(this.indexFingerBoxes.rotation, matrix);
-      this.indexFingerBoxes.scale = [0.02, 0.02, 0.02];
+      mat4.getTranslation(this.indexFingerBoxes.local.translation, matrix);
+      mat4.getRotation(this.indexFingerBoxes.local.rotation, matrix);
+      this.indexFingerBoxes.local.scale = new Float32Array([0.02, 0.02, 0.02]);
     }
   }
 }
