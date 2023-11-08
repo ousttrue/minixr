@@ -5,17 +5,7 @@
 
 // Configuration Constants
 export const EPSILON = 0.000001;
-export let ARRAY_TYPE = (typeof Float32Array !== 'undefined') ? Float32Array : Array;
 export const RANDOM = Math.random;
-
-/**
- * Sets the type of array used when creating new vectors and matrices
- *
- * @param {Type} type Array type, such as Float32Array or Array
- */
-export function setMatrixArrayType(type) {
-  ARRAY_TYPE = type;
-}
 
 const degree = Math.PI / 180;
 
@@ -24,7 +14,7 @@ const degree = Math.PI / 180;
  *
  * @param {Number} a Angle in Degrees
  */
-export function toRadian(a) {
+export function toRadian(a: number): number {
   return a * degree;
 }
 
@@ -37,6 +27,6 @@ export function toRadian(a) {
  * @param {Number} b The second number to test.
  * @returns {Boolean} True if the numbers are approximately equal, false otherwise.
  */
-export function equals(a, b) {
-  return Math.abs(a - b) <= EPSILON*Math.max(1.0, Math.abs(a), Math.abs(b));
+export function equals(a: number, b: number): boolean {
+  return Math.abs(a - b) <= EPSILON * Math.max(1.0, Math.abs(a), Math.abs(b));
 }

@@ -7,19 +7,15 @@ import * as vec4 from "./vec4.mjs"
  * Quaternion
  * @module quat
  */
+export type quat = Float32Array;
 
 /**
  * Creates a new identity quat
  *
  * @returns {quat} a new quaternion
  */
-export function create() {
-  let out = new glMatrix.ARRAY_TYPE(4);
-  if(glMatrix.ARRAY_TYPE != Float32Array) {
-    out[0] = 0;
-    out[1] = 0;
-    out[2] = 0;
-  }
+export function create(): quat {
+  let out = new Float32Array(4);
   out[3] = 1;
   return out;
 }
@@ -30,7 +26,7 @@ export function create() {
  * @param {quat} out the receiving quaternion
  * @returns {quat} out
  */
-export function identity(out) {
+export function identity(out: quat): quat {
   out[0] = 0;
   out[1] = 0;
   out[2] = 0;
@@ -47,7 +43,7 @@ export function identity(out) {
  * @param {Number} rad the angle in radians
  * @returns {quat} out
  **/
-export function setAxisAngle(out, axis, rad) {
+export function setAxisAngle(out: quat, axis: vec3, rad: number): quat {
   rad = rad * 0.5;
   let s = Math.sin(rad);
   out[0] = s * axis[0];
@@ -70,7 +66,7 @@ export function setAxisAngle(out, axis, rad) {
  * @param  {quat} q     Quaternion to be decomposed
  * @return {Number}     Angle, in radians, of the rotation
  */
-export function getAxisAngle(out_axis, q) {
+export function getAxisAngle(out_axis: vec3, q: quat): number {
   let rad = Math.acos(q[3]) * 2.0;
   let s = Math.sin(rad / 2.0);
   if (s > glMatrix.EPSILON) {
@@ -94,7 +90,7 @@ export function getAxisAngle(out_axis, q) {
  * @param {quat} b the second operand
  * @returns {quat} out
  */
-export function multiply(out, a, b) {
+export function multiply(out: quat, a: quat, b: quat): quat {
   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
   let bx = b[0], by = b[1], bz = b[2], bw = b[3];
 
@@ -113,7 +109,7 @@ export function multiply(out, a, b) {
  * @param {number} rad angle (in radians) to rotate
  * @returns {quat} out
  */
-export function rotateX(out, a, rad) {
+export function rotateX(out: quat, a: quat, rad: number): quat {
   rad *= 0.5;
 
   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
@@ -134,7 +130,7 @@ export function rotateX(out, a, rad) {
  * @param {number} rad angle (in radians) to rotate
  * @returns {quat} out
  */
-export function rotateY(out, a, rad) {
+export function rotateY(out: quat, a: quat, rad: number): quat {
   rad *= 0.5;
 
   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
@@ -155,7 +151,7 @@ export function rotateY(out, a, rad) {
  * @param {number} rad angle (in radians) to rotate
  * @returns {quat} out
  */
-export function rotateZ(out, a, rad) {
+export function rotateZ(out: quat, a: quat, rad: number): quat {
   rad *= 0.5;
 
   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
@@ -177,7 +173,7 @@ export function rotateZ(out, a, rad) {
  * @param {quat} a quat to calculate W component of
  * @returns {quat} out
  */
-export function calculateW(out, a) {
+export function calculateW(out: quat, a: quat): quat {
   let x = a[0], y = a[1], z = a[2];
 
   out[0] = x;
@@ -196,7 +192,7 @@ export function calculateW(out, a) {
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
  * @returns {quat} out
  */
-export function slerp(out, a, b, t) {
+export function slerp(out: quat, a: quat, b: quat, t: number): quat {
   // benchmarks:
   //    http://jsperf.com/quaternion-slerp-implementations
   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
@@ -207,7 +203,7 @@ export function slerp(out, a, b, t) {
   // calc cosine
   cosom = ax * bx + ay * by + az * bz + aw * bw;
   // adjust signs (if necessary)
-  if ( cosom < 0.0 ) {
+  if (cosom < 0.0) {
     cosom = -cosom;
     bx = - bx;
     by = - by;
@@ -215,10 +211,10 @@ export function slerp(out, a, b, t) {
     bw = - bw;
   }
   // calculate coefficients
-  if ( (1.0 - cosom) > glMatrix.EPSILON ) {
+  if ((1.0 - cosom) > glMatrix.EPSILON) {
     // standard case (slerp)
-    omega  = Math.acos(cosom);
-    sinom  = Math.sin(omega);
+    omega = Math.acos(cosom);
+    sinom = Math.sin(omega);
     scale0 = Math.sin((1.0 - t) * omega) / sinom;
     scale1 = Math.sin(t * omega) / sinom;
   } else {
@@ -242,7 +238,7 @@ export function slerp(out, a, b, t) {
  * @param {quat} out the receiving quaternion
  * @returns {quat} out
  */
-export function random(out) {
+export function random(out: quat): quat {
   // Implementation of http://planning.cs.uiuc.edu/node198.html
   // TODO: Calling random 3 times is probably not the fastest solution
   let u1 = glMatrix.RANDOM();
@@ -266,17 +262,17 @@ export function random(out) {
  * @param {quat} a quat to calculate inverse of
  * @returns {quat} out
  */
-export function invert(out, a) {
+export function invert(out: quat, a: quat): quat {
   let a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3];
-  let dot = a0*a0 + a1*a1 + a2*a2 + a3*a3;
-  let invDot = dot ? 1.0/dot : 0;
+  let dot = a0 * a0 + a1 * a1 + a2 * a2 + a3 * a3;
+  let invDot = dot ? 1.0 / dot : 0;
 
   // TODO: Would be faster to return [0,0,0,0] immediately if dot == 0
 
-  out[0] = -a0*invDot;
-  out[1] = -a1*invDot;
-  out[2] = -a2*invDot;
-  out[3] = a3*invDot;
+  out[0] = -a0 * invDot;
+  out[1] = -a1 * invDot;
+  out[2] = -a2 * invDot;
+  out[3] = a3 * invDot;
   return out;
 }
 
@@ -288,7 +284,7 @@ export function invert(out, a) {
  * @param {quat} a quat to calculate conjugate of
  * @returns {quat} out
  */
-export function conjugate(out, a) {
+export function conjugate(out: quat, a: quat): quat {
   out[0] = -a[0];
   out[1] = -a[1];
   out[2] = -a[2];
@@ -307,36 +303,36 @@ export function conjugate(out, a) {
  * @returns {quat} out
  * @function
  */
-export function fromMat3(out, m) {
+export function fromMat3(out: quat, m: mat3): quat {
   // Algorithm in Ken Shoemake's article in 1987 SIGGRAPH course notes
   // article "Quaternion Calculus and Fast Animation".
   let fTrace = m[0] + m[4] + m[8];
   let fRoot;
 
-  if ( fTrace > 0.0 ) {
+  if (fTrace > 0.0) {
     // |w| > 1/2, may as well choose w > 1/2
     fRoot = Math.sqrt(fTrace + 1.0);  // 2w
     out[3] = 0.5 * fRoot;
-    fRoot = 0.5/fRoot;  // 1/(4w)
-    out[0] = (m[5]-m[7])*fRoot;
-    out[1] = (m[6]-m[2])*fRoot;
-    out[2] = (m[1]-m[3])*fRoot;
+    fRoot = 0.5 / fRoot;  // 1/(4w)
+    out[0] = (m[5] - m[7]) * fRoot;
+    out[1] = (m[6] - m[2]) * fRoot;
+    out[2] = (m[1] - m[3]) * fRoot;
   } else {
     // |w| <= 1/2
     let i = 0;
-    if ( m[4] > m[0] )
+    if (m[4] > m[0])
       i = 1;
-    if ( m[8] > m[i*3+i] )
+    if (m[8] > m[i * 3 + i])
       i = 2;
-    let j = (i+1)%3;
-    let k = (i+2)%3;
+    let j = (i + 1) % 3;
+    let k = (i + 2) % 3;
 
-    fRoot = Math.sqrt(m[i*3+i]-m[j*3+j]-m[k*3+k] + 1.0);
+    fRoot = Math.sqrt(m[i * 3 + i] - m[j * 3 + j] - m[k * 3 + k] + 1.0);
     out[i] = 0.5 * fRoot;
     fRoot = 0.5 / fRoot;
-    out[3] = (m[j*3+k] - m[k*3+j]) * fRoot;
-    out[j] = (m[j*3+i] + m[i*3+j]) * fRoot;
-    out[k] = (m[k*3+i] + m[i*3+k]) * fRoot;
+    out[3] = (m[j * 3 + k] - m[k * 3 + j]) * fRoot;
+    out[j] = (m[j * 3 + i] + m[i * 3 + j]) * fRoot;
+    out[k] = (m[k * 3 + i] + m[i * 3 + k]) * fRoot;
   }
 
   return out;
@@ -352,25 +348,25 @@ export function fromMat3(out, m) {
  * @returns {quat} out
  * @function
  */
-export function fromEuler(out, x, y, z) {
-    let halfToRad = 0.5 * Math.PI / 180.0;
-    x *= halfToRad;
-    y *= halfToRad;
-    z *= halfToRad;
+export function fromEuler(out: quat, x, y, z): quat {
+  let halfToRad = 0.5 * Math.PI / 180.0;
+  x *= halfToRad;
+  y *= halfToRad;
+  z *= halfToRad;
 
-    let sx = Math.sin(x);
-    let cx = Math.cos(x);
-    let sy = Math.sin(y);
-    let cy = Math.cos(y);
-    let sz = Math.sin(z);
-    let cz = Math.cos(z);
+  let sx = Math.sin(x);
+  let cx = Math.cos(x);
+  let sy = Math.sin(y);
+  let cy = Math.cos(y);
+  let sz = Math.sin(z);
+  let cz = Math.cos(z);
 
-    out[0] = sx * cy * cz - cx * sy * sz;
-    out[1] = cx * sy * cz + sx * cy * sz;
-    out[2] = cx * cy * sz - sx * sy * cz;
-    out[3] = cx * cy * cz + sx * sy * sz;
+  out[0] = sx * cy * cz - cx * sy * sz;
+  out[1] = cx * sy * cz + sx * cy * sz;
+  out[2] = cx * cy * sz - sx * sy * cz;
+  out[3] = cx * cy * cz + sx * sy * sz;
 
-    return out;
+  return out;
 }
 
 /**
@@ -379,7 +375,7 @@ export function fromEuler(out, x, y, z) {
  * @param {quat} a vector to represent as a string
  * @returns {String} string representation of the vector
  */
-export function str(a) {
+export function str(a: quat): string {
   return 'quat(' + a[0] + ', ' + a[1] + ', ' + a[2] + ', ' + a[3] + ')';
 }
 
@@ -547,10 +543,10 @@ export const equals = vec4.equals;
  */
 export const rotationTo = (function() {
   let tmpvec3 = vec3.create();
-  let xUnitVec3 = vec3.fromValues(1,0,0);
-  let yUnitVec3 = vec3.fromValues(0,1,0);
+  let xUnitVec3 = vec3.fromValues(1, 0, 0);
+  let yUnitVec3 = vec3.fromValues(0, 1, 0);
 
-  return function(out, a, b) {
+  return function(out: Float32Array | number[], a: any, b: any) {
     let dot = vec3.dot(a, b);
     if (dot < -0.999999) {
       vec3.cross(tmpvec3, xUnitVec3, a);
@@ -587,11 +583,11 @@ export const rotationTo = (function() {
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
  * @returns {quat} out
  */
-export const sqlerp = (function () {
+export const sqlerp = (function() {
   let temp1 = create();
   let temp2 = create();
 
-  return function (out, a, b, c, d, t) {
+  return function(out: Float32Array, a: Float32Array, b: Float32Array, c: Float32Array, d: Float32Array, t: number) {
     slerp(temp1, a, d, t);
     slerp(temp2, b, c, t);
     slerp(out, temp1, temp2, 2 * t * (1 - t));
@@ -613,7 +609,7 @@ export const sqlerp = (function () {
 export const setAxes = (function() {
   let matr = mat3.create();
 
-  return function(out, view, right, up) {
+  return function(out: Float32Array, view: number[], right: number[], up: number[]) {
     matr[0] = right[0];
     matr[3] = right[1];
     matr[6] = right[2];

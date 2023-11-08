@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+import { Renderer } from './renderer.mjs'
 import { Ray } from '../math/ray.mjs';
 import { mat4, vec3, quat } from '../math/gl-matrix.mjs';
 
@@ -28,35 +29,27 @@ const DEFAULT_SCALE = new Float32Array([1, 1, 1]);
 let tmpRayMatrix = mat4.create();
 
 export class Node {
-  name: null;
-  children: never[];
-  parent: null;
+  name: string | null = null;
+  children: Node[] = [];
+  parent: Node | null = null;
   visible: boolean = true;
   selectable: boolean = false;
+  private _matrix: null = null;
+  private _dirtyTRS: boolean = false;
+  private _translation: null = null;
+  private _rotation: null = null;
+  private _scale: null = null;
+  private _dirtyWorldMatrix: boolean = false;
+  private _worldMatrix: null = null;
+  private _activeFrameId: number = -1;
+  private _hoverFrameId: number = -1;
+  private _renderPrimitives: null = null;
+  private _renderer: Renderer | null = null;
+  private _selectHandler: null = null;
   constructor() {
-    this.name = null; // Only for debugging
-    this.children = [];
-    this.parent = null;
-
-    this._matrix = null;
-
-    this._dirtyTRS = false;
-    this._translation = null;
-    this._rotation = null;
-    this._scale = null;
-
-    this._dirtyWorldMatrix = false;
-    this._worldMatrix = null;
-
-    this._activeFrameId = -1;
-    this._hoverFrameId = -1;
-    this._renderPrimitives = null;
-    this._renderer = null;
-
-    this._selectHandler = null;
   }
 
-  _setRenderer(renderer) {
+  _setRenderer(renderer: Renderer) {
     if (this._renderer == renderer) {
       return;
     }
@@ -77,14 +70,14 @@ export class Node {
     }
   }
 
-  onRendererChanged(renderer) {
+  onRendererChanged(renderer: Renderer) {
     // Override in other node types to respond to changes in the renderer.
   }
 
   // Create a clone of this node and all of it's children. Does not duplicate
   // RenderPrimitives, the cloned nodes will be treated as new instances of the
   // geometry.
-  clone() {
+  clone(): Node {
     let cloneNode = new Node();
     cloneNode.name = this.name;
     cloneNode.visible = this.visible;

@@ -9,6 +9,7 @@ import * as mat4 from "./mat4.mjs";
  * Make sure to have normalized dual quaternions, otherwise the functions may not work as intended.<br>
  * @module quat2
  */
+export type quat2 = Float32Array;
 
 
 /**
@@ -16,9 +17,9 @@ import * as mat4 from "./mat4.mjs";
  *
  * @returns {quat2} a new dual quaternion [real -> rotation, dual -> translation]
  */
-export function create() {
-  let dq = new glMatrix.ARRAY_TYPE(8);
-  if(glMatrix.ARRAY_TYPE != Float32Array) {
+export function create(): quat2 {
+  let dq = new Float32Array(8);
+  if(Float32Array != Float32Array) {
     dq[0] = 0;
     dq[1] = 0;
     dq[2] = 0;
@@ -38,8 +39,8 @@ export function create() {
  * @returns {quat2} new dual quaternion
  * @function
  */
-export function clone(a) {
-  let dq = new glMatrix.ARRAY_TYPE(8);
+export function clone(a: quat2): quat2 {
+  let dq = new Float32Array(8);
   dq[0] = a[0];
   dq[1] = a[1];
   dq[2] = a[2];
@@ -65,8 +66,8 @@ export function clone(a) {
  * @returns {quat2} new dual quaternion
  * @function
  */
-export function fromValues(x1, y1, z1, w1, x2, y2, z2, w2) {
-  let dq = new glMatrix.ARRAY_TYPE(8);
+export function fromValues(x1: number, y1: number, z1: number, w1: number, x2: number, y2: number, z2: number, w2: number): quat2 {
+  let dq = new Float32Array(8);
   dq[0] = x1;
   dq[1] = y1;
   dq[2] = z1;
@@ -91,8 +92,8 @@ export function fromValues(x1, y1, z1, w1, x2, y2, z2, w2) {
  * @returns {quat2} new dual quaternion
  * @function
  */
-export function fromRotationTranslationValues(x1, y1, z1, w1, x2, y2, z2) {
-  let dq = new glMatrix.ARRAY_TYPE(8);
+export function fromRotationTranslationValues(x1: number, y1: number, z1: number, w1: number, x2: number, y2: number, z2: number): quat2 {
+  let dq = new Float32Array(8);
   dq[0] = x1;
   dq[1] = y1;
   dq[2] = z1;
@@ -116,7 +117,7 @@ export function fromRotationTranslationValues(x1, y1, z1, w1, x2, y2, z2) {
  * @returns {quat2} dual quaternion receiving operation result
  * @function
  */
-export function fromRotationTranslation(out, q, t) {
+export function fromRotationTranslation(out, q: quat, t: vec3): quat2 {
   let ax = t[0] * 0.5,
     ay = t[1] * 0.5,
     az = t[2] * 0.5,
@@ -143,7 +144,7 @@ export function fromRotationTranslation(out, q, t) {
  * @returns {quat2} dual quaternion receiving operation result
  * @function
  */
-export function fromTranslation(out, t) {
+export function fromTranslation(out, t: vec3): quat2 {
   out[0] = 0;
   out[1] = 0;
   out[2] = 0;
@@ -163,7 +164,7 @@ export function fromTranslation(out, t) {
  * @returns {quat2} dual quaternion receiving operation result
  * @function
  */
-export function fromRotation(out, q) {
+export function fromRotation(out, q: quat): quat2 {
   out[0] = q[0];
   out[1] = q[1];
   out[2] = q[2];
@@ -187,7 +188,7 @@ export function fromMat4(out, a) {
   //TODO Optimize this
   let outer = quat.create();
   mat4.getRotation(outer, a);
-  let t = new glMatrix.ARRAY_TYPE(3);
+  let t = new Float32Array(3);
   mat4.getTranslation(t, a);
   fromRotationTranslation(out, outer, t);
   return out;

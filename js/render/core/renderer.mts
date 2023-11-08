@@ -22,6 +22,7 @@ import { CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { Node } from './node.mjs';
 import { Program } from './program.mjs';
 import { DataTexture, VideoTexture } from './texture.mjs';
+import { PbrMaterial } from '../materials/pbr.mjs';
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 
 export const ATTRIB = {
@@ -614,7 +615,7 @@ export class Renderer {
     }
   }
 
-  createRenderPrimitive(primitive, material) {
+  createRenderPrimitive(primitive, material: PbrMaterial) {
     let renderPrimitive = new RenderPrimitive(primitive);
 
     let program = this._getMaterialProgram(material, renderPrimitive);
@@ -881,7 +882,7 @@ export class Renderer {
     return key;
   }
 
-  _getMaterialProgram(material, renderPrimitive) {
+  _getMaterialProgram(material: PbrMaterial, renderPrimitive) {
     const multiview = this._multiview;
     let materialName = material.materialName;
     let vertexSource = (!multiview) ? material.vertexSource : material.vertexSourceMultiview;
