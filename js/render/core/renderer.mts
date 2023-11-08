@@ -23,6 +23,7 @@ import { Node } from './node.mjs';
 import { Program } from './program.mjs';
 import { DataTexture, VideoTexture } from './texture.mjs';
 import { PbrMaterial } from '../materials/pbr.mjs';
+import { Primitive } from './primitive.mjs';
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 
 export const ATTRIB = {
@@ -194,15 +195,24 @@ class RenderPrimitiveAttributeBuffer {
 }
 
 export class RenderPrimitive {
-  constructor(primitive) {
+  private _activeFrameId: number;
+  _instances: Node[];
+  private _material: null;
+  private _mode: any;
+  private _elementCount: any;
+  private _promise: null;
+  private _vao: null;
+  private _complete: boolean;
+  private _attributeBuffers: never[];
+  private _attributeMask: number;
+  constructor(primitive: Primitive) {
     this._activeFrameId = 0;
     this._instances = [];
     this._material = null;
-
     this.setPrimitive(primitive);
   }
 
-  setPrimitive(primitive) {
+  setPrimitive(primitive: Primitive) {
     this._mode = primitive.mode;
     this._elementCount = primitive.elementCount;
     this._promise = null;

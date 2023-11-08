@@ -18,10 +18,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {vec3} from '../math/gl-matrix.mjs';
+import { vec3 } from '../math/gl-matrix.mjs';
 
 export class PrimitiveAttribute {
-  constructor(name, buffer, componentCount, componentType, stride, byteOffset) {
+  name: any;
+  buffer: any;
+  componentCount: any;
+  componentType: any;
+  stride: any;
+  byteOffset: any;
+  normalized: boolean;
+  constructor(name: string, buffer, componentCount: number, componentType: number, stride: number, byteOffset: number) {
     this.name = name;
     this.buffer = buffer;
     this.componentCount = componentCount || 3;
@@ -33,6 +40,14 @@ export class PrimitiveAttribute {
 }
 
 export class Primitive {
+  attributes: any;
+  elementCount: any;
+  mode: any;
+  indexBuffer: null;
+  indexByteOffset: number;
+  indexType: number;
+  private _min: null;
+  private _max: null;
   constructor(attributes, elementCount, mode) {
     this.attributes = attributes || [];
     this.elementCount = elementCount || 0;
@@ -44,13 +59,13 @@ export class Primitive {
     this._max = null;
   }
 
-  setIndexBuffer(indexBuffer, byteOffset, indexType) {
+  setIndexBuffer(indexBuffer, byteOffset: number | undefined, indexType: number | undefined) {
     this.indexBuffer = indexBuffer;
     this.indexByteOffset = byteOffset || 0;
     this.indexType = indexType || 5123; // gl.UNSIGNED_SHORT;
   }
 
-  setBounds(min, max) {
+  setBounds(min: number[], max: number[]) {
     this._min = vec3.clone(min);
     this._max = vec3.clone(max);
   }

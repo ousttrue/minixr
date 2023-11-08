@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Renderer } from './renderer.mjs'
+import { Renderer, RenderPrimitive } from './renderer.mjs'
 import { Ray } from '../math/ray.mjs';
 import { mat4, vec3, quat } from '../math/gl-matrix.mjs';
 
@@ -28,24 +28,30 @@ const DEFAULT_SCALE = new Float32Array([1, 1, 1]);
 
 let tmpRayMatrix = mat4.create();
 
+type NodeIntersection = {
+  node: Node,
+  intersection: Float32Array,
+  distance: number,
+};
+
 export class Node {
   name: string | null = null;
   children: Node[] = [];
   parent: Node | null = null;
   visible: boolean = true;
   selectable: boolean = false;
-  private _matrix: null = mat4.create();
+  private _matrix: Float32Array | null = mat4.create();
   private _dirtyTRS: boolean = false;
-  private _translation: vec3 | null = null;
-  private _rotation: quat | null = null;
-  private _scale: vec3 | null = null;
+  private _translation: Float32Array | null = null;
+  private _rotation: Float32Array | null = null;
+  private _scale: Float32Array | null = null;
   private _dirtyWorldMatrix: boolean = false;
-  private _worldMatrix: null = null;
+  private _worldMatrix: Float32Array | null = null;
   private _activeFrameId: number = -1;
   private _hoverFrameId: number = -1;
-  private _renderPrimitives: null = null;
+  private _renderPrimitives: RenderPrimitive[] = [];
   private _renderer: Renderer | null = null;
-  private _selectHandler: null = null;
+  private _selectHandler: Function | null = null;
   constructor() {
   }
 
@@ -113,10 +119,8 @@ export class Node {
     }
 
     this.waitForComplete().then(() => {
-      if (this._renderPrimitives) {
-        for (let primitive of this._renderPrimitives) {
-          cloneNode.addRenderPrimitive(primitive);
-        }
+      for (let primitive of this._renderPrimitives) {
+        cloneNode.addRenderPrimitive(primitive);
       }
 
       for (let child of this.children) {
@@ -127,12 +131,10 @@ export class Node {
     return cloneNode;
   }
 
-  markActive(frameId) {
-    if (this.visible && this._renderPrimitives) {
-      this._activeFrameId = frameId;
-      for (let primitive of this._renderPrimitives) {
-        primitive.markActive(frameId);
-      }
+  markActive(frameId: number) {
+    this._activeFrameId = frameId;
+    for (let primitive of this._renderPrimitives) {
+      primitive.markActive(frameId);
     }
 
     for (let child of this.children) {
@@ -142,7 +144,7 @@ export class Node {
     }
   }
 
-  addNode(value) {
+  addNode(value: Node) {
     if (!value || value.parent == this) {
       return;
     }
@@ -159,7 +161,7 @@ export class Node {
     }
   }
 
-  removeNode(value) {
+  removeNode(value: Node) {
     let i = this.children.indexOf(value);
     if (i > -1) {
       this.children.splice(i, 1);
@@ -294,7 +296,7 @@ export class Node {
     return this._scale;
   }
 
-  waitForComplete() {
+  async waitForComplete() {
     let childPromises = [];
     for (let child of this.children) {
       childPromises.push(child.waitForComplete());
@@ -304,14 +306,14 @@ export class Node {
         childPromises.push(primitive.waitForComplete());
       }
     }
-    return Promise.all(childPromises).then(() => this);
+    await Promise.all(childPromises);
   }
 
   get renderPrimitives() {
     return this._renderPrimitives;
   }
 
-  addRenderPrimitive(primitive) {
+  addRenderPrimitive(primitive: RenderPrimitive) {
     if (!this._renderPrimitives) {
       this._renderPrimitives = [primitive];
     } else {
@@ -320,22 +322,18 @@ export class Node {
     primitive._instances.push(this);
   }
 
-  removeRenderPrimitive(primitive) {
+  removeRenderPrimitive(primitive: RenderPrimitive) {
     if (!this._renderPrimitives) {
       return;
     }
 
-    let index = this._renderPrimitives._instances.indexOf(primitive);
+    let index = this._renderPrimitives.indexOf(primitive);
     if (index > -1) {
-      this._renderPrimitives._instances.splice(index, 1);
+      this._renderPrimitives.splice(index, 1);
 
       index = primitive._instances.indexOf(this);
       if (index > -1) {
         primitive._instances.splice(index, 1);
-      }
-
-      if (!this._renderPrimitives.length) {
-        this._renderPrimitives = null;
       }
     }
   }
@@ -348,25 +346,22 @@ export class Node {
           primitive._instances.splice(index, 1);
         }
       }
-      this._renderPrimitives = null;
     }
   }
 
-  _hitTestSelectableNode(rigidTransform) {
-    if (this._renderPrimitives) {
-      let localRay = null;
-      for (let primitive of this._renderPrimitives) {
-        if (primitive._min) {
-          if (!localRay) {
-            mat4.invert(tmpRayMatrix, this.worldMatrix);
-            mat4.multiply(tmpRayMatrix, tmpRayMatrix, rigidTransform.matrix);
-            localRay = new Ray(tmpRayMatrix);
-          }
-          let intersection = localRay.intersectsAABB(primitive._min, primitive._max);
-          if (intersection) {
-            vec3.transformMat4(intersection, intersection, this.worldMatrix);
-            return intersection;
-          }
+  _hitTestSelectableNode(rigidTransform: XRRigidTransform): Float32Array | null {
+    let localRay = null;
+    for (let primitive of this._renderPrimitives) {
+      if (primitive._min) {
+        if (!localRay) {
+          mat4.invert(tmpRayMatrix, this.worldMatrix);
+          mat4.multiply(tmpRayMatrix, tmpRayMatrix, rigidTransform.matrix);
+          localRay = new Ray(tmpRayMatrix);
+        }
+        let intersection = localRay.intersectsAABB(primitive._min, primitive._max);
+        if (intersection) {
+          vec3.transformMat4(intersection, intersection, this.worldMatrix);
+          return intersection;
         }
       }
     }
@@ -379,7 +374,7 @@ export class Node {
     return null;
   }
 
-  hitTest(rigidTransform) {
+  hitTest(rigidTransform: XRRigidTransform): NodeIntersection | null {
     if (this.selectable && this.visible) {
       let intersection = this._hitTestSelectableNode(rigidTransform);
 
@@ -407,7 +402,7 @@ export class Node {
     return result;
   }
 
-  onSelect(value) {
+  onSelect(value: Function) {
     this._selectHandler = value;
   }
 
@@ -432,7 +427,7 @@ export class Node {
 
   }
 
-  _update(timestamp, frameDelta) {
+  _update(timestamp: number, frameDelta: number) {
     this.onUpdate(timestamp, frameDelta);
 
     for (let child of this.children) {
@@ -441,7 +436,7 @@ export class Node {
   }
 
   // Called every frame so that the nodes can animate themselves
-  onUpdate(timestamp, frameDelta) {
+  onUpdate(timestamp: number, frameDelta: number) {
 
   }
 }
