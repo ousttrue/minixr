@@ -18,15 +18,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Primitive, PrimitiveAttribute} from '../core/primitive.mjs';
-import {mat3, vec3} from '../math/gl-matrix.mjs';
+import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
+import { mat3, vec3 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
 const tempVec3 = vec3.create();
 
 export class PrimitiveStream {
-  constructor(options) {
+  constructor() {
     this._vertices = [];
     this._indices = [];
 
@@ -213,7 +213,7 @@ export class PrimitiveStream {
 }
 
 export class GeometryBuilderBase {
-  constructor(primitiveStream) {
+  constructor(primitiveStream = null) {
     if (primitiveStream) {
       this._stream = primitiveStream;
     } else {

@@ -474,7 +474,7 @@ export class WebXRButton {
           // and we should communicate that to the user somehow.
           let errorMsg = `XRSession creation failed: ${err.message}`;
           this.setTooltip(errorMsg);
-          console.error(errorMsg);
+          // console.error(errorMsg);
 
           // Disable the button momentarily to indicate there was an issue.
           this.__setDisabledAttribute(true);
@@ -483,6 +483,8 @@ export class WebXRButton {
             this.__setDisabledAttribute(false);
             this.domElement.setAttribute('error', 'false');
           }, 1000);
+
+          throw err;
         });
       }
     }

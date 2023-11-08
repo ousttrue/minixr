@@ -38,7 +38,7 @@ async function onRequestSession() {
   // will set up the necessary session state and kick off the frame loop.
   const app = new App(session);
   g_app = app;
-  await app.initAsync(session);
+  await app.initSpace(session);
 
   // Inform the session that we're ready to begin drawing.
   session.requestAnimationFrame((t, f) => app.onXRFrame(t, f));

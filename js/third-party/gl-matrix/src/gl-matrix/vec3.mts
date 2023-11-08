@@ -477,7 +477,7 @@ export function random(out, scale) {
  * @param {mat4} m matrix to transform with
  * @returns {vec3} out
  */
-export function transformMat4(out, a, m) {
+export function transformMat4(out: vec3, a: vec3, m: mat4): vec3 {
   let x = a[0], y = a[1], z = a[2];
   let w = m[3] * x + m[7] * y + m[11] * z + m[15];
   w = w || 1.0;

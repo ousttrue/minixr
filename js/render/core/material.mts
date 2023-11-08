@@ -202,7 +202,7 @@ export class MaterialState {
   }
 }
 
-class MaterialSampler {
+export class MaterialSampler {
   constructor(public _uniformName: string) {
     this._texture = null;
   }
@@ -216,8 +216,10 @@ class MaterialSampler {
   }
 }
 
-class MaterialUniform {
-  constructor(public _uniformName: string, defaultValue, length) {
+export class MaterialUniform {
+  private _value: any;
+  private _length: any;
+  constructor(public _uniformName: string, defaultValue: any, length: number) {
     this._value = defaultValue;
     this._length = length;
     if (!this._length) {

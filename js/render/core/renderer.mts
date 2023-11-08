@@ -524,7 +524,20 @@ class RenderMaterial {
 }
 
 export class Renderer {
-  constructor(gl, multiview) {
+  private _gl: WebGL2RenderingContext;
+  private _frameId: number;
+  private _programCache: {};
+  private _textureCache: {};
+  private _renderPrimitives: any[];
+  private _cameraPositions: never[];
+  private _vaoExt: any;
+  private _defaultFragPrecision: string;
+  private _depthMaskNeedsReset: boolean;
+  private _colorMaskNeedsReset: boolean;
+  private _multiview: any;
+  private _globalLightColor = [];
+  private _globalLightDir = [];
+  constructor(gl: RenderingContext | null, multiview = undefined) {
     this._gl = gl || createWebGLContext();
     this._frameId = 0;
     this._programCache = {};
@@ -540,8 +553,8 @@ export class Renderer {
     this._depthMaskNeedsReset = false;
     this._colorMaskNeedsReset = false;
 
-    this._globalLightColor = vec3.clone(DEF_LIGHT_COLOR);
-    this._globalLightDir = vec3.clone(DEF_LIGHT_DIR);
+    this.globalLightColor = vec3.clone(DEF_LIGHT_COLOR);
+    this.globalLightDir = vec3.clone(DEF_LIGHT_DIR);
 
     this._multiview = multiview;
   }

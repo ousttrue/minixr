@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Material} from '../core/material.mjs';
-import {ATTRIB_MASK} from '../core/renderer.mjs';
+import { Material, MaterialSampler, MaterialUniform } from '../core/material.mjs';
+import { ATTRIB_MASK } from '../core/renderer.mjs';
 
 const VERTEX_SOURCE = `
 attribute vec3 POSITION, NORMAL;
@@ -214,6 +214,15 @@ vec4 fragment_main() {
 }`;
 
 export class PbrMaterial extends Material {
+  baseColor: MaterialSampler;
+  metallicRoughness: MaterialSampler;
+  normal: MaterialSampler;
+  occlusion: MaterialSampler;
+  emissive: MaterialSampler;
+  baseColorFactor: MaterialUniform;
+  occlusionStrength: MaterialUniform;
+  emissiveFactor: MaterialUniform;
+  metallicRoughnessFactor: MaterialUniform;
   constructor() {
     super();
 
@@ -271,8 +280,8 @@ export class PbrMaterial extends Material {
     }
 
     if ((!this.metallicRoughness.texture ||
-         !(renderPrimitive._attributeMask & ATTRIB_MASK.TEXCOORD_0)) &&
-        this.metallicRoughnessFactor.value[1] == 1.0) {
+      !(renderPrimitive._attributeMask & ATTRIB_MASK.TEXCOORD_0)) &&
+      this.metallicRoughnessFactor.value[1] == 1.0) {
       programDefines['FULLY_ROUGH'] = 1;
     }
 
