@@ -1,7 +1,6 @@
-import { Scene } from './js/render/scenes/scene.mjs';
 import { Node } from './js/render/core/node.mjs';
 import { Renderer } from './js/render/core/renderer.mjs';
-import { mat4 } from './js/render/math/gl-matrix.mjs';
+import { vec3, mat4 } from './js/render/math/gl-matrix.mjs';
 import { addBox } from './interaction.mjs';
 
 
@@ -11,7 +10,7 @@ export default class Hand {
   private _radii = new Float32Array(25);
   private _positions = new Float32Array(16 * 25);
 
-  constructor(scene: Scene, renderer: Renderer,
+  constructor(renderer: Renderer,
     color: { r: number, g: number, b: number }) {
     for (let i = 0; i <= 24; i++) {
       const r = .6 + Math.random() * .4;
@@ -22,23 +21,23 @@ export default class Hand {
     this.indexFingerBoxes = addBox('index', renderer, color.r, color.g, color.b);
   }
 
-  disable(scene: Scene) {
+  disable(root: Node) {
     for (const box of this.boxes) {
-      scene.removeNode(box);
+      root.removeNode(box);
     }
-    scene.removeNode(this.indexFingerBoxes);
+    root.removeNode(this.indexFingerBoxes);
   }
 
-  update(scene: Scene, refSpace: XRReferenceSpace, time: number, frame: XRFrame, inputSource: XRInputSource) {
+  update(root: Node, refSpace: XRReferenceSpace, time: number, frame: XRFrame, inputSource: XRInputSource) {
     if (!inputSource.hand) {
       return;
     }
 
     // clear
     for (const box of this.boxes) {
-      scene.removeNode(box);
+      root.removeNode(box);
     }
-    scene.removeNode(this.indexFingerBoxes);
+    root.removeNode(this.indexFingerBoxes);
 
     // frame pose
     let pose = frame.getPose(inputSource.targetRaySpace, refSpace);
@@ -58,26 +57,26 @@ export default class Hand {
 
     let offset = 0;
     for (const box of this.boxes) {
-      scene.addNode(box);
-      let matrix = this._positions.slice(offset * 16, (offset + 1) * 16);
+      root.addNode(box);
+      let matrix = new mat4(this._positions.slice(offset * 16, (offset + 1) * 16));
       let jointRadius = this._radii[offset];
       offset++;
-      mat4.getTranslation(box.local.translation, matrix);
-      mat4.getRotation(box.local.rotation, matrix);
-      box.local.scale = new Float32Array([jointRadius, jointRadius, jointRadius]);
+      box.local.translation = matrix.getTranslation();
+      box.local.rotation = matrix.getRotation();
+      box.local.scale = vec3.create(jointRadius, jointRadius, jointRadius);
     }
 
     // Render a special box for each index finger on each hand	
-    scene.addNode(this.indexFingerBoxes);
+    root.addNode(this.indexFingerBoxes);
     // @ts-ignore
     let joint = inputSource.hand.get('index-finger-tip');
     // @ts-ignore
     let jointPose = frame.getJointPose(joint, refSpace);
     if (jointPose) {
-      let matrix = jointPose.transform.matrix;
-      mat4.getTranslation(this.indexFingerBoxes.local.translation, matrix);
-      mat4.getRotation(this.indexFingerBoxes.local.rotation, matrix);
-      this.indexFingerBoxes.local.scale = new Float32Array([0.02, 0.02, 0.02]);
+      let matrix = new mat4(jointPose.transform.matrix);
+      this.indexFingerBoxes.local.translation = matrix.getTranslation();
+      this.indexFingerBoxes.local.rotation = matrix.getRotation();
+      this.indexFingerBoxes.local.scale = vec3.create(0.02, 0.02, 0.02);
     }
   }
 }

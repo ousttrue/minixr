@@ -46,8 +46,8 @@ export const ATTRIB_MASK = {
 
 const GL = WebGLRenderingContext; // For enums
 
-const DEF_LIGHT_DIR = new Float32Array([-0.1, -1.0, -0.2]);
-const DEF_LIGHT_COLOR = new Float32Array([3.0, 3.0, 3.0]);
+const DEF_LIGHT_DIR = vec3.create(-0.1, -1.0, -0.2);
+const DEF_LIGHT_COLOR = vec3.create(3.0, 3.0, 3.0);
 
 const PRECISION_REGEX = new RegExp('precision (lowp|mediump|highp) float;');
 
@@ -108,7 +108,13 @@ export function createWebGLContext(glAttribs) {
 }
 
 export class RenderView {
-  constructor(projectionMatrix, viewTransform, viewport = null, eye = 'left') {
+  projectionMatrix: Float32Array;
+  viewport: null;
+  private _eye: string;
+  private _eyeIndex: number;
+  private _viewMatrix: mat4;
+  viewTransform: any;
+  constructor(projectionMatrix: Float32Array, viewTransform: XRRigidTransform, viewport = null, eye = 'left') {
     this.projectionMatrix = projectionMatrix;
     this.viewport = viewport;
     // If an eye isn't given the left eye is assumed.
@@ -195,7 +201,7 @@ class RenderPrimitiveAttributeBuffer {
 }
 
 export class RenderPrimitive {
-  private _activeFrameId: number;
+  _activeFrameId: number;
   _instances: Node[];
   private _material: null;
   private _mode: any;
@@ -250,8 +256,8 @@ export class RenderPrimitive {
     }
 
     if (primitive._min) {
-      this._min = vec3.clone(primitive._min);
-      this._max = vec3.clone(primitive._max);
+      this._min = primitive._min.clone();
+      this._max = primitive._max.clone();
     } else {
       this._min = null;
       this._max = null;
@@ -272,7 +278,7 @@ export class RenderPrimitive {
     }
   }
 
-  markActive(frameId) {
+  markActive(frameId: number) {
     if (this._complete && this._activeFrameId != frameId) {
       if (this._material) {
         if (!this._material.markActive(frameId)) {
@@ -464,7 +470,7 @@ class RenderMaterial {
     }
   }
 
-  markActive(frameId) {
+  markActive(frameId: number) {
     if (this._activeFrameId != frameId) {
       this._activeFrameId = frameId;
       this._completeForActiveFrame = true;
@@ -540,14 +546,14 @@ export class Renderer {
   private _programCache: {};
   private _textureCache: {};
   private _renderPrimitives: any[];
-  private _cameraPositions: never[];
+  private _cameraPositions: vec3[];
   private _vaoExt: any;
   private _defaultFragPrecision: string;
   private _depthMaskNeedsReset: boolean;
   private _colorMaskNeedsReset: boolean;
   private _multiview: any;
-  private _globalLightColor = [];
-  private _globalLightDir = [];
+  private _globalLightColor = vec3.create();
+  private _globalLightDir = vec3.create();
   constructor(gl: RenderingContext | null, multiview = undefined) {
     this._gl = gl || createWebGLContext();
     this._frameId = 0;
@@ -564,8 +570,8 @@ export class Renderer {
     this._depthMaskNeedsReset = false;
     this._colorMaskNeedsReset = false;
 
-    this.globalLightColor = vec3.clone(DEF_LIGHT_COLOR);
-    this.globalLightDir = vec3.clone(DEF_LIGHT_DIR);
+    this.globalLightColor = DEF_LIGHT_COLOR.clone();
+    this.globalLightDir = DEF_LIGHT_DIR.clone();
 
     this._multiview = multiview;
   }
@@ -574,20 +580,20 @@ export class Renderer {
     return this._gl;
   }
 
-  set globalLightColor(value) {
-    vec3.copy(this._globalLightColor, value);
+  set globalLightColor(value: vec3) {
+    this._globalLightColor.copyFrom(value);
   }
 
   get globalLightColor() {
-    return vec3.clone(this._globalLightColor);
+    return this._globalLightColor;
   }
 
-  set globalLightDir(value) {
-    vec3.copy(this._globalLightDir, value);
+  set globalLightDir(value: vec3) {
+    this._globalLightDir.copyFrom(value);
   }
 
   get globalLightDir() {
-    return vec3.clone(this._globalLightDir);
+    return this._globalLightDir;
   }
 
   createRenderBuffer(target, data, usage = GL.STATIC_DRAW) {
@@ -647,7 +653,7 @@ export class Renderer {
     return meshNode;
   }
 
-  drawViews(views, rootNode) {
+  drawViews(views: RenderView[], rootNode: Node) {
     if (!rootNode) {
       return;
     }
@@ -670,9 +676,9 @@ export class Renderer {
         this._cameraPositions.push(vec3.create());
       }
       let p = views[i].viewTransform.position;
-      this._cameraPositions[i][0] = p.x;
-      this._cameraPositions[i][1] = p.y;
-      this._cameraPositions[i][2] = p.z;
+      this._cameraPositions[i].x = p.x;
+      this._cameraPositions[i].x = p.y;
+      this._cameraPositions[i].x = p.z;
 
       /*mat4.invert(inverseMatrix, views[i].viewMatrix);
       let cameraPosition = this._cameraPositions[i];
@@ -699,7 +705,7 @@ export class Renderer {
     }
   }
 
-  _drawRenderPrimitiveSet(views, renderPrimitives) {
+  _drawRenderPrimitiveSet(views: RenderView[], renderPrimitives: RenderPrimitive[]) {
     let gl = this._gl;
     let program = null;
     let material = null;
@@ -720,18 +726,18 @@ export class Renderer {
         program.use();
 
         if (program.uniform.LIGHT_DIRECTION) {
-          gl.uniform3fv(program.uniform.LIGHT_DIRECTION, this._globalLightDir);
+          gl.uniform3fv(program.uniform.LIGHT_DIRECTION, this._globalLightDir.array);
         }
 
         if (program.uniform.LIGHT_COLOR) {
-          gl.uniform3fv(program.uniform.LIGHT_COLOR, this._globalLightColor);
+          gl.uniform3fv(program.uniform.LIGHT_COLOR, this._globalLightColor.array);
         }
 
         if (views.length == 1) {
           if (!this._multiview) {
             gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false, views[0].projectionMatrix);
             gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false, views[0].viewMatrix);
-            gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0]);
+            gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0].array);
             gl.uniform1i(program.uniform.EYE_INDEX, views[0].eyeIndex);
           } else {
             let vp = views[0].viewport;
@@ -795,7 +801,8 @@ export class Renderer {
             continue;
           }
 
-          gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false, instance.worldMatrix);
+          gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false, 
+            instance.worldMatrix.array);
 
           if (primitive._indexBuffer) {
             gl.drawElements(primitive._mode, primitive._elementCount,

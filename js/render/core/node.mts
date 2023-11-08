@@ -27,7 +27,7 @@ let tmpRayMatrix = mat4.create();
 
 type NodeIntersection = {
   node: Node,
-  intersection: Float32Array,
+  intersection: vec3,
   distance: number,
 };
 
@@ -38,11 +38,11 @@ export class Node {
   selectable: boolean = false;
   local: Transform = new Transform();
   private _activeFrameId: number = -1;
-  private _hoverFrameId: number = -1;
+  _hoverFrameId: number = -1;
   private _renderPrimitives: RenderPrimitive[] = [];
-  private _renderer: Renderer | null = null;
+  _renderer: Renderer | null = null;
   private _selectHandler: Function | null = null;
-  private _worldMatrix: Float32Array | null = null;
+  private _worldMatrix: mat4 | null = null;
   private _dirtyWorldMatrix = false;
   constructor(public name: string) {
     this.local.onInvalidated.push(() => {
@@ -150,7 +150,7 @@ export class Node {
     }
   }
 
-  get worldMatrix(): Float32Array {
+  get worldMatrix(): mat4 {
     if (!this._worldMatrix) {
       this._dirtyWorldMatrix = true;
       this._worldMatrix = mat4.create();
@@ -164,7 +164,7 @@ export class Node {
         // is an identity matrix.
         mat4.mul(this._worldMatrix, this.parent.worldMatrix, local);
       } else {
-        mat4.copy(this._worldMatrix, local);
+        this._worldMatrix.copyFrom(local);
       }
     }
 
@@ -224,7 +224,7 @@ export class Node {
     }
   }
 
-  _hitTestSelectableNode(rigidTransform: XRRigidTransform): Float32Array | null {
+  _hitTestSelectableNode(rigidTransform: XRRigidTransform): vec3 | null {
     let localRay = null;
     for (let primitive of this._renderPrimitives) {
       if (primitive._min) {
@@ -235,7 +235,7 @@ export class Node {
         }
         let intersection = localRay.intersectsAABB(primitive._min, primitive._max);
         if (intersection) {
-          vec3.transformMat4(intersection, intersection, this.worldMatrix);
+          intersection.transformMat4(this.worldMatrix);
           return intersection;
         }
       }

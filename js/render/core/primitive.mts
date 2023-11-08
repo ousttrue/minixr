@@ -40,23 +40,12 @@ export class PrimitiveAttribute {
 }
 
 export class Primitive {
-  attributes: any;
-  elementCount: any;
-  mode: any;
-  indexBuffer: null;
-  indexByteOffset: number;
-  indexType: number;
-  private _min: null;
-  private _max: null;
-  constructor(attributes, elementCount, mode) {
-    this.attributes = attributes || [];
-    this.elementCount = elementCount || 0;
-    this.mode = mode || 4; // gl.TRIANGLES;
-    this.indexBuffer = null;
-    this.indexByteOffset = 0;
-    this.indexType = 0;
-    this._min = null;
-    this._max = null;
+  indexBuffer: null = null;
+  indexByteOffset: number = 0;
+  indexType: number = 0;
+  private _min: vec3 | null = null;
+  private _max: vec3 | null = null;
+  constructor(public attributes = [], public elementCount = 0, public mode = 4) {
   }
 
   setIndexBuffer(indexBuffer, byteOffset: number | undefined, indexType: number | undefined) {
@@ -65,8 +54,8 @@ export class Primitive {
     this.indexType = indexType || 5123; // gl.UNSIGNED_SHORT;
   }
 
-  setBounds(min: number[], max: number[]) {
-    this._min = vec3.clone(min);
-    this._max = vec3.clone(max);
+  setBounds(min: vec3, max: vec3) {
+    this._min = min.clone();
+    this._max = max.clone();
   }
 }

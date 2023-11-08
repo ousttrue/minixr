@@ -23,6 +23,7 @@ import { Node } from '../core/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../core/texture.mjs';
 import { Renderer } from '../core/renderer.mjs';
+import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
 import * as GLTF2 from './GLTF.js';
 
 const GL = WebGLRenderingContext; // For enums
@@ -285,7 +286,7 @@ export class Gltf2Loader {
           }
 
           if (min && max) {
-            glPrimitive.setBounds(min, max);
+            glPrimitive.setBounds(vec3.create(...min), vec3.create(...max));
           }
 
           // After all the attributes have been processed, get a program that is
@@ -322,18 +323,18 @@ export class Gltf2Loader {
     }
 
     if (node.matrix) {
-      glNode.local.matrix = new Float32Array(node.matrix);
+      glNode.local.matrix = new mat4(new Float32Array(node.matrix));
     } else if (node.translation || node.rotation || node.scale) {
       if (node.translation) {
-        glNode.local.translation = new Float32Array(node.translation);
+        glNode.local.translation = new vec3(new Float32Array(node.translation));
       }
 
       if (node.rotation) {
-        glNode.local.rotation = new Float32Array(node.rotation);
+        glNode.local.rotation = new quat(new Float32Array(node.rotation));
       }
 
       if (node.scale) {
-        glNode.local.scale = new Float32Array(node.scale);
+        glNode.local.scale = new vec3(new Float32Array(node.scale));
       }
     }
 

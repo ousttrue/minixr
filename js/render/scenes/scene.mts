@@ -22,7 +22,7 @@ import { RenderView } from '../core/renderer.mjs';
 import { InputRenderer } from '../nodes/input-renderer.mjs';
 import { StatsViewer } from '../nodes/stats-viewer.mjs';
 import { Node } from '../core/node.mjs';
-import { vec3, quat } from '../math/gl-matrix.mjs';
+import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
 import { Ray } from '../math/ray.mjs';
 import { Renderer } from '../core/renderer.mjs';
 
@@ -37,47 +37,35 @@ export class WebXRView extends RenderView {
   }
 }
 
-export class Scene extends Node {
+export class Scene {
+  root = new Node("__root__");
   private _timestamp: number = -1;
   private _frameDelta: number = 0;
   private _statsStanding: boolean = false;
   private _statsEnabled: boolean = false;
   private _stats: StatsViewer | null = null;
-  private _inputRenderer: null;
+  private _inputRenderer: InputRenderer | null;
   private _resetInputEndFrame: boolean = true;
   private _lastTimestamp: number = 0;
   private _hoverFrame: number = 0;
-  private _hoveredNodes: never[] = [];
+  private _hoveredNodes: Node[] = [];
   clear: boolean = true;
   constructor() {
-    super("stats");
     this.enableStats(true); // Ensure the stats are added correctly by default.
     this._inputRenderer = null;
-  }
-
-  setRenderer(renderer: Renderer) {
-    this._setRenderer(renderer);
-  }
-
-  loseRenderer() {
-    if (this._renderer) {
-      this._stats = null;
-      this._renderer = null;
-      this._inputRenderer = null;
-    }
   }
 
   get inputRenderer() {
     if (!this._inputRenderer) {
       this._inputRenderer = new InputRenderer();
-      this.addNode(this._inputRenderer);
+      this.root.addNode(this._inputRenderer);
     }
     return this._inputRenderer;
   }
 
   // Helper function that automatically adds the appropriate visual elements for
   // all input sources.
-  updateInputSources(frame, refSpace) {
+  updateInputSources(frame: XRFrame, refSpace: XRReferenceSpace) {
     let newHoveredNodes = [];
     let lastHoverFrame = this._hoverFrame;
     this._hoverFrame++;
@@ -101,8 +89,7 @@ export class Scene extends Node {
       // for both handheld and gaze-based input sources.
 
       // Check and see if the pointer is pointing at any selectable objects.
-      let hitResult = this.hitTest(targetRayPose.transform);
-
+      let hitResult = this.root.hitTest(targetRayPose.transform);
       if (hitResult) {
         // Render a cursor at the intersection point.
         this.inputRenderer.addCursor(hitResult.intersection);
@@ -115,20 +102,8 @@ export class Scene extends Node {
       } else {
         // Statically render the cursor 1 meters down the ray since we didn't
         // hit anything selectable.
-        let targetRay = new Ray(targetRayPose.transform.matrix);
-        let cursorDistance = 1.0;
-        let cursorPos = vec3.fromValues(
-          targetRay.origin[0], //x
-          targetRay.origin[1], //y
-          targetRay.origin[2]  //z
-        );
-        vec3.add(cursorPos, cursorPos, [
-          targetRay.direction[0] * cursorDistance,
-          targetRay.direction[1] * cursorDistance,
-          targetRay.direction[2] * cursorDistance,
-        ]);
-        // let cursorPos = vec3.fromValues(0, 0, -1.0);
-        // vec3.transformMat4(cursorPos, cursorPos, inputPose.targetRay);
+        let targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
+        const cursorPos = targetRay.advance(1.0)
         this.inputRenderer.addCursor(cursorPos);
       }
 
@@ -140,8 +115,6 @@ export class Scene extends Node {
           this.inputRenderer.addController(gripPose.transform.matrix, inputSource.handedness);
         }
       }
-
-
     }
 
     for (let hoverNode of this._hoveredNodes) {
@@ -153,7 +126,7 @@ export class Scene extends Node {
     this._hoveredNodes = newHoveredNodes;
   }
 
-  handleSelect(inputSource, frame, refSpace) {
+  handleSelect(inputSource: XRInputSource, frame: XRFrame, refSpace: XRReferenceSpace) {
     let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
 
     if (!targetRayPose) {
@@ -163,10 +136,10 @@ export class Scene extends Node {
     this.handleSelectPointer(targetRayPose.transform);
   }
 
-  handleSelectPointer(rigidTransform) {
+  handleSelectPointer(rigidTransform: XRRigidTransform) {
     if (rigidTransform) {
       // Check and see if the pointer is pointing at any selectable objects.
-      let hitResult = this.hitTest(rigidTransform);
+      let hitResult = this.root.hitTest(rigidTransform);
 
       if (hitResult) {
         // Render a cursor at the intersection point.
@@ -185,18 +158,18 @@ export class Scene extends Node {
     if (enable) {
       this._stats = new StatsViewer();
       this._stats.selectable = true;
-      this.addNode(this._stats);
+      this.root.addNode(this._stats);
 
       if (this._statsStanding) {
-        this._stats.local.translation = new Float32Array([0, 1.4, -0.75]);
+        this._stats.local.translation = vec3.create(0, 1.4, -0.75);
       } else {
-        this._stats.local.translation = new Float32Array([0, -0.3, -0.5]);
+        this._stats.local.translation = vec3.create(0, -0.3, -0.5);
       }
-      this._stats.local.scale = new Float32Array([0.3, 0.3, 0.3]);
-      quat.fromEuler(this._stats.local.rotation, -45.0, 0.0, 0.0);
+      this._stats.local.scale = vec3.create(0.3, 0.3, 0.3);
+      this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
     } else if (!enable) {
       if (this._stats) {
-        this.removeNode(this._stats);
+        this.root.removeNode(this._stats);
         this._stats = null;
       }
     }
@@ -206,73 +179,73 @@ export class Scene extends Node {
     this._statsStanding = enable;
     if (this._stats) {
       if (this._statsStanding) {
-        this._stats.local.translation = new Float32Array([0, 1.4, -0.75]);
+        this._stats.local.translation = vec3.create(0, 1.4, -0.75);
       } else {
-        this._stats.local.translation = new Float32Array([0, -0.3, -0.5]);
+        this._stats.local.translation = vec3.create(0, -0.3, -0.5);
       }
-      this._stats.local.scale = new Float32Array([0.3, 0.3, 0.3]);
-      quat.fromEuler(this._stats.local.rotation, -45.0, 0.0, 0.0);
+      this._stats.local.scale = vec3.create(0.3, 0.3, 0.3);
+      this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
     }
   }
 
-  draw(projectionMatrix, viewTransform, eye = undefined) {
+  draw(projectionMatrix: Float32Array, viewTransform: XRRigidTransform, eye = undefined) {
     let view = new RenderView(projectionMatrix, viewTransform);
     if (eye) {
       view.eye = eye;
     }
 
-    this.drawViewArray([view]);
+    this.root._renderer!.drawViews([view], this.root);
   }
 
   /** Draws the scene into the base layer of the XRFrame's session */
-  drawXRFrame(xrFrame, pose) {
-    if (!this._renderer || !pose) {
-      return;
-    }
+  // drawXRFrame(xrFrame: XRFrame, pose?: XRRigidTransform) {
+  //   if (!this._renderer || !pose) {
+  //     return;
+  //   }
+  //
+  //   let gl = this._renderer.gl;
+  //   let session = xrFrame.session;
+  //   // Assumed to be a XRWebGLLayer for now.
+  //   let layer = session.renderState.baseLayer;
+  //   if (!layer)
+  //     layer = session.renderState.layers[0];
+  //   else {
+  //     // only baseLayer has framebuffer and we need to bind it
+  //     // even if it is null (for inline sessions)
+  //     gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
+  //   }
+  //
+  //   if (!gl) {
+  //     return;
+  //   }
+  //
+  //   if (layer.colorTexture) {
+  //     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, layer.colorTexture, 0);
+  //   }
+  //   if (layer.depthStencilTexture) {
+  //     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, layer.depthStencilTexture, 0);
+  //   }
+  //
+  //   if (this.clear) {
+  //     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  //   }
+  //
+  //   let views: WebXRView[] = [];
+  //   for (let view of pose.views) {
+  //     views.push(new WebXRView(view, layer));
+  //   }
+  //
+  //   this.drawViewArray(views);
+  // }
 
-    let gl = this._renderer.gl;
-    let session = xrFrame.session;
-    // Assumed to be a XRWebGLLayer for now.
-    let layer = session.renderState.baseLayer;
-    if (!layer)
-      layer = session.renderState.layers[0];
-    else {
-      // only baseLayer has framebuffer and we need to bind it
-      // even if it is null (for inline sessions)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
-    }
-
-    if (!gl) {
-      return;
-    }
-
-    if (layer.colorTexture) {
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, layer.colorTexture, 0);
-    }
-    if (layer.depthStencilTexture) {
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, layer.depthStencilTexture, 0);
-    }
-
-    if (this.clear) {
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    }
-
-    let views = [];
-    for (let view of pose.views) {
-      views.push(new WebXRView(view, layer));
-    }
-
-    this.drawViewArray(views);
-  }
-
-  drawViewArray(views) {
-    // Don't draw when we don't have a valid context
-    if (!this._renderer) {
-      return;
-    }
-
-    this._renderer.drawViews(views, this);
-  }
+  // drawViewArray(views: RenderView[]) {
+  //   // Don't draw when we don't have a valid context
+  //   if (!this._renderer) {
+  //     return;
+  //   }
+  //
+  //   this._renderer.drawViews(views, this);
+  // }
 
   startFrame() {
     let prevTimestamp = this._timestamp;
@@ -287,14 +260,14 @@ export class Scene extends Node {
       this._frameDelta = 0;
     }
 
-    this._update(this._timestamp, this._frameDelta);
+    this.root._update(this._timestamp, this._frameDelta);
 
     return this._frameDelta;
   }
 
   endFrame() {
     if (this._inputRenderer && this._resetInputEndFrame) {
-      this._inputRenderer.reset();
+      this._inputRenderer.reset({});
     }
 
     if (this._stats) {
@@ -303,7 +276,7 @@ export class Scene extends Node {
   }
 
   // Override to load scene resources on construction or context restore.
-  onLoadScene(renderer) {
+  onLoadScene(renderer: Renderer) {
     return Promise.resolve();
   }
 }

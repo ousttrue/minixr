@@ -2,7 +2,7 @@ import { Scene } from './js/render/scenes/scene.mjs';
 import { Node } from './js/render/core/node.mjs';
 import { Renderer, createWebGLContext } from './js/render/core/renderer.mjs';
 import { Gltf2Node } from './js/render/nodes/gltf2.mjs';
-import { vec3 } from './js/render/math/gl-matrix.mjs';
+import { vec3, mat4 } from './js/render/math/gl-matrix.mjs';
 import { Ray } from './js/render/math/ray.mjs';
 import { Interaction } from './interaction.mjs';
 import Hand from './hand.mjs';
@@ -25,13 +25,13 @@ export default class App {
 
   constructor(session: XRSession) {
     this.scene = new Scene();
-    this.scene.addNode(new Gltf2Node({ url: './assets/gltf/space/space.gltf' }));
+    this.scene.root.addNode(new Gltf2Node({ url: './assets/gltf/space/space.gltf' }));
 
     session.addEventListener('visibilitychange', e => {
       // remove hand controller while blurred
       if (e.session.visibilityState === 'visible-blurred') {
-        this.leftHand.disable(this.scene);
-        this.rightHand.disable(this.scene);
+        this.leftHand.disable(this.scene.root);
+        this.rightHand.disable(this.scene.root);
       }
     });
 
@@ -45,14 +45,14 @@ export default class App {
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(this.gl);
 
-    this.leftHand = new Hand(this.scene, this.renderer, leftBoxColor);
-    this.rightHand = new Hand(this.scene, this.renderer, rightBoxColor);
+    this.leftHand = new Hand(this.renderer, leftBoxColor);
+    this.rightHand = new Hand(this.renderer, rightBoxColor);
 
     // Set the scene's renderer, which creates the necessary GPU resources.
-    this.scene.setRenderer(this.renderer);
+    this.scene.root._setRenderer(this.renderer);
 
     this.interaction = new Interaction(this.renderer, defaultBoxColor);
-    this.scene.addNode(this.interaction.interactionBox);
+    this.scene.root.addNode(this.interaction.interactionBox);
 
     // Use the new WebGL context to create a XRWebGLLayer and set it as the
     // sessions baseLayer. This allows any content rendered to the layer to
@@ -95,8 +95,8 @@ export default class App {
       if (inputSource.hand) {
         // update hand-tracking
         switch (inputSource.handedness) {
-          case 'left': this.leftHand.update(this.scene, refSpace, time, frame, inputSource); break;
-          case 'right': this.rightHand.update(this.scene, refSpace, time, frame, inputSource); break;
+          case 'left': this.leftHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
+          case 'right': this.rightHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
           default: break;
         }
       }
@@ -165,18 +165,9 @@ export default class App {
         this.scene.inputRenderer.addLaserPointer(targetRayPose.transform);
       }
 
-      let targetRay = new Ray(targetRayPose.transform.matrix);
-      let cursorDistance = 2.0;
-      let cursorPos = vec3.fromValues(
-        targetRay.origin[0],
-        targetRay.origin[1],
-        targetRay.origin[2]
-      );
-      vec3.add(cursorPos, cursorPos, [
-        targetRay.direction[0] * cursorDistance,
-        targetRay.direction[1] * cursorDistance,
-        targetRay.direction[2] * cursorDistance,
-      ]);
+      const targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
+
+      const cursorPos = targetRay.advance(2.0);
 
       this.scene.inputRenderer.addCursor(cursorPos);
     }

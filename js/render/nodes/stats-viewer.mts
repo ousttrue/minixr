@@ -30,6 +30,7 @@ import { Node } from '../core/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
 import { SevenSegmentText } from './seven-segment-text.mjs';
 import { Renderer, RenderBuffer } from '../core/renderer.mjs';
+import { vec3 } from '.././math/gl-matrix.mjs';
 
 const SEGMENTS = 30;
 const MAX_FPS = 90;
@@ -99,12 +100,12 @@ export class StatsViewer extends Node {
     // Hard coded because it doesn't change:
     // Scale by 0.075 in X and Y
     // Translate into upper left corner w/ z = 0.02
-    this._sevenSegmentNode.local.matrix = new Float32Array([
+    this._sevenSegmentNode.local.matrix.set(
       0.075, 0, 0, 0,
       0, 0.075, 0, 0,
       0, 0, 1, 0,
       -0.3625, 0.3625, 0.02, 1,
-    ]);
+    );
   }
 
   onRendererChanged(renderer: Renderer) {
@@ -166,7 +167,7 @@ export class StatsViewer extends Node {
 
     let fpsPrimitive = new Primitive(fpsAttribs, fpsIndices.length);
     fpsPrimitive.setIndexBuffer(fpsIndexBuffer);
-    fpsPrimitive.setBounds([-0.5, -0.5, 0.0], [0.5, 0.5, 0.015]);
+    fpsPrimitive.setBounds(vec3.create(-0.5, -0.5, 0.0), vec3.create(0.5, 0.5, 0.015));
 
     this._fpsRenderPrimitive = renderer.createRenderPrimitive(fpsPrimitive, new StatsMaterial());
     this._fpsNode = new Node('fps');

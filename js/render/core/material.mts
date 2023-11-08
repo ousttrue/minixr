@@ -264,16 +264,16 @@ export class Material {
     return uniform;
   }
 
-  get materialName() {
-    return null;
+  get materialName(): string {
+    return '';
   }
 
-  get vertexSource() {
-    return null;
+  get vertexSource(): string {
+    return '';
   }
 
-  get fragmentSource() {
-    return null;
+  get fragmentSource(): string {
+    return '';
   }
 
   getProgramDefines(renderPrimitive) {

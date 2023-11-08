@@ -18,16 +18,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Node} from '../core/node.mjs';
-import {Gltf2Loader} from '../loaders/gltf2.mjs';
+import { Node } from '../core/node.mjs';
+import { Renderer } from '../core/renderer.mjs';
+import { Gltf2Loader } from '../loaders/gltf2.mjs';
 
 // Using a weak map here allows us to cache a loader per-renderer without
 // modifying the renderer object or leaking memory when it's garbage collected.
 let gltfLoaderMap = new WeakMap();
 
 export class Gltf2Node extends Node {
-  constructor(options) {
-    super();
+  private _url: any;
+  private _promise: null;
+  private _resolver: null;
+  private _rejecter: null;
+  constructor(options: any) {
+    super('gltf');
     this._url = options.url;
 
     this._promise = null;
@@ -35,7 +40,7 @@ export class Gltf2Node extends Node {
     this._rejecter = null;
   }
 
-  onRendererChanged(renderer) {
+  onRendererChanged(renderer: Renderer) {
     let loader = gltfLoaderMap.get(renderer);
     if (!loader) {
       loader = new Gltf2Loader(renderer);

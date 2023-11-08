@@ -25,18 +25,17 @@ let normalMat = mat3.create();
 const RAY_INTERSECTION_OFFSET = 0.02;
 
 export class Ray {
-  origin: any[] | Float32Array;
+  origin = vec3.create();
+  private = vec3.create(0, 0, -1);
+  inv_dir = vec3.create();
+  _dir = vec3.create();
+  sign: number[] = [];
 
   constructor(matrix: mat4 | null = null) {
-    this.origin = vec3.create();
-
-    this._dir = vec3.create();
-    this._dir[2] = -1.0;
-
     if (matrix) {
-      vec3.transformMat4(this.origin, this.origin, matrix);
-      mat3.fromMat4(normalMat, matrix);
-      vec3.transformMat3(this._dir, this._dir, normalMat);
+      this.origin.transformMat4(matrix);
+      normalMat.fromMat4(matrix);
+      this._dir.transformMat3(normalMat);
     }
 
     // To force the inverse and sign calculations.
@@ -47,26 +46,32 @@ export class Ray {
     return this._dir;
   }
 
-  set direction(value) {
-    this._dir = vec3.copy(this._dir, value);
-    vec3.normalize(this._dir, this._dir);
+  set direction(value: vec3) {
+    this._dir.copyFrom(value);
+    this._dir.normalize();
 
-    this.inv_dir = vec3.fromValues(
-      1.0 / this._dir[0],
-      1.0 / this._dir[1],
-      1.0 / this._dir[2]);
+    this.inv_dir.set(
+      1.0 / this._dir.x,
+      1.0 / this._dir.y,
+      1.0 / this._dir.z);
 
     this.sign = [
-      (this.inv_dir[0] < 0) ? 1 : 0,
-      (this.inv_dir[1] < 0) ? 1 : 0,
-      (this.inv_dir[2] < 0) ? 1 : 0,
+      (this.inv_dir.x < 0) ? 1 : 0,
+      (this.inv_dir.y < 0) ? 1 : 0,
+      (this.inv_dir.z < 0) ? 1 : 0,
     ];
+  }
+
+  advance(distance: number): vec3 {
+    const pos = this.origin.clone();
+    pos.scaleAndAdd(this.direction, distance);
+    return pos;
   }
 
   // Borrowed from:
   // eslint-disable-next-line max-len
   // https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
-  intersectsAABB(min, max) {
+  intersectsAABB(min: vec3, max: vec3): vec3 | null {
     let r = this;
 
     let bounds = [min, max];
@@ -116,9 +121,9 @@ export class Ray {
     t -= RAY_INTERSECTION_OFFSET;
 
     // Return the point where the ray first intersected with the AABB.
-    let intersectionPoint = vec3.clone(this._dir);
-    vec3.scale(intersectionPoint, intersectionPoint, t);
-    vec3.add(intersectionPoint, intersectionPoint, this.origin);
+    const intersectionPoint = this._dir.clone();
+    intersectionPoint.scale(t);
+    intersectionPoint.add(this.origin);
     return intersectionPoint;
   }
 }

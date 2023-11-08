@@ -26,22 +26,19 @@ const GL = WebGLRenderingContext; // For enums
 const tempVec3 = vec3.create();
 
 export class PrimitiveStream {
+  private _vertices: never[] = [];
+  private _indices: never[] = [];
+  private _geometryStarted: boolean = false;
+  private _vertexOffset: number = 0;
+  private _vertexIndex: number = 0;
+  private _highIndex: number = 0;
+  private _flipWinding: boolean = false;
+  private _invertNormals: boolean = false;
+  private _transform: null = null;
+  private _normalTransform: null = null;
+  private _min: vec3 | null = null;
+  private _max: vec3 | null = null;
   constructor() {
-    this._vertices = [];
-    this._indices = [];
-
-    this._geometryStarted = false;
-
-    this._vertexOffset = 0;
-    this._vertexIndex = 0;
-    this._highIndex = 0;
-
-    this._flipWinding = false;
-    this._invertNormals = false;
-    this._transform = null;
-    this._normalTransform = null;
-    this._min = null;
-    this._max = null;
   }
 
   set flipWinding(value) {
@@ -149,8 +146,8 @@ export class PrimitiveStream {
       this._max[1] = Math.max(this._max[1], y);
       this._max[2] = Math.max(this._max[2], z);
     } else {
-      this._min = vec3.fromValues(x, y, z);
-      this._max = vec3.fromValues(x, y, z);
+      this._min = vec3.create(x, y, z);
+      this._max = vec3.create(x, y, z);
     }
 
     return this._vertexIndex++;

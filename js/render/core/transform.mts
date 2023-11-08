@@ -1,45 +1,30 @@
 import { mat4, vec3, quat } from '../math/gl-matrix.mjs';
 
 
-const DEFAULT_TRANSLATION = new Float32Array([0, 0, 0]);
-const DEFAULT_ROTATION = new Float32Array([0, 0, 0, 1]);
-const DEFAULT_SCALE = new Float32Array([1, 1, 1]);
+const DEFAULT_TRANSLATION = vec3.create(0, 0, 0);
+const DEFAULT_ROTATION = quat.create(0, 0, 0, 1);
+const DEFAULT_SCALE = vec3.create(1, 1, 1);
 
 
 export default class Transform {
-  private _matrix: Float32Array | null = mat4.create();
+  private _matrix = mat4.create(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
   private _dirtyTRS: boolean = false;
-  private _translation: Float32Array | null = null;
-  private _rotation: Float32Array | null = null;
-  private _scale: Float32Array | null = null;
+  private _translation = vec3.create(0, 0, 0);
+  private _rotation = quat.create(0, 0, 0, 1);
+  private _scale = vec3.create(1, 1, 1);
   onInvalidated: Function[] = [];
   constructor() { }
 
   clone(): Transform {
     const cloneNode = new Transform();
     cloneNode._dirtyTRS = this._dirtyTRS;
-
-    if (this._translation) {
-      cloneNode._translation = vec3.create();
-      vec3.copy(cloneNode._translation, this._translation);
-    }
-
-    if (this._rotation) {
-      cloneNode._rotation = quat.create();
-      quat.copy(cloneNode._rotation, this._rotation);
-    }
-
-    if (this._scale) {
-      cloneNode._scale = vec3.create();
-      vec3.copy(cloneNode._scale, this._scale);
-    }
-
-    // Only copy the matrices if they're not already dirty.
+    cloneNode._translation.copyFrom(this._translation);
+    cloneNode._rotation.copyFrom(this._rotation);
+    cloneNode._scale.copyFrom(this._scale);
     if (!cloneNode._dirtyTRS && this._matrix) {
-      cloneNode._matrix = mat4.create();
-      mat4.copy(cloneNode._matrix, this._matrix);
+      // Only copy the matrices if they're not already dirty.
+      cloneNode._matrix.copyFrom(this._matrix);
     }
-
     return cloneNode;
   }
 
@@ -49,19 +34,19 @@ export default class Transform {
     }
   }
 
-  set matrix(value) {
-    if (value) {
-      if (!this._matrix) {
-        this._matrix = mat4.create();
-      }
-      mat4.copy(this._matrix, value);
-    } else {
-      this._matrix = null;
+  set matrix(value: mat4) {
+    if (!value) {
+      throw new Error("no value");
     }
+
+    if (!this._matrix) {
+      this._matrix = mat4.create();
+    }
+    this._matrix.copyFrom(value);
     this._dirtyTRS = false;
-    this._translation = null;
-    this._rotation = null;
-    this._scale = null;
+    this._translation.set(0, 0, 0);
+    this._rotation.set(0, 0, 0, 1);
+    this._scale.set(1, 1, 1);
     this._invaliate();
   }
 
@@ -75,8 +60,7 @@ export default class Transform {
     if (this._dirtyTRS) {
       this._dirtyTRS = false;
       updated = true;
-      mat4.fromRotationTranslationScale(
-        this._matrix,
+      this._matrix.fromRotationTranslationScale(
         this._rotation || DEFAULT_ROTATION,
         this._translation || DEFAULT_TRANSLATION,
         this._scale || DEFAULT_SCALE);
