@@ -34,11 +34,11 @@ export class Node {
   parent: Node | null = null;
   visible: boolean = true;
   selectable: boolean = false;
-  private _matrix: null = null;
+  private _matrix: null = mat4.create();
   private _dirtyTRS: boolean = false;
-  private _translation: null = null;
-  private _rotation: null = null;
-  private _scale: null = null;
+  private _translation: vec3 | null = null;
+  private _rotation: quat | null = null;
+  private _scale: vec3 | null = null;
   private _dirtyWorldMatrix: boolean = false;
   private _worldMatrix: null = null;
   private _activeFrameId: number = -1;

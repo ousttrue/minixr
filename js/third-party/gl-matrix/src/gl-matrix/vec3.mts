@@ -99,7 +99,7 @@ export function set(out: vec3, x: number, y: number, z: number): vec3 {
  * @param {vec3} b the second operand
  * @returns {vec3} out
  */
-export function add(out: vec3, a: vec3, b: vec3): vec3 {
+export function add(out: vec3, a: ArrayLike<number>, b: ArrayLike<number>): vec3 {
   out[0] = a[0] + b[0];
   out[1] = a[1] + b[1];
   out[2] = a[2] + b[2];

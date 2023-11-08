@@ -1,38 +1,13 @@
 import { Scene } from './js/render/scenes/scene.mjs';
 import { Node } from './js/render/core/node.mjs';
-import { Renderer, createWebGLContext } from './js/render/core/renderer.mjs';
-import { BoxBuilder } from './js/render/geometry/box-builder.mjs';
-import { PbrMaterial } from './js/render/materials/pbr.mjs';
+import { Renderer } from './js/render/core/renderer.mjs';
 import { mat4 } from './js/render/math/gl-matrix.mjs';
+import { addBox } from './interaction.mjs';
 
-const defaultBoxColor = { r: 0.5, g: 0.5, b: 0.5 };
-
-function addBox(
-  renderer: Renderer,
-  r: number, g: number, b: number): Node {
-  let boxRenderPrimitive = createBoxPrimitive(renderer, r, g, b);
-  let boxNode = new Node();
-  boxNode.addRenderPrimitive(boxRenderPrimitive);
-  // Marks the node as one that needs to be checked when hit testing.
-  boxNode.selectable = true;
-  return boxNode;
-}
-
-function createBoxPrimitive(renderer: Renderer, r: number, g: number, b: number) {
-  let boxBuilder = new BoxBuilder();
-  boxBuilder.pushCube([0, 0, 0], 1);
-  let boxPrimitive = boxBuilder.finishPrimitive(renderer);
-  let boxMaterial = new PbrMaterial();
-  boxMaterial.baseColorFactor.value = [r, g, b, 1];
-  return renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
-}
 
 export default class Hand {
   boxes: Node[] = [];
   indexFingerBoxes: Node;
-  // interactionBox: Node | null = null;
-
-  // XR globals.
   private _radii = new Float32Array(25);
   private _positions = new Float32Array(16 * 25);
 
@@ -104,65 +79,5 @@ export default class Hand {
       mat4.getRotation(this.indexFingerBoxes.rotation, matrix);
       this.indexFingerBoxes.scale = [0.02, 0.02, 0.02];
     }
-
-    // this.UpdateInteractables(time);
   }
-
-  // UpdateInteractables(renderer: Renderer, time: number, color) {
-  //   // Add scene objects if not present
-  //   if (!this.interactionBox) {
-  //     // Add box to demonstrate hand interaction
-  //     const AddInteractionBox = (r: number, g: number, b: number): Node => {
-  //       let box = new Node();
-  //       box.addRenderPrimitive(createBoxPrimitive(renderer, r, g, b));
-  //       box.translation = [0, 0, -0.65];
-  //       box.scale = [0.25, 0.25, 0.25];
-  //       return box;
-  //     };
-  //
-  //     this.interactionBox = AddInteractionBox(defaultBoxColor.r, defaultBoxColor.g, defaultBoxColor.b);
-  //     this.leftInteractionBox = AddInteractionBox(leftBoxColor.r, leftBoxColor.g, leftBoxColor.b);
-  //     this.rightInteractionBox = AddInteractionBox(rightBoxColor.r, rightBoxColor.g, rightBoxColor.b);
-  //     this.scene.addNode(this.interactionBox);
-  //     this.scene.addNode(this.leftInteractionBox);
-  //     this.scene.addNode(this.rightInteractionBox);
-  //   }
-  //
-  //   this._UpdateInteractables(time,
-  //     this.interactionBox!,
-  //     this.leftInteractionBox!,
-  //     this.rightInteractionBox!,
-  //     this.indexFingerBoxes);
-  // }
-  //
-  // private _UpdateInteractables(time: number,
-  //   interactionBox: Node,
-  //   leftInteractionBox: Node,
-  //   rightInteractionBox: Node,
-  //   indexFingerBoxes: { left: Node, right: Node }
-  // ) {
-  //
-  //   function Distance(nodeA: Node, nodeB: Node): number {
-  //     return Math.sqrt(
-  //       Math.pow(nodeA.translation[0] - nodeB.translation[0], 2) +
-  //       Math.pow(nodeA.translation[1] - nodeB.translation[1], 2) +
-  //       Math.pow(nodeA.translation[2] - nodeB.translation[2], 2));
-  //   }
-  //
-  //   // Perform distance check on interactable elements
-  //   const interactionDistance = interactionBox.scale[0];
-  //   leftInteractionBox.visible = false;
-  //   rightInteractionBox.visible = false;
-  //   if (Distance(indexFingerBoxes.left, interactionBox) < interactionDistance) {
-  //     leftInteractionBox.visible = true;
-  //   } else if (Distance(indexFingerBoxes.right, interactionBox) < interactionDistance) {
-  //     rightInteractionBox.visible = true;
-  //   }
-  //   interactionBox.visible = !(leftInteractionBox.visible || rightInteractionBox.visible);
-  //
-  //   mat4.rotateX(interactionBox.matrix, interactionBox.matrix, time / 1000);
-  //   mat4.rotateY(interactionBox.matrix, interactionBox.matrix, time / 1500);
-  //   leftInteractionBox.matrix = interactionBox.matrix;
-  //   rightInteractionBox.matrix = interactionBox.matrix;
-  // }
 }

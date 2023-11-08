@@ -4,19 +4,20 @@ import { Renderer, createWebGLContext } from './js/render/core/renderer.mjs';
 import { Gltf2Node } from './js/render/nodes/gltf2.mjs';
 import { vec3 } from './js/render/math/gl-matrix.mjs';
 import { Ray } from './js/render/math/ray.mjs';
+import { Interaction } from './interaction.mjs';
 import Hand from './hand.mjs';
 
 // Boxes
+const defaultBoxColor = { r: 0.5, g: 0.5, b: 0.5 };
 const leftBoxColor = { r: 1, g: 0, b: 1 };
 const rightBoxColor = { r: 0, g: 1, b: 1 };
 
 export default class App {
   xrRefSpace: XRReferenceSpace | null = null;
 
+  interaction: Interaction;
   leftHand: Hand;
   rightHand: Hand;
-
-  interactionBox: Node | null = null;
 
   scene: Scene;
   gl: WebGL2RenderingContext;
@@ -50,6 +51,9 @@ export default class App {
     // Set the scene's renderer, which creates the necessary GPU resources.
     this.scene.setRenderer(this.renderer);
 
+    this.interaction = new Interaction(this.renderer, defaultBoxColor);
+    this.scene.addNode(this.interaction.interactionBox);
+
     // Use the new WebGL context to create a XRWebGLLayer and set it as the
     // sessions baseLayer. This allows any content rendered to the layer to
     // be displayed on the XRDevice.
@@ -69,25 +73,27 @@ export default class App {
 
   onXRFrame(time: number, frame: XRFrame) {
     const refSpace = this.xrRefSpace!
-
-    let session = frame.session;
+    const session = frame.session;
+    // Inform the session that we're ready for the next frame.
+    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
 
     // Per-frame scene setup. Nothing WebXR specific here.
     this.scene.startFrame();
 
-    // Inform the session that we're ready for the next frame.
-    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
-
-    // update hand-tracking
     if (session.visibilityState === 'visible-blurred') {
       return;
     }
 
+    // update box
+    this.interaction.update(time);
+
     for (let inputSource of session.inputSources) {
       if (inputSource.targetRaySpace) {
+        // udate ray
         this._updateRay(refSpace, frame, inputSource);
       }
       if (inputSource.hand) {
+        // update hand-tracking
         switch (inputSource.handedness) {
           case 'left': this.leftHand.update(this.scene, refSpace, time, frame, inputSource); break;
           case 'right': this.rightHand.update(this.scene, refSpace, time, frame, inputSource); break;
