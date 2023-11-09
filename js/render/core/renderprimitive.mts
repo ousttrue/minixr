@@ -1,6 +1,7 @@
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 import { ATTRIB, ATTRIB_MASK } from './material.mjs';
 import { Primitive } from './primitive.mjs';
+import { RenderMaterial } from './rendermaterial.mjs';
 
 
 class RenderPrimitiveAttribute {
@@ -26,7 +27,7 @@ class RenderPrimitiveAttributeBuffer {
 export class RenderPrimitive {
   _activeFrameId: number;
   _instances: Node[];
-  private _material: undefined;
+  private _material: RenderMaterial;
   private _mode: any;
   private _elementCount: any;
   private _promise: null;

@@ -2,22 +2,54 @@ import { CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { PbrMaterial } from './pbr.mjs';
 import { Program } from './program.mjs';
 import { ATTRIB, ATTRIB_MASK } from './material.mjs';
+import { DataTexture, VideoTexture } from './texture.mjs';
+import { isPowerOfTwo } from '../../math/gl-matrix.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
 
 
-class RenderMaterialSampler {
-  constructor(renderer, materialSampler, index) {
-    this._renderer = renderer;
-    this._uniformName = materialSampler._uniformName;
-    this._renderTexture = renderer._getRenderTexture(materialSampler._texture);
-    this._index = index;
+function setCap(gl, glEnum, cap, prevState, state) {
+  let change = (state & cap) - (prevState & cap);
+  if (!change) {
+    return;
   }
 
-  set texture(value) {
-    this._renderTexture = this._renderer._getRenderTexture(value);
+  if (change > 0) {
+    gl.enable(glEnum);
+  } else {
+    gl.disable(glEnum);
   }
+}
+
+
+export class RenderTexture {
+  constructor(texture) {
+    this._texture = texture;
+    this._complete = false;
+    this._activeFrameId = 0;
+    this._activeCallback = null;
+  }
+
+  markActive(frameId) {
+    if (this._activeCallback && this._activeFrameId != frameId) {
+      this._activeFrameId = frameId;
+      this._activeCallback(this);
+    }
+  }
+}
+
+
+class RenderMaterialSampler {
+  constructor(
+    public readonly _uniformName: string,
+    public readonly _renderTexture: RenderTexture,
+    public readonly _index: number) {
+  }
+
+  // set texture(value) {
+  //   this._renderTexture = this._renderer._getRenderTexture(value);
+  // }
 }
 
 
@@ -44,29 +76,32 @@ class RenderMaterialUniform {
   }
 }
 
+// this._uniformName = materialSampler._uniformName;
+// this._renderTexture = renderer._getRenderTexture(materialSampler._texture);
+// this._index = index;
 
 export class RenderMaterial {
   private _program: any;
   private _state: any;
   private _activeFrameId: number;
   private _completeForActiveFrame: boolean;
-  private _samplerDictionary: {};
-  private _samplers: never[];
+  private _samplers: RenderMaterialSampler[] = []
+  private _samplerDictionary: { [key: string]: RenderMaterialSampler } = {}
   private _uniform_dictionary: {};
   private _uniforms: never[];
   private _firstBind: boolean;
   private _renderOrder: any;
 
-  constructor(renderer, material, program) {
+  constructor(factory: MaterialFactory, material, program) {
     this._program = program;
     this._state = material.state._state;
     this._activeFrameId = 0;
     this._completeForActiveFrame = false;
 
-    this._samplerDictionary = {};
-    this._samplers = [];
     for (let i = 0; i < material._samplers.length; ++i) {
-      let renderSampler = new RenderMaterialSampler(renderer, material._samplers[i], i);
+      const sampler = material._samplers[i]
+      const renderSampler = new RenderMaterialSampler(sampler._uniformName,
+        factory._getRenderTexture(sampler._texture), i);
       this._samplers.push(renderSampler);
       this._samplerDictionary[renderSampler._uniformName] = renderSampler;
     }
@@ -240,6 +275,7 @@ void main() {
 export class MaterialFactory {
   private _programCache: { [key: string]: Program } = {};
   private _defaultFragPrecision: string;
+  private _textureCache = {};
 
   constructor(
     private _gl: WebGL2RenderingContext,
@@ -309,5 +345,126 @@ export class MaterialFactory {
 
     return program;
   }
+
+  bindMaterialState(material: RenderMaterial, prevMaterial?: RenderMaterial) {
+    let gl = this._gl;
+
+    let state = material._state;
+    let prevState = prevMaterial ? prevMaterial._state : ~state;
+
+    // Return early if both materials use identical state
+    if (state == prevState) {
+      return;
+    }
+
+    // Any caps bits changed?
+    if (material._capsDiff(prevState)) {
+      setCap(gl, gl.CULL_FACE, CAP.CULL_FACE, prevState, state);
+      setCap(gl, gl.BLEND, CAP.BLEND, prevState, state);
+      setCap(gl, gl.DEPTH_TEST, CAP.DEPTH_TEST, prevState, state);
+      setCap(gl, gl.STENCIL_TEST, CAP.STENCIL_TEST, prevState, state);
+
+      let colorMaskChange = (state & CAP.COLOR_MASK) - (prevState & CAP.COLOR_MASK);
+      if (colorMaskChange) {
+        let mask = colorMaskChange > 1;
+        this._colorMaskNeedsReset = !mask;
+        gl.colorMask(mask, mask, mask, mask);
+      }
+
+      let depthMaskChange = (state & CAP.DEPTH_MASK) - (prevState & CAP.DEPTH_MASK);
+      if (depthMaskChange) {
+        this._depthMaskNeedsReset = !(depthMaskChange > 1);
+        gl.depthMask(depthMaskChange > 1);
+      }
+
+      let stencilMaskChange = (state & CAP.STENCIL_MASK) - (prevState & CAP.STENCIL_MASK);
+      if (stencilMaskChange) {
+        gl.stencilMask(stencilMaskChange > 1 ? 0xff : 0x00);
+      }
+    }
+
+    // Blending enabled and blend func changed?
+    if (material._blendDiff(prevState)) {
+      gl.blendFunc(material.blendFuncSrc, material.blendFuncDst);
+    }
+
+    // Depth testing enabled and depth func changed?
+    if (material._depthFuncDiff(prevState)) {
+      gl.depthFunc(material.depthFunc);
+    }
+  }
+
+  _getRenderTexture(texture) {
+    if (!texture) {
+      return null;
+    }
+
+    let key = texture.textureKey;
+    if (!key) {
+      throw new Error('Texure does not have a valid key');
+    }
+
+    if (key in this._textureCache) {
+      return this._textureCache[key];
+    } else {
+      let gl = this._gl;
+      let textureHandle = gl.createTexture();
+
+      let renderTexture = new RenderTexture(textureHandle);
+      this._textureCache[key] = renderTexture;
+
+      if (texture instanceof DataTexture) {
+        gl.bindTexture(gl.TEXTURE_2D, textureHandle);
+        gl.texImage2D(gl.TEXTURE_2D, 0, texture.format, texture.width, texture.height,
+          0, texture.format, texture._type, texture._data);
+        this._setSamplerParameters(texture);
+        renderTexture._complete = true;
+      } else {
+        texture.waitForComplete().then(() => {
+          gl.bindTexture(gl.TEXTURE_2D, textureHandle);
+          gl.texImage2D(gl.TEXTURE_2D, 0, texture.format, texture.format, gl.UNSIGNED_BYTE, texture.source);
+          this._setSamplerParameters(texture);
+          renderTexture._complete = true;
+
+          if (texture instanceof VideoTexture) {
+            // Once the video starts playing, set a callback to update it's
+            // contents each frame.
+            texture._video.addEventListener('playing', () => {
+              renderTexture._activeCallback = () => {
+                if (!texture._video.paused && !texture._video.waiting) {
+                  gl.bindTexture(gl.TEXTURE_2D, textureHandle);
+                  gl.texImage2D(gl.TEXTURE_2D, 0, texture.format, texture.format, gl.UNSIGNED_BYTE, texture.source);
+                }
+              };
+            });
+          }
+        });
+      }
+
+      return renderTexture;
+    }
+  }
+
+  _setSamplerParameters(texture) {
+    let gl = this._gl;
+
+    let sampler = texture.sampler;
+    let powerOfTwo = isPowerOfTwo(texture.width) && isPowerOfTwo(texture.height);
+    let mipmap = powerOfTwo && texture.mipmap;
+    if (mipmap) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+    }
+
+    let minFilter = sampler.minFilter || (mipmap ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+    let wrapS = sampler.wrapS || (powerOfTwo ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+    let wrapT = sampler.wrapT || (powerOfTwo ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, sampler.magFilter || gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
+  }
+
+
 }
 
