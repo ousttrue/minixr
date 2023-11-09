@@ -18,12 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
+import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { Node } from '../../scene/node.mjs';
-import { Primitive } from './primitive.mjs';
+import { Primitive, getAttributeMask } from './primitive.mjs';
 import { mat4, vec3 } from '../../math/gl-matrix.mjs';
 import { Vao } from './renderprimitive.mjs';
-import { ATTRIB, ATTRIB_MASK } from './material.mjs';
 import { RenderView } from './renderview.mjs';
 import { Program } from './program.mjs';
 import { RenderMaterial, MaterialFactory } from './rendermaterial.mjs';
@@ -175,20 +174,16 @@ export class Renderer {
     }
   }
 
-  createRenderPrimitive(primitive: Primitive, material: PbrMaterial) {
-    const renderPrimitive = new Vao(this._gl, primitive);
-
-    const program = this._materialFactory.getMaterialProgram(material, renderPrimitive._attributeMask);
-    const renderMaterial = new RenderMaterial(this._materialFactory, material, program);
-    renderPrimitive.setRenderMaterial(renderMaterial);
-
+  createRenderPrimitive(primitive: Primitive, material: Material) {
+    const attributeMask = getAttributeMask(primitive.attributes);
+    const program = this._materialFactory.getMaterialProgram(material, attributeMask);
+    const renderMaterial = this._materialFactory.createMaterial(material, program);
+    const vao = new Vao(this._gl, primitive, renderMaterial, attributeMask);
     if (!this._renderPrimitives[renderMaterial._renderOrder]) {
       this._renderPrimitives[renderMaterial._renderOrder] = [];
     }
-
-    this._renderPrimitives[renderMaterial._renderOrder].push(renderPrimitive);
-
-    return renderPrimitive;
+    this._renderPrimitives[renderMaterial._renderOrder].push(vao);
+    return vao;
   }
 
   createMesh(primitive: Primitive, material: Material) {
@@ -246,23 +241,23 @@ export class Renderer {
     }
   }
 
-  _drawRenderPrimitiveSet(views: RenderView[], renderPrimitives: Vao[]) {
+  _drawRenderPrimitiveSet(views: RenderView[], vaoList: Vao[]) {
     let gl = this._gl;
     let program: Program | null = null;
-    let material: RenderMaterial | null = null;
+    let material: RenderMaterial | undefined = undefined;
 
     // Loop through every primitive known to the renderer.
-    for (let primitive of renderPrimitives) {
+    for (let vao of vaoList) {
       // Skip over those that haven't been marked as active for this frame.
-      if (primitive._activeFrameId != this._frameId) {
+      if (vao._activeFrameId != this._frameId) {
         continue;
       }
 
       // Bind the primitive material's program if it's different than the one we
       // were using for the previous primitive.
       // TODO: The ording of this could be more efficient.
-      if (program != primitive._material._program) {
-        program = primitive._material._program;
+      if (program != vao.material.program) {
+        program = vao.material.program;
         program.use();
 
         if (program.uniform.LIGHT_DIRECTION) {
@@ -294,18 +289,18 @@ export class Renderer {
         }
       }
 
-      if (material != primitive._material) {
-        this._materialFactory.bindMaterialState(primitive._material, material);
-        primitive._material.bind(gl, program, material);
-        material = primitive._material;
+      if (material != vao.material) {
+        this._materialFactory.bindMaterialState(vao.material, material);
+        vao.material.bind(gl);
+        material = vao.material;
       }
 
-      if (primitive._vao) {
-        gl.bindVertexArray(primitive._vao);
+      if (vao._vao) {
+        gl.bindVertexArray(vao._vao);
       } else {
-        primitive._vao = gl.createVertexArray();
-        gl.bindVertexArray(primitive._vao);
-        primitive.bindPrimitive(gl);
+        vao._vao = gl.createVertexArray();
+        gl.bindVertexArray(vao._vao);
+        vao.bindPrimitive(gl);
       }
 
       for (let i = 0; i < views.length; ++i) {
@@ -333,7 +328,7 @@ export class Renderer {
           }
         }
 
-        for (let instance of primitive._instances) {
+        for (let instance of vao._instances) {
           if (instance._activeFrameId != this._frameId) {
             continue;
           }
@@ -341,11 +336,11 @@ export class Renderer {
           gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false,
             instance.worldMatrix.array);
 
-          if (primitive._indexBuffer) {
-            gl.drawElements(primitive._mode, primitive._elementCount,
-              primitive._indexType, primitive._indexByteOffset);
+          if (vao._indexBuffer) {
+            gl.drawElements(vao._mode, vao._elementCount,
+              vao._indexType, vao._indexByteOffset);
           } else {
-            gl.drawArrays(primitive._mode, 0, primitive._elementCount);
+            gl.drawArrays(vao._mode, 0, vao._elementCount);
           }
         }
         if (this._multiview) {

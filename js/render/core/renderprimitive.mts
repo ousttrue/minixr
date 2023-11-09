@@ -1,6 +1,5 @@
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
-import { ATTRIB, ATTRIB_MASK } from './material.mjs';
-import { Primitive } from './primitive.mjs';
+import { ATTRIB, ATTRIB_MASK, Primitive } from './primitive.mjs';
 import { RenderMaterial } from './rendermaterial.mjs';
 
 
@@ -27,23 +26,22 @@ class RenderPrimitiveAttributeBuffer {
 export class Vao {
   _activeFrameId: number;
   _instances: Node[];
-  private _material: RenderMaterial;
   private _mode: any;
   private _elementCount: any;
   private _promise: null;
   private _vao: null;
   private _complete: boolean;
   private _attributeBuffers: never[];
-  private _attributeMask: number;
   private _bb = new BoundingBox();
   private _indexBuffer: RenderBuffer | null = null;
 
   constructor(
     private readonly _gl: WebGL2RenderingContext,
-    primitive: Primitive) {
+    primitive: Primitive,
+    public readonly material: RenderMaterial,
+    private _attributeMask: number) {
     this._activeFrameId = 0;
     this._instances = [];
-    this._material = null;
 
     this._mode = primitive.mode;
     this._elementCount = primitive.elementCount;
@@ -51,10 +49,8 @@ export class Vao {
     this._vao = null;
     this._complete = false;
     this._attributeBuffers = [];
-    this._attributeMask = 0;
 
     for (let attribute of primitive.attributes) {
-      this._attributeMask |= ATTRIB_MASK[attribute.name];
       let renderAttribute = new RenderPrimitiveAttribute(attribute);
       let foundBuffer = false;
       for (let attributeBuffer of this._attributeBuffers) {
@@ -83,25 +79,16 @@ export class Vao {
 
     this._bb = primitive.bb.copy();
 
-    if (this._material != null) {
-      this.waitForComplete(); // To flip the _complete flag.
-    }
-  }
-
-  setRenderMaterial(material?: RenderMaterial) {
-    this._material = material;
     this._promise = null;
     this._complete = false;
 
-    if (this._material != null) {
-      this.waitForComplete(); // To flip the _complete flag.
-    }
+    this.waitForComplete(); // To flip the _complete flag.
   }
 
   markActive(frameId: number) {
     if (this._complete && this._activeFrameId != frameId) {
-      if (this._material) {
-        if (!this._material.markActive(frameId)) {
+      if (this.material) {
+        if (!this.material.markActive(frameId)) {
           return;
         }
       }
@@ -110,16 +97,16 @@ export class Vao {
   }
 
   get samplers() {
-    return this._material._samplerDictionary;
+    return this.material._samplerDictionary;
   }
 
   get uniforms() {
-    return this._material._uniform_dictionary;
+    return this.material._uniform_dictionary;
   }
 
   waitForComplete() {
     if (!this._promise) {
-      if (!this._material) {
+      if (!this.material) {
         return Promise.reject('RenderPrimitive does not have a material');
       }
 
@@ -143,15 +130,13 @@ export class Vao {
     return this._promise;
   }
 
-  bindPrimitive(gl: WebGL2RenderingContext, attribMask) {
+  bindPrimitive(gl: WebGL2RenderingContext) {
     // If the active attributes have changed then update the active set.
-    if (attribMask != this._attributeMask) {
-      for (let attrib in ATTRIB) {
-        if (this._attributeMask & ATTRIB_MASK[attrib]) {
-          gl.enableVertexAttribArray(ATTRIB[attrib]);
-        } else {
-          gl.disableVertexAttribArray(ATTRIB[attrib]);
-        }
+    for (let attrib in ATTRIB) {
+      if (this._attributeMask & ATTRIB_MASK[attrib]) {
+        gl.enableVertexAttribArray(ATTRIB[attrib]);
+      } else {
+        gl.disableVertexAttribArray(ATTRIB[attrib]);
       }
     }
 

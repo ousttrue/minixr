@@ -1,7 +1,6 @@
-import { CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
-import { PbrMaterial } from './pbr.mjs';
+import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { Program } from './program.mjs';
-import { ATTRIB, ATTRIB_MASK } from './material.mjs';
+import { ATTRIB, ATTRIB_MASK } from './primitive.mjs';
 import { DataTexture, VideoTexture } from './texture.mjs';
 import { isPowerOfTwo } from '../../math/gl-matrix.mjs';
 
@@ -81,30 +80,20 @@ class RenderMaterialUniform {
 // this._index = index;
 
 export class RenderMaterial {
-  private _program: any;
   private _state: any;
   private _activeFrameId: number;
   private _completeForActiveFrame: boolean;
-  private _samplers: RenderMaterialSampler[] = []
-  private _samplerDictionary: { [key: string]: RenderMaterialSampler } = {}
+  _samplers: RenderMaterialSampler[] = []
+  _samplerDictionary: { [key: string]: RenderMaterialSampler } = {}
   private _uniform_dictionary: {};
   private _uniforms: never[];
   private _firstBind: boolean;
   private _renderOrder: any;
 
-  constructor(factory: MaterialFactory, material, program) {
-    this._program = program;
+  constructor(material: Material, public program: Program) {
     this._state = material.state._state;
     this._activeFrameId = 0;
     this._completeForActiveFrame = false;
-
-    for (let i = 0; i < material._samplers.length; ++i) {
-      const sampler = material._samplers[i]
-      const renderSampler = new RenderMaterialSampler(sampler._uniformName,
-        factory._getRenderTexture(sampler._texture), i);
-      this._samplers.push(renderSampler);
-      this._samplerDictionary[renderSampler._uniformName] = renderSampler;
-    }
 
     this._uniform_dictionary = {};
     this._uniforms = [];
@@ -126,13 +115,13 @@ export class RenderMaterial {
     }
   }
 
-  bind(gl) {
+  bind(gl: WebGL2RenderingContext) {
     // First time we do a binding, cache the uniform locations and remove
     // unused uniforms from the list.
     if (this._firstBind) {
       for (let i = 0; i < this._samplers.length;) {
         let sampler = this._samplers[i];
-        if (!this._program.uniform[sampler._uniformName]) {
+        if (!this.program.uniform[sampler._uniformName]) {
           this._samplers.splice(i, 1);
           continue;
         }
@@ -141,7 +130,7 @@ export class RenderMaterial {
 
       for (let i = 0; i < this._uniforms.length;) {
         let uniform = this._uniforms[i];
-        uniform._uniform = this._program.uniform[uniform._uniformName];
+        uniform._uniform = this.program.uniform[uniform._uniformName];
         if (!uniform._uniform) {
           this._uniforms.splice(i, 1);
           continue;
@@ -294,7 +283,7 @@ export class MaterialFactory {
     return key;
   }
 
-  getMaterialProgram(material: PbrMaterial, attributeMask: number): Program {
+  getMaterialProgram(material: Material, attributeMask: number): Program {
     let materialName = material.materialName;
     let vertexSource = (!this._multiview) ? material.vertexSource : material.vertexSourceMultiview;
     let fragmentSource = (!this._multiview) ? material.fragmentSource : material.fragmentSourceMultiview;
@@ -328,7 +317,8 @@ export class MaterialFactory {
     fullFragmentSource += this._multiview ? FRAGMENT_SHADER_MULTI_ENTRY :
       FRAGMENT_SHADER_ENTRY
 
-    let program = new Program(this._gl, fullVertexSource, fullFragmentSource, ATTRIB, defines);
+    let program = new Program(this._gl,
+      fullVertexSource, fullFragmentSource, ATTRIB, defines);
     this._programCache[key] = program;
 
     program.onNextUse((program: Program) => {
@@ -463,5 +453,19 @@ export class MaterialFactory {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
+  }
+
+  createMaterial(material: Material, program: Program): RenderMaterial {
+    const renderMaterial = new RenderMaterial(material, program);
+
+    for (let i = 0; i < material._samplers.length; ++i) {
+      const sampler = material._samplers[i]
+      const renderSampler = new RenderMaterialSampler(sampler._uniformName,
+        this._getRenderTexture(sampler._texture), i);
+      renderMaterial._samplers.push(renderSampler);
+      renderMaterial._samplerDictionary[renderSampler._uniformName] = renderSampler;
+    }
+
+    return renderMaterial;
   }
 }
