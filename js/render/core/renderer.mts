@@ -22,7 +22,7 @@ import { CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { Node } from '../../scene/node.mjs';
 import { Primitive } from './primitive.mjs';
 import { mat4, vec3 } from '../../math/gl-matrix.mjs';
-import { RenderPrimitive } from './renderprimitive.mjs';
+import { Vao } from './renderprimitive.mjs';
 import { ATTRIB, ATTRIB_MASK } from './material.mjs';
 import { RenderView } from './renderview.mjs';
 import { Program } from './program.mjs';
@@ -176,9 +176,9 @@ export class Renderer {
   }
 
   createRenderPrimitive(primitive: Primitive, material: PbrMaterial) {
-    const renderPrimitive = new RenderPrimitive(primitive);
+    const renderPrimitive = new Vao(this._gl, primitive);
 
-    const program = this._materialFactory.getMaterialProgram(material, renderPrimitive);
+    const program = this._materialFactory.getMaterialProgram(material, renderPrimitive._attributeMask);
     const renderMaterial = new RenderMaterial(this._materialFactory, material, program);
     renderPrimitive.setRenderMaterial(renderMaterial);
 
@@ -246,7 +246,7 @@ export class Renderer {
     }
   }
 
-  _drawRenderPrimitiveSet(views: RenderView[], renderPrimitives: RenderPrimitive[]) {
+  _drawRenderPrimitiveSet(views: RenderView[], renderPrimitives: Vao[]) {
     let gl = this._gl;
     let program: Program | null = null;
     let material: RenderMaterial | null = null;

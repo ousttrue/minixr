@@ -294,7 +294,7 @@ export class MaterialFactory {
     return key;
   }
 
-  getMaterialProgram(material: PbrMaterial, renderPrimitive: RenderPrimitive): Program {
+  getMaterialProgram(material: PbrMaterial, attributeMask: number): Program {
     let materialName = material.materialName;
     let vertexSource = (!this._multiview) ? material.vertexSource : material.vertexSourceMultiview;
     let fragmentSource = (!this._multiview) ? material.fragmentSource : material.fragmentSourceMultiview;
@@ -310,7 +310,7 @@ export class MaterialFactory {
       throw new Error(`Material "${materialName}" does not have a fragment source`);
     }
 
-    let defines = material.getProgramDefines(renderPrimitive);
+    let defines = material.getProgramDefines(attributeMask);
     let key = this._getProgramKey(materialName, defines);
 
     if (key in this._programCache) {
@@ -464,7 +464,4 @@ export class MaterialFactory {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
   }
-
-
 }
-

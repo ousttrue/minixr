@@ -24,7 +24,7 @@ class RenderPrimitiveAttributeBuffer {
 }
 
 
-export class RenderPrimitive {
+export class Vao {
   _activeFrameId: number;
   _instances: Node[];
   private _material: RenderMaterial;
@@ -38,14 +38,13 @@ export class RenderPrimitive {
   private _bb = new BoundingBox();
   private _indexBuffer: RenderBuffer | null = null;
 
-  constructor(primitive: Primitive) {
+  constructor(
+    private readonly _gl: WebGL2RenderingContext,
+    primitive: Primitive) {
     this._activeFrameId = 0;
     this._instances = [];
     this._material = null;
-    this.setPrimitive(primitive);
-  }
 
-  setPrimitive(primitive: Primitive) {
     this._mode = primitive.mode;
     this._elementCount = primitive.elementCount;
     this._promise = null;

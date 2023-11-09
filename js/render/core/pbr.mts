@@ -212,6 +212,16 @@ vec4 fragment_main() {
   return vec4(color, baseColor.a);
 }`;
 
+type ProgramDefines = {
+  USE_VERTEX_COLOR: number;
+  USE_BASE_COLOR_MAP: number;
+  USE_NORMAL_MAP: number;
+  USE_METAL_ROUGH_MAP: number;
+  USE_OCCLUSION: number;
+  USE_EMISSIVE_TEXTURE: number;
+  FULLY_ROUGH: number;
+}
+
 export class PbrMaterial extends Material {
   baseColor: MaterialSampler;
   metallicRoughness: MaterialSampler;
@@ -249,19 +259,19 @@ export class PbrMaterial extends Material {
     return FRAGMENT_SOURCE;
   }
 
-  getProgramDefines(renderPrimitive) {
+  getProgramDefines(attributeMask: number): ProgramDefines {
     let programDefines = {};
 
-    if (renderPrimitive._attributeMask & ATTRIB_MASK.COLOR_0) {
+    if (attributeMask & ATTRIB_MASK.COLOR_0) {
       programDefines['USE_VERTEX_COLOR'] = 1;
     }
 
-    if (renderPrimitive._attributeMask & ATTRIB_MASK.TEXCOORD_0) {
+    if (attributeMask & ATTRIB_MASK.TEXCOORD_0) {
       if (this.baseColor.texture) {
         programDefines['USE_BASE_COLOR_MAP'] = 1;
       }
 
-      if (this.normal.texture && (renderPrimitive._attributeMask & ATTRIB_MASK.TANGENT)) {
+      if (this.normal.texture && (attributeMask & ATTRIB_MASK.TANGENT)) {
         programDefines['USE_NORMAL_MAP'] = 1;
       }
 
@@ -279,11 +289,12 @@ export class PbrMaterial extends Material {
     }
 
     if ((!this.metallicRoughness.texture ||
-      !(renderPrimitive._attributeMask & ATTRIB_MASK.TEXCOORD_0)) &&
+      !(attributeMask & ATTRIB_MASK.TEXCOORD_0)) &&
       this.metallicRoughnessFactor.value[1] == 1.0) {
       programDefines['FULLY_ROUGH'] = 1;
     }
 
-    return programDefines;
+    // console.log(attributeMask, programDefines);
+    return programDefines as ProgramDefines;
   }
 }
