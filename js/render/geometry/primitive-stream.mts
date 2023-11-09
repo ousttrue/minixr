@@ -19,11 +19,11 @@
 // SOFTWARE.
 
 import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
-import { mat3, vec3 } from '../math/gl-matrix.mjs';
+import { mat3, vec3 } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
-const tempVec3 = vec3.create();
+const tempVec3 = new vec3();
 
 export class PrimitiveStream {
   private _vertices: never[] = [];
@@ -146,8 +146,8 @@ export class PrimitiveStream {
       this._max[1] = Math.max(this._max[1], y);
       this._max[2] = Math.max(this._max[2], z);
     } else {
-      this._min = vec3.create(x, y, z);
-      this._max = vec3.create(x, y, z);
+      this._min = vec3.fromValues(x, y, z);
+      this._max = vec3.fromValues(x, y, z);
     }
 
     return this._vertexIndex++;

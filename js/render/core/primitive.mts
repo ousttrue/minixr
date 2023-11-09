@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { vec3 } from '../math/gl-matrix.mjs';
+import { vec3 } from '../../math/gl-matrix.mjs';
 
 export class PrimitiveAttribute {
   name: any;
@@ -43,19 +43,19 @@ export class Primitive {
   indexBuffer: null = null;
   indexByteOffset: number = 0;
   indexType: number = 0;
-  private _min: vec3 | null = null;
-  private _max: vec3 | null = null;
+  _min = new vec3()
+  _max = new vec3()
   constructor(public attributes = [], public elementCount = 0, public mode = 4) {
   }
 
-  setIndexBuffer(indexBuffer, byteOffset: number | undefined, indexType: number | undefined) {
+  setIndexBuffer(indexBuffer, byteOffset?: number, indexType?: number) {
     this.indexBuffer = indexBuffer;
     this.indexByteOffset = byteOffset || 0;
     this.indexType = indexType || 5123; // gl.UNSIGNED_SHORT;
   }
 
   setBounds(min: vec3, max: vec3) {
-    this._min = min.clone();
-    this._max = max.clone();
+    min.copy({ out: this._min });
+    max.copy({ out: this._max });
   }
 }

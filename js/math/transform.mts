@@ -1,26 +1,26 @@
 import { mat4, vec3, quat } from '../math/gl-matrix.mjs';
 
 
-const DEFAULT_TRANSLATION = vec3.create(0, 0, 0);
+const DEFAULT_TRANSLATION = vec3.fromValues(0, 0, 0);
 const DEFAULT_ROTATION = quat.create(0, 0, 0, 1);
-const DEFAULT_SCALE = vec3.create(1, 1, 1);
+const DEFAULT_SCALE = vec3.fromValues(1, 1, 1);
 
 
 export class Transform {
   private _matrix = mat4.create(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
   private _dirtyTRS: boolean = false;
-  private _translation = vec3.create(0, 0, 0);
+  private _translation = vec3.fromValues(0, 0, 0);
   private _rotation = quat.create(0, 0, 0, 1);
-  private _scale = vec3.create(1, 1, 1);
+  private _scale = vec3.fromValues(1, 1, 1);
   onInvalidated: Function[] = [];
   constructor() { }
 
   clone(): Transform {
     const cloneNode = new Transform();
     cloneNode._dirtyTRS = this._dirtyTRS;
-    cloneNode._translation.copyFrom(this._translation);
+    this._translation.copy({ out: cloneNode._translation });
     cloneNode._rotation.copyFrom(this._rotation);
-    cloneNode._scale.copyFrom(this._scale);
+    this._scale.copy({ out: cloneNode._scale });
     if (!cloneNode._dirtyTRS && this._matrix) {
       // Only copy the matrices if they're not already dirty.
       cloneNode._matrix.copyFrom(this._matrix);
@@ -114,7 +114,7 @@ export class Transform {
 
   get scale() {
     if (!this._scale) {
-      this._scale = vec3.clone(DEFAULT_SCALE);
+      this._scale = DEFAULT_SCALE.copy();
     }
     return this._scale;
   }

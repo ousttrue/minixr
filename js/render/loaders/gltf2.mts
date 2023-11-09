@@ -23,7 +23,7 @@ import { Node } from '../core/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../core/texture.mjs';
 import { Renderer } from '../core/renderer.mjs';
-import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
+import { vec3, quat, mat4 } from '../../math/gl-matrix.mjs';
 import * as GLTF2 from './GLTF.js';
 
 const GL = WebGLRenderingContext; // For enums
@@ -286,7 +286,7 @@ export class Gltf2Loader {
           }
 
           if (min && max) {
-            glPrimitive.setBounds(vec3.create(...min), vec3.create(...max));
+            glPrimitive.setBounds(vec3.fromValues(...min), vec3.fromValues(...max));
           }
 
           // After all the attributes have been processed, get a program that is

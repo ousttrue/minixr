@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { Renderer, RenderPrimitive } from './renderer.mjs'
-import { mat4, vec3, quat, Ray, Transform } from '../math/gl-matrix.mjs';
+import { mat4, vec3, quat, Ray, Transform } from '../../math/gl-matrix.mjs';
 
 let tmpRayMatrix = mat4.create();
 

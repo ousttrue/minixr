@@ -27,7 +27,7 @@ import { Material } from '../core/material.mjs';
 import { Node } from '../core/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
 import { Renderer } from '../core/renderer.mjs';
-import { vec3 } from '../math/gl-matrix.mjs';
+import { vec3 } from '../../math/gl-matrix.mjs';
 
 const TEXT_KERNING = 2.0;
 
@@ -194,7 +194,7 @@ export class SevenSegmentText extends Node {
         let node = new Node('');
         node.addRenderPrimitive(charPrimitive);
         let offset = i * TEXT_KERNING;
-        node.local.translation = vec3.create(offset, 0, 0);
+        node.local.translation = vec3.fromValues(offset, 0, 0);
         this._charNodes.push(node);
         this.addNode(node);
       } else {

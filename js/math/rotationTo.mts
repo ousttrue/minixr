@@ -14,7 +14,7 @@ import { setAxisAngle, normalize } from "./quat.mjs";
  */
 
 export const rotationTo = (function() {
-  let tmpvec3 = vec3.create();
+  let tmpvec3 = new vec3();
   let xUnitVec3 = vec3.fromValues(1, 0, 0);
   let yUnitVec3 = vec3.fromValues(0, 1, 0);
 

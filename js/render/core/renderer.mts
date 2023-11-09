@@ -24,7 +24,7 @@ import { Program } from './program.mjs';
 import { DataTexture, VideoTexture } from './texture.mjs';
 import { PbrMaterial } from '../materials/pbr.mjs';
 import { Primitive } from './primitive.mjs';
-import { mat4, vec3 } from '../math/gl-matrix.mjs';
+import { mat4, vec3, isPowerOfTwo } from '../../math/gl-matrix.mjs';
 
 export const ATTRIB = {
   POSITION: 1,
@@ -46,8 +46,8 @@ export const ATTRIB_MASK = {
 
 const GL = WebGLRenderingContext; // For enums
 
-const DEF_LIGHT_DIR = vec3.create(-0.1, -1.0, -0.2);
-const DEF_LIGHT_COLOR = vec3.create(3.0, 3.0, 3.0);
+const DEF_LIGHT_DIR = vec3.fromValues(-0.1, -1.0, -0.2);
+const DEF_LIGHT_COLOR = vec3.fromValues(3.0, 3.0, 3.0);
 
 const PRECISION_REGEX = new RegExp('precision (lowp|mediump|highp) float;');
 
@@ -79,18 +79,16 @@ void main() {
 }
 `;
 
-function isPowerOfTwo(n) {
-  return (n & (n - 1)) === 0;
-}
-
-// Creates a WebGL context and initializes it with some common default state.
-export function createWebGLContext(glAttribs) {
+/**
+ * Creates a WebGL context and initializes it with some common default state.
+ */
+export function createWebGLContext(glAttribs: any): RenderingContext | null {
   glAttribs = glAttribs || { alpha: false };
 
   let webglCanvas = document.createElement('canvas');
   let contextTypes = glAttribs.webgl2 ? ['webgl2'] : ['webgl', 'experimental-webgl'];
-  let context = null;
 
+  let context = null;
   for (let contextType of contextTypes) {
     context = webglCanvas.getContext(contextType, glAttribs);
     if (context) {
@@ -101,7 +99,6 @@ export function createWebGLContext(glAttribs) {
   if (!context) {
     let webglType = (glAttribs.webgl2 ? 'WebGL 2' : 'WebGL');
     console.error('This browser does not support ' + webglType + '.');
-    return null;
   }
 
   return context;
@@ -161,6 +158,9 @@ export class RenderView {
 }
 
 export class RenderBuffer {
+  private _target: any;
+  private _usage: any;
+  private _length: number;
   constructor(target, usage, buffer, length = 0) {
     this._target = target;
     this._usage = usage;
@@ -203,7 +203,7 @@ class RenderPrimitiveAttributeBuffer {
 export class RenderPrimitive {
   _activeFrameId: number;
   _instances: Node[];
-  private _material: null;
+  private _material: undefined;
   private _mode: any;
   private _elementCount: any;
   private _promise: null;
@@ -211,6 +211,8 @@ export class RenderPrimitive {
   private _complete: boolean;
   private _attributeBuffers: never[];
   private _attributeMask: number;
+  private _min: vec3 | null = new vec3();
+  private _max: vec3 | null = new vec3();
   constructor(primitive: Primitive) {
     this._activeFrameId = 0;
     this._instances = [];
@@ -256,10 +258,12 @@ export class RenderPrimitive {
     }
 
     if (primitive._min) {
-      this._min = primitive._min.clone();
-      this._max = primitive._max.clone();
+      this._min = primitive._min.copy();
     } else {
       this._min = null;
+    }
+    if (primitive._max) {
+      this._max = primitive._max.copy();
       this._max = null;
     }
 
@@ -268,7 +272,7 @@ export class RenderPrimitive {
     }
   }
 
-  setRenderMaterial(material) {
+  setRenderMaterial(material?: RenderMaterial) {
     this._material = material;
     this._promise = null;
     this._complete = false;
@@ -552,8 +556,8 @@ export class Renderer {
   private _depthMaskNeedsReset: boolean;
   private _colorMaskNeedsReset: boolean;
   private _multiview: any;
-  private _globalLightColor = vec3.create();
-  private _globalLightDir = vec3.create();
+  private _globalLightColor = new vec3();
+  private _globalLightDir = new vec3();
   constructor(gl: RenderingContext | null, multiview = undefined) {
     this._gl = gl || createWebGLContext();
     this._frameId = 0;
@@ -570,8 +574,8 @@ export class Renderer {
     this._depthMaskNeedsReset = false;
     this._colorMaskNeedsReset = false;
 
-    this.globalLightColor = DEF_LIGHT_COLOR.clone();
-    this.globalLightDir = DEF_LIGHT_DIR.clone();
+    this.globalLightColor = DEF_LIGHT_COLOR.copy();
+    this.globalLightDir = DEF_LIGHT_DIR.copy();
 
     this._multiview = multiview;
   }
@@ -581,7 +585,7 @@ export class Renderer {
   }
 
   set globalLightColor(value: vec3) {
-    this._globalLightColor.copyFrom(value);
+    value.copy({ out: this._globalLightColor });
   }
 
   get globalLightColor() {
@@ -589,7 +593,7 @@ export class Renderer {
   }
 
   set globalLightDir(value: vec3) {
-    this._globalLightDir.copyFrom(value);
+    value.copy({ out: this._globalLightDir });
   }
 
   get globalLightDir() {
@@ -673,7 +677,7 @@ export class Renderer {
     // Get the positions of the 'camera' for each view matrix.
     for (let i = 0; i < views.length; ++i) {
       if (this._cameraPositions.length <= i) {
-        this._cameraPositions.push(vec3.create());
+        this._cameraPositions.push(new vec3());
       }
       let p = views[i].viewTransform.position;
       this._cameraPositions[i].x = p.x;
@@ -801,7 +805,7 @@ export class Renderer {
             continue;
           }
 
-          gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false, 
+          gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false,
             instance.worldMatrix.array);
 
           if (primitive._indexBuffer) {

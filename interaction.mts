@@ -2,7 +2,7 @@ import { Node } from './js/render/core/node.mjs';
 import { Renderer } from './js/render/core/renderer.mjs';
 import { BoxBuilder } from './js/render/geometry/box-builder.mjs';
 import { PbrMaterial } from './js/render/materials/pbr.mjs';
-import { vec3, mat4 } from './js/render/math/gl-matrix.mjs';
+import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 
 
 export function addBox(
@@ -40,8 +40,8 @@ export class Interaction {
   constructor(renderer: Renderer, color: { r: number, g: number, b: number }) {
     this.interactionBox = new Node('rotation cube');
     this.interactionBox.addRenderPrimitive(createBoxPrimitive(renderer, color.r, color.g, color.b));
-    this.interactionBox.local.translation = vec3.create(0, 0, -0.65);
-    this.interactionBox.local.scale = vec3.create(0.25, 0.25, 0.25);
+    this.interactionBox.local.translation = vec3.fromValues(0, 0, -0.65);
+    this.interactionBox.local.scale = vec3.fromValues(0.25, 0.25, 0.25);
   }
 
   update(time: number) {

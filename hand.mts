@@ -1,6 +1,6 @@
 import { Node } from './js/render/core/node.mjs';
 import { Renderer } from './js/render/core/renderer.mjs';
-import { vec3, mat4 } from './js/render/math/gl-matrix.mjs';
+import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 import { addBox } from './interaction.mjs';
 
 
@@ -63,7 +63,7 @@ export default class Hand {
       offset++;
       box.local.translation = matrix.getTranslation();
       box.local.rotation = matrix.getRotation();
-      box.local.scale = vec3.create(jointRadius, jointRadius, jointRadius);
+      box.local.scale = vec3.fromValues(jointRadius, jointRadius, jointRadius);
     }
 
     // Render a special box for each index finger on each hand	
@@ -76,7 +76,7 @@ export default class Hand {
       let matrix = new mat4(jointPose.transform.matrix);
       this.indexFingerBoxes.local.translation = matrix.getTranslation();
       this.indexFingerBoxes.local.rotation = matrix.getRotation();
-      this.indexFingerBoxes.local.scale = vec3.create(0.02, 0.02, 0.02);
+      this.indexFingerBoxes.local.scale = vec3.fromValues(0.02, 0.02, 0.02);
     }
   }
 }

@@ -22,8 +22,7 @@ import { RenderView } from '../core/renderer.mjs';
 import { InputRenderer } from '../nodes/input-renderer.mjs';
 import { StatsViewer } from '../nodes/stats-viewer.mjs';
 import { Node } from '../core/node.mjs';
-import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
-import { Ray } from '../math/ray.mjs';
+import { vec3, quat, mat4, Ray } from '../../math/gl-matrix.mjs';
 import { Renderer } from '../core/renderer.mjs';
 
 export class WebXRView extends RenderView {
@@ -161,11 +160,11 @@ export class Scene {
       this.root.addNode(this._stats);
 
       if (this._statsStanding) {
-        this._stats.local.translation = vec3.create(0, 1.4, -0.75);
+        this._stats.local.translation = vec3.fromValues(0, 1.4, -0.75);
       } else {
-        this._stats.local.translation = vec3.create(0, -0.3, -0.5);
+        this._stats.local.translation = vec3.fromValues(0, -0.3, -0.5);
       }
-      this._stats.local.scale = vec3.create(0.3, 0.3, 0.3);
+      this._stats.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
       this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
     } else if (!enable) {
       if (this._stats) {
@@ -179,11 +178,11 @@ export class Scene {
     this._statsStanding = enable;
     if (this._stats) {
       if (this._statsStanding) {
-        this._stats.local.translation = vec3.create(0, 1.4, -0.75);
+        this._stats.local.translation = vec3.fromValues(0, 1.4, -0.75);
       } else {
-        this._stats.local.translation = vec3.create(0, -0.3, -0.5);
+        this._stats.local.translation = vec3.fromValues(0, -0.3, -0.5);
       }
-      this._stats.local.scale = vec3.create(0.3, 0.3, 0.3);
+      this._stats.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
       this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
     }
   }

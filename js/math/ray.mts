@@ -25,10 +25,10 @@ let normalMat = mat3.create();
 const RAY_INTERSECTION_OFFSET = 0.02;
 
 export class Ray {
-  origin = vec3.create();
-  private = vec3.create(0, 0, -1);
-  inv_dir = vec3.create();
-  _dir = vec3.create();
+  origin = new vec3();
+  private = vec3.fromValues(0, 0, -1);
+  inv_dir = new vec3();
+  _dir = new vec3();
   sign: number[] = [];
 
   constructor(matrix: mat4 | null = null) {
@@ -47,8 +47,7 @@ export class Ray {
   }
 
   set direction(value: vec3) {
-    this._dir.copyFrom(value);
-    this._dir.normalize();
+    value.normalize({ out: this._dir });
 
     this.inv_dir.set(
       1.0 / this._dir.x,
@@ -63,9 +62,7 @@ export class Ray {
   }
 
   advance(distance: number): vec3 {
-    const pos = this.origin.clone();
-    pos.scaleAndAdd(this.direction, distance);
-    return pos;
+    return this.origin.muladd(this.direction, distance);
   }
 
   // Borrowed from:

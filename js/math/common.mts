@@ -30,3 +30,9 @@ export function toRadian(a: number): number {
 export function equals(a: number, b: number): boolean {
   return Math.abs(a - b) <= EPSILON * Math.max(1.0, Math.abs(a), Math.abs(b));
 }
+
+export function isPowerOfTwo(n: number): boolean {
+  return (n & (n - 1)) === 0;
+}
+
+

@@ -1,51 +1,29 @@
-// import * as glMatrix from "./common.mjs";
-
-declare class mat3 {
-  array: Float32Array;
-}
-declare class mat4 {
-  array: Float32Array;
-}
+import { mat3 } from './mat3.mjs';
+import { mat4 } from './mat4.mjs';
 
 /**
  * 3 Dimensional Vector
  */
 export class vec3 {
-  constructor(public array: Float32Array) { }
-
+  constructor(public array = new Float32Array(3)) { }
   get x() { return this.array[0]; }
   get y() { return this.array[1]; }
   get z() { return this.array[2]; }
   set x(n: number) { this.array[0] = n; }
   set y(n: number) { this.array[1] = n; }
   set z(n: number) { this.array[2] = n; }
-
-  /**
-   * Creates a new, empty vec3
-   */
-  static create(x = 0, y = 0, z = 0): vec3 {
-    return new vec3(new Float32Array([x, y, z]));
+  equal(rhs: vec3): boolean {
+    return this.x == rhs.x && this.y == rhs.y && this.z == rhs.z;
   }
 
   /**
    * Creates a new vec3 initialized with values from an existing vector
    */
-  clone(): vec3 {
-    return new vec3(new Float32Array(this.array));
+  copy(option?: { out: vec3 }): vec3 {
+    const dst = option?.out ?? new vec3();
+    dst.array.set(this.array);
+    return dst;
   }
-
-  // /**
-  //  * Calculates the length of a vec3
-  //  *
-  //  * @param {vec3} a vector to calculate length of
-  //  * @returns {Number} length of a
-  //  */
-  // export function length(a: vec3): number {
-  //   let x = a[0];
-  //   let y = a[1];
-  //   let z = a[2];
-  //   return Math.sqrt(x * x + y * y + z * z);
-  // }
 
   /**
    * Set the components of a vec3 to the given values
@@ -57,21 +35,23 @@ export class vec3 {
   }
 
   /**
-   * Copy the values from one vec3 to another
+   * Creates a vec3
    */
-  copyFrom(a: vec3) {
-    this.x = a.x;
-    this.y = a.y;
-    this.z = a.z;
+  static fromValues(x: number, y: number, z: number, option?: { out: vec3 }): vec3 {
+    const dst = option?.out ?? new vec3();
+    dst.set(x, y, z)
+    return dst
   }
 
   /**
    * Adds two vec3's
    */
-  add(b: vec3) {
-    this.x = this.x + b.x;
-    this.y = this.y + b.y;
-    this.z = this.z + b.z;
+  add(b: vec3, option?: { out: vec3 }): vec3 {
+    const dst = option?.out ?? new vec3();
+    dst.x = this.x + b.x;
+    dst.y = this.y + b.y;
+    dst.z = this.z + b.z;
+    return dst;
   }
 
   // /**
@@ -194,19 +174,23 @@ export class vec3 {
   /**
    * Scales a vec3 by a scalar number
    */
-  scale(b: number) {
-    this.x = this.x * b;
-    this.y = this.y * b;
-    this.z = this.z * b;
+  scale(b: number, option?: { out: vec3 }): vec3 {
+    const dst = option?.out ?? new vec3();
+    dst.x = this.x * b;
+    dst.y = this.y * b;
+    dst.z = this.z * b;
+    return dst
   }
 
   /**
    * Adds two vec3's after scaling the second operand by a scalar value
    */
-  scaleAndAdd(b: vec3, scale: number) {
-    this.x = this.x + (b.x * scale);
-    this.y = this.y + (b.y * scale);
-    this.z = this.z + (b.z * scale);
+  muladd(b: vec3, scale: number, option?: { out: vec3 }): vec3 {
+    const dst = option?.out ?? new vec3();
+    dst.x = this.x + (b.x * scale);
+    dst.y = this.y + (b.y * scale);
+    dst.z = this.z + (b.z * scale);
+    return dst;
   }
 
   // /**
@@ -279,33 +263,35 @@ export class vec3 {
   // }
 
   /**
+   * Calculates the dot product of two vec3's
+   */
+  dot(b: vec3): number {
+    return this.x * b.x + this.y * b.y + this.z * b.z;
+  }
+
+  /**
+   * Calculates the length of a vec3
+   */
+  length(): number {
+    return Math.sqrt(this.dot(this));
+  }
+
+  /**
    * Normalize a vec3
    */
-  normalize() {
-    let x = this.array[0];
-    let y = this.array[1];
-    let z = this.array[2];
-    let len = x * x + y * y + z * z;
+  normalize(option?: { out: vec3 }): vec3 | undefined {
+    const len = this.length();
     if (len > 0) {
+      const dst = option?.out ?? new vec3();
       //TODO: evaluate use of glm_invsqrt here?
-      len = 1 / Math.sqrt(len);
-      this.array[0] = x * len;
-      this.array[1] = y * len;
-      this.array[2] = z * len;
+      const f = 1 / len;
+      dst.x = this.x * f;
+      dst.y = this.y * f;
+      dst.z = this.z * f;
+      return dst;
     }
   }
 
-  // /**
-  //  * Calculates the dot product of two vec3's
-  //  *
-  //  * @param {vec3} a the first operand
-  //  * @param {vec3} b the second operand
-  //  * @returns {Number} dot product of a and b
-  //  */
-  // export function dot(a: vec3, b: vec3): number {
-  //   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  // }
-  //
   // /**
   //  * Computes the cross product of two vec3's
   //  *
