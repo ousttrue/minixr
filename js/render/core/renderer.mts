@@ -25,9 +25,8 @@ import { Primitive } from './primitive.mjs';
 import { mat4, vec3, isPowerOfTwo } from '../../math/gl-matrix.mjs';
 import { RenderPrimitive } from './renderprimitive.mjs';
 import { ATTRIB, ATTRIB_MASK } from './material.mjs';
-import { MaterialFactory } from './materialfactory.mjs';
 import { RenderView } from './renderview.mjs';
-import { RenderMaterial } from './rendermaterial.mjs';
+import { RenderMaterial, MaterialFactory } from './rendermaterial.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
@@ -313,9 +312,9 @@ export class Renderer {
 
         if (views.length == 1) {
           if (!this._multiview) {
-            gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false, 
+            gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false,
               views[0].projectionMatrix.array);
-            gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false, 
+            gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false,
               views[0].viewMatrix.array);
             gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0].array);
             gl.uniform1i(program.uniform.EYE_INDEX, views[0].eyeIndex);
