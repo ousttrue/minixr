@@ -18,7 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Primitive, PrimitiveAttribute } from './primitive.mjs';
+import { Buffer, Primitive, PrimitiveAttribute } from './primitive.mjs';
+import { Material } from '../material.mjs';
 import { mat3, vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
@@ -172,13 +173,13 @@ export class PrimitiveStream {
     this._bb = new BoundingBox();
   }
 
-  finishPrimitive(renderer, material) {
+  finishPrimitive(material: Material) {
     if (!this._vertexOffset) {
       throw new Error(`Attempted to call finishPrimitive() before creating any geometry.`);
     }
 
-    let vertexBuffer = renderer.createRenderBuffer(GL.ARRAY_BUFFER, new Float32Array(this._vertices));
-    let indexBuffer = renderer.createRenderBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(this._indices));
+    let vertexBuffer = new Buffer(GL.ARRAY_BUFFER, new Float32Array(this._vertices));
+    let indexBuffer = new Buffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(this._indices));
 
     let attribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 32, 0),
@@ -212,8 +213,8 @@ export class GeometryBuilderBase {
     return this._stream;
   }
 
-  finishPrimitive(renderer, material) {
-    return this._stream.finishPrimitive(renderer, material);
+  finishPrimitive(material: Material) {
+    return this._stream.finishPrimitive(material);
   }
 
   clear() {

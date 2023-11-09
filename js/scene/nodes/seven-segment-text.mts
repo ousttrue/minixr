@@ -180,6 +180,8 @@ export class SevenSegmentText extends Node {
 
   set text(value) {
     this._text = value;
+    // TODO:
+    return;
 
     let i = 0;
     let charPrimitive = null;

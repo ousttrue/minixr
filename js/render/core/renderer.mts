@@ -59,51 +59,6 @@ export function createWebGLContext(glAttribs: any): RenderingContext | null {
   return context;
 }
 
-export class RenderBuffer {
-  private _target: any;
-  private _usage: any;
-  private _length: number;
-  private _buffer: any;
-  private _promise: Promise<Awaited<this>>;
-  constructor(private readonly _gl: WebGL2RenderingContex,
-    target, usage, buffer, length = 0) {
-    this._target = target;
-    this._usage = usage;
-    this._length = length;
-    if (buffer instanceof Promise) {
-      this._buffer = null;
-      this._promise = buffer.then((buffer) => {
-        this._buffer = buffer;
-        return this;
-      });
-    } else {
-      this._buffer = buffer;
-      this._promise = Promise.resolve(this);
-    }
-  }
-
-  waitForComplete() {
-    return this._promise;
-  }
-
-  updateRenderBuffer(data: ArrayBuffer, offset = 0) {
-    if (this._buffer) {
-      let gl = this._gl;
-      gl.bindBuffer(this._target, this._buffer);
-      if (offset == 0 && this._length == data.byteLength) {
-        gl.bufferData(this._target, data, this._usage);
-      } else {
-        gl.bufferSubData(this._target, offset, data);
-      }
-    } else {
-      this.waitForComplete().then((_) => {
-        this.updateRenderBuffer(data, offset);
-      });
-    }
-  }
-}
-
-
 const inverseMatrix = new mat4();
 
 
@@ -118,6 +73,8 @@ export class Renderer {
   private _globalLightDir = new vec3();
 
   private _materialFactory: MaterialFactory;
+
+  private _primVaoMap: Map<Primitive, Vao> = new Map();
 
   constructor(gl: RenderingContext | null, multiview?) {
     this._gl = gl || createWebGLContext();
@@ -154,26 +111,7 @@ export class Renderer {
     return this._globalLightDir;
   }
 
-  createRenderBuffer(target, data, usage = GL.STATIC_DRAW) {
-    let gl = this._gl;
-    let glBuffer = gl.createBuffer();
-
-    if (data instanceof Promise) {
-      let renderBuffer = new RenderBuffer(gl, target, usage, data.then((data) => {
-        gl.bindBuffer(target, glBuffer);
-        gl.bufferData(target, data, usage);
-        renderBuffer._length = data.byteLength;
-        return glBuffer;
-      }));
-      return renderBuffer;
-    } else {
-      gl.bindBuffer(target, glBuffer);
-      gl.bufferData(target, data, usage);
-      return new RenderBuffer(gl, target, usage, glBuffer, data.byteLength);
-    }
-  }
-
-  createRenderPrimitive(primitive: Primitive) {
+  _createRenderPrimitive(primitive: Primitive): Vao {
     const attributeMask = getAttributeMask(primitive.attributes);
     const program = this._materialFactory.getMaterialProgram(primitive.material, attributeMask);
     const renderMaterial = this._materialFactory.createMaterial(primitive.material, program);
@@ -192,8 +130,6 @@ export class Renderer {
 
     let gl = this._gl;
     this._frameId++;
-
-    rootNode.markActive(this._frameId);
 
     // If there's only one view then flip the algorithm a bit so that we're only
     // setting the viewport once.
@@ -218,11 +154,12 @@ export class Renderer {
     }
 
     // Draw each set of render primitives in order
-    for (let renderPrimitives of this._renderPrimitives) {
-      if (renderPrimitives && renderPrimitives.length) {
-        this._drawRenderPrimitiveSet(views, renderPrimitives);
-      }
-    }
+    // for (let renderPrimitives of this._renderPrimitives) {
+    //   if (renderPrimitives && renderPrimitives.length) {
+    //     this._drawRenderPrimitiveSet(views, renderPrimitives);
+    //   }
+    // }
+    this.drawNode(views, rootNode);
 
     gl.bindVertexArray(null);
 
@@ -234,17 +171,40 @@ export class Renderer {
     }
   }
 
-  _drawRenderPrimitiveSet(views: RenderView[], vaoList: Vao[]) {
+  _getOrCreatePrimtive(prim: Primitive) {
+    let vao = this._primVaoMap.get(prim);
+    if (vao) {
+      return vao;
+    }
+
+    vao = this._createRenderPrimitive(prim);
+    this._primVaoMap.set(prim, vao);
+    return vao;
+  }
+
+  drawNode(views: RenderView[], node: Node) {
+    for (let prim of node.primitives) {
+      const vao = this._getOrCreatePrimtive(prim);
+      this._drawRenderPrimitiveSet(views, vao, node.worldMatrix)
+    }
+
+    for (let child of node.children) {
+      this.drawNode(views, child);
+    }
+  }
+
+  _drawRenderPrimitiveSet(views: RenderView[], vao: Vao, worldMatrix: mat4) {
     let gl = this._gl;
     let program: Program | null = null;
     let material: RenderMaterial | undefined = undefined;
 
     // Loop through every primitive known to the renderer.
-    for (let vao of vaoList) {
+    // for (let vao of vaoList) 
+    {
       // Skip over those that haven't been marked as active for this frame.
-      if (vao._activeFrameId != this._frameId) {
-        continue;
-      }
+      // if (vao._activeFrameId != this._frameId) {
+      //   continue;
+      // }
 
       // Bind the primitive material's program if it's different than the one we
       // were using for the previous primitive.
@@ -321,13 +281,14 @@ export class Renderer {
           }
         }
 
-        for (let instance of vao._instances) {
-          if (instance._activeFrameId != this._frameId) {
-            continue;
-          }
+        // for (let instance of vao._instances) 
+        {
+          // if (instance._activeFrameId != this._frameId) {
+          //   continue;
+          // }
 
           gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false,
-            instance.worldMatrix.array);
+            worldMatrix.array);
 
           if (vao._indexBuffer) {
             gl.drawElements(vao._mode, vao._elementCount,

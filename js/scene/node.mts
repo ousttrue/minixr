@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Renderer } from '../render/core/renderer.mjs'
+import { Primitive } from './geometry/primitive.mjs';
 import { mat4, vec3, quat, Ray, Transform } from '../math/gl-matrix.mjs';
 
 const tmpRayMatrix = new mat4();
@@ -64,32 +64,7 @@ export class Node {
   private _activeFrameId: number = -1;
   _hoverFrameId: number = -1;
 
-  private _renderPrimitives: RenderPrimitive[] = [];
-
-  _renderer: Renderer | null = null;
-  onRendererChanged(renderer: Renderer) {
-    // Override in other node types to respond to changes in the renderer.
-  }
-  _setRenderer(renderer: Renderer) {
-    if (this._renderer == renderer) {
-      return;
-    }
-
-    if (this._renderer) {
-      // Changing the renderer removes any previously attached renderPrimitives
-      // from a different renderer.
-      this.clearRenderPrimitives();
-    }
-
-    this._renderer = renderer;
-    if (renderer) {
-      this.onRendererChanged(renderer);
-
-      for (let child of this.children) {
-        child._setRenderer(renderer);
-      }
-    }
-  }
+  primitives: Primitive[] = [];
 
   private _selectHandler: Function | null = null;
   constructor(public name: string) {
@@ -104,32 +79,15 @@ export class Node {
   clone(): Node {
     const cloneNode = new Node(this.name);
     cloneNode.visible = this.visible;
-    cloneNode._renderer = this._renderer;
     cloneNode.local = this.local.clone();
 
-    this.waitForComplete().then(() => {
-      for (let primitive of this._renderPrimitives) {
-        cloneNode.addRenderPrimitive(primitive);
-      }
-      for (let child of this.children) {
-        cloneNode.addNode(child.clone());
-      }
-    });
-
-    return cloneNode;
-  }
-
-  markActive(frameId: number) {
-    this._activeFrameId = frameId;
-    for (let primitive of this._renderPrimitives) {
-      primitive.markActive(frameId);
-    }
+    // TODO: primitives
 
     for (let child of this.children) {
-      if (child.visible) {
-        child.markActive(frameId);
-      }
+      cloneNode.addNode(child.clone());
     }
+
+    return cloneNode;
   }
 
   addNode(value: Node) {
@@ -143,10 +101,6 @@ export class Node {
     value.parent = this;
 
     this.children.push(value);
-
-    if (this._renderer) {
-      value._setRenderer(this._renderer);
-    }
   }
 
   removeNode(value: Node) {
@@ -162,59 +116,6 @@ export class Node {
       child.parent = null;
     }
     this.children = [];
-  }
-
-  async waitForComplete() {
-    let childPromises = [];
-    for (let child of this.children) {
-      childPromises.push(child.waitForComplete());
-    }
-    if (this._renderPrimitives) {
-      for (let primitive of this._renderPrimitives) {
-        childPromises.push(primitive.waitForComplete());
-      }
-    }
-    await Promise.all(childPromises);
-  }
-
-  get renderPrimitives() {
-    return this._renderPrimitives;
-  }
-
-  addRenderPrimitive(primitive: RenderPrimitive) {
-    if (!this._renderPrimitives) {
-      this._renderPrimitives = [primitive];
-    } else {
-      this._renderPrimitives.push(primitive);
-    }
-    primitive._instances.push(this);
-  }
-
-  removeRenderPrimitive(primitive: RenderPrimitive) {
-    if (!this._renderPrimitives) {
-      return;
-    }
-
-    let index = this._renderPrimitives.indexOf(primitive);
-    if (index > -1) {
-      this._renderPrimitives.splice(index, 1);
-
-      index = primitive._instances.indexOf(this);
-      if (index > -1) {
-        primitive._instances.splice(index, 1);
-      }
-    }
-  }
-
-  clearRenderPrimitives() {
-    if (this._renderPrimitives) {
-      for (let primitive of this._renderPrimitives) {
-        let index = primitive._instances.indexOf(this);
-        if (index > -1) {
-          primitive._instances.splice(index, 1);
-        }
-      }
-    }
   }
 
   _hitTestSelectableNode(rigidTransform: XRRigidTransform): vec3 | null {

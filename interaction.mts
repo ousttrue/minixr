@@ -1,45 +1,38 @@
 import { Node } from './js/scene/node.mjs';
 import { PbrMaterial } from './js/scene/pbr.mjs';
+import { Primitive } from './js/scene/geometry/primitive.mjs';
 import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
-import { Renderer } from './js/render/core/renderer.mjs';
 import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 
 
+export function createBoxPrimitive(r: number, g: number, b: number): Primitive {
+  let boxBuilder = new BoxBuilder();
+  boxBuilder.pushCube([0, 0, 0], 1);
+  let boxMaterial = new PbrMaterial();
+  boxMaterial.baseColorFactor.value = [r, g, b, 1];
+  let boxPrimitive = boxBuilder.finishPrimitive(boxMaterial);
+  return boxPrimitive;
+}
+
 export function addBox(
   name: string,
-  renderer: Renderer,
   r: number, g: number, b: number): Node {
-  let boxRenderPrimitive = createBoxPrimitive(renderer, r, g, b);
   let boxNode = new Node(name);
-  boxNode.addRenderPrimitive(boxRenderPrimitive);
+
+  let boxRenderPrimitive = createBoxPrimitive(r, g, b);
+  boxNode.primitives.push(boxRenderPrimitive);
   // Marks the node as one that needs to be checked when hit testing.
   boxNode.selectable = true;
   return boxNode;
 }
 
-export function createBoxPrimitive(renderer: Renderer, r: number, g: number, b: number) {
-  let boxBuilder = new BoxBuilder();
-  boxBuilder.pushCube([0, 0, 0], 1);
-  let boxMaterial = new PbrMaterial();
-  let boxPrimitive = boxBuilder.finishPrimitive(renderer, boxMaterial);
-  boxMaterial.baseColorFactor.value = [r, g, b, 1];
-  return renderer.createRenderPrimitive(boxPrimitive);
-}
-
-// function Distance(nodeA: Node, nodeB: Node): number {
-//   return Math.sqrt(
-//     Math.pow(nodeA.local.translation.x - nodeB.local.translation.x, 2) +
-//     Math.pow(nodeA.local.translation.y - nodeB.local.translation.y, 2) +
-//     Math.pow(nodeA.local.translation.z - nodeB.local.translation.z, 2));
-// }
-
 export class Interaction {
   interactionBox: Node;
   lastTime: number = 0;
 
-  constructor(renderer: Renderer, color: { r: number, g: number, b: number }) {
+  constructor(color: { r: number, g: number, b: number }) {
     this.interactionBox = new Node('rotation cube');
-    this.interactionBox.addRenderPrimitive(createBoxPrimitive(renderer, color.r, color.g, color.b));
+    this.interactionBox.primitives.push(createBoxPrimitive(color.r, color.g, color.b));
     this.interactionBox.local.translation = vec3.fromValues(0, 0, -0.65);
     this.interactionBox.local.scale = vec3.fromValues(0.25, 0.25, 0.25);
   }

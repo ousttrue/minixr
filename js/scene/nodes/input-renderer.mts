@@ -20,7 +20,7 @@
 
 import { Node } from '../node.mjs';
 import { Material, RENDER_ORDER } from '../material.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Buffer, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { DataTexture } from '../../render/core/texture.mjs';
 import { Gltf2Node } from '../nodes/gltf2.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';
@@ -229,16 +229,6 @@ export class InputRenderer extends Node {
     this._blurred = false;
   }
 
-  onRendererChanged(renderer) {
-    this._controllers = null;
-    this._lasers = null;
-    this._cursors = null;
-
-    this._activeControllers = 0;
-    this._activeLasers = 0;
-    this._activeCursors = 0;
-  }
-
   useProfileControllerMeshes(session) {
     // As input sources are connected if they are tracked-pointer devices
     // look up which meshes should be associated with their profile and
@@ -296,7 +286,7 @@ export class InputRenderer extends Node {
   addLaserPointer(rigidTransform) {
     if (this._blurred) { return; }
     // Create the laser pointer mesh if needed.
-    if (!this._lasers && this._renderer) {
+    if (!this._lasers) {
       this._lasers = [this._createLaserMesh()];
       this.addNode(this._lasers[0]);
     }
@@ -318,7 +308,7 @@ export class InputRenderer extends Node {
   addCursor(cursorPos: vec3) {
     if (this._blurred) { return; }
     // Create the cursor mesh if needed.
-    if (!this._cursors && this._renderer) {
+    if (!this._cursors) {
       this._cursors = [this._createCursorMesh()];
       this.addNode(this._cursors[0]);
     }
@@ -365,8 +355,6 @@ export class InputRenderer extends Node {
   }
 
   _createLaserMesh() {
-    let gl = this._renderer._gl;
-
     let lr = LASER_DIAMETER * 0.5;
     let ll = LASER_LENGTH;
 
@@ -400,14 +388,14 @@ export class InputRenderer extends Node {
       12, 13, 14, 13, 15, 14,
     ];
 
-    let laserVertexBuffer = this._renderer.createRenderBuffer(gl.ARRAY_BUFFER, new Float32Array(laserVerts));
-    let laserIndexBuffer = this._renderer.createRenderBuffer(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(laserIndices));
+    let laserVertexBuffer = new Buffer(GL.ARRAY_BUFFER, new Float32Array(laserVerts));
+    let laserIndexBuffer = new Buffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(laserIndices));
 
     let laserIndexCount = laserIndices.length;
 
     let laserAttribs = [
-      new PrimitiveAttribute('POSITION', laserVertexBuffer, 3, gl.FLOAT, 20, 0),
-      new PrimitiveAttribute('TEXCOORD_0', laserVertexBuffer, 2, gl.FLOAT, 20, 12),
+      new PrimitiveAttribute('POSITION', laserVertexBuffer, 3, GL.FLOAT, 20, 0),
+      new PrimitiveAttribute('TEXCOORD_0', laserVertexBuffer, 2, GL.FLOAT, 20, 12),
     ];
 
     let laserMaterial = new LaserMaterial();
@@ -415,15 +403,12 @@ export class InputRenderer extends Node {
     let laserPrimitive = new Primitive(laserMaterial, laserAttribs, laserIndexCount);
     laserPrimitive.setIndexBuffer(laserIndexBuffer);
 
-    let laserRenderPrimitive = this._renderer.createRenderPrimitive(laserPrimitive);
-    let meshNode = new Node();
-    meshNode.addRenderPrimitive(laserRenderPrimitive);
+    let meshNode = new Node('laser');
+    meshNode.primitives.push(laserPrimitive);
     return meshNode;
   }
 
   _createCursorMesh() {
-    let gl = this._renderer._gl;
-
     // Cursor is a circular white dot with a dark "shadow" skirt around the edge
     // that fades from black to transparent as it moves out from the center.
     // Cursor verts are packed as [X, Y, Luminance, Opacity]
@@ -467,13 +452,13 @@ export class InputRenderer extends Node {
     cursorIndices.push(idx - 2, idx - 1, indexOffset);
     cursorIndices.push(idx - 1, indexOffset + 1, indexOffset);
 
-    let cursorVertexBuffer = this._renderer.createRenderBuffer(gl.ARRAY_BUFFER, new Float32Array(cursorVerts));
-    let cursorIndexBuffer = this._renderer.createRenderBuffer(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cursorIndices));
+    let cursorVertexBuffer = new Buffer(GL.ARRAY_BUFFER, new Float32Array(cursorVerts));
+    let cursorIndexBuffer = new Buffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(cursorIndices));
 
     let cursorIndexCount = cursorIndices.length;
 
     let cursorAttribs = [
-      new PrimitiveAttribute('POSITION', cursorVertexBuffer, 4, gl.FLOAT, 16, 0),
+      new PrimitiveAttribute('POSITION', cursorVertexBuffer, 4, GL.FLOAT, 16, 0),
     ];
 
     let cursorMaterial = new CursorMaterial();
@@ -485,11 +470,9 @@ export class InputRenderer extends Node {
     // Cursor renders two parts: The bright opaque cursor for areas where it's
     // not obscured and a more transparent, darker version for areas where it's
     // behind another object.
-    let cursorRenderPrimitive = this._renderer.createRenderPrimitive(cursorPrimitive);
-    let cursorHiddenRenderPrimitive = this._renderer.createRenderPrimitive(cursorPrimitive);
-    let meshNode = new Node();
-    meshNode.addRenderPrimitive(cursorRenderPrimitive);
-    meshNode.addRenderPrimitive(cursorHiddenRenderPrimitive);
+    let meshNode = new Node('cursor');
+    meshNode.primitives.push(cursorPrimitive);
+    // meshNode.primitives.push(cursorHiddenPrimitive);
     return meshNode;
   }
 }

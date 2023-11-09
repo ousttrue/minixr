@@ -21,6 +21,8 @@
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 import { Material } from '../material.mjs';
 
+const GL = WebGLRenderingContext; // For enums
+
 export const ATTRIB: { [key: string]: number } = {
   POSITION: 1,
   NORMAL: 2,
@@ -39,22 +41,22 @@ export const ATTRIB_MASK: { [key: string]: number } = {
   COLOR_0: 0x0020,
 };
 
+export class Buffer {
+  constructor(
+    public readonly target: number,
+    public readonly data: ArrayBuffer,
+    public readonly usage = GL.STATIC_DRAW) { }
+}
+
 export class PrimitiveAttribute {
-  name: any;
-  buffer: any;
-  componentCount: any;
-  componentType: any;
-  stride: any;
-  byteOffset: any;
-  normalized: boolean;
-  constructor(name: string, buffer, componentCount: number, componentType: number, stride: number, byteOffset: number) {
-    this.name = name;
-    this.buffer = buffer;
-    this.componentCount = componentCount || 3;
-    this.componentType = componentType || 5126; // gl.FLOAT;
-    this.stride = stride || 0;
-    this.byteOffset = byteOffset || 0;
-    this.normalized = false;
+  constructor(
+    public readonly name: string,
+    public readonly buffer: Buffer,
+    public readonly componentCount: number = 3,
+    public readonly componentType: number = GL.FLOAT,
+    public readonly stride: number = 0,
+    public readonly byteOffset: number = 0,
+    public readonly normalized = false) {
   }
 }
 
@@ -67,7 +69,7 @@ export function getAttributeMask(attributes: PrimitiveAttribute[]): number {
 }
 
 export class Primitive {
-  indexBuffer: null = null;
+  indexBuffer: Buffer | null = null;
   indexByteOffset: number = 0;
   indexType: number = 0;
   bb = new BoundingBox();
@@ -78,9 +80,9 @@ export class Primitive {
     public mode = 4) {
   }
 
-  setIndexBuffer(indexBuffer, byteOffset?: number, indexType?: number) {
+  setIndexBuffer(indexBuffer: Buffer, byteOffset = 0, indexType = GL.UNSIGNED_SHORT) {
     this.indexBuffer = indexBuffer;
-    this.indexByteOffset = byteOffset || 0;
-    this.indexType = indexType || 5123; // gl.UNSIGNED_SHORT;
+    this.indexByteOffset = byteOffset;
+    this.indexType = indexType;
   }
 }

@@ -1,10 +1,63 @@
-import { ATTRIB, ATTRIB_MASK, Primitive } from '../../scene/geometry/primitive.mjs';
+import { ATTRIB, ATTRIB_MASK, Buffer, PrimitiveAttribute, Primitive } from '../../scene/geometry/primitive.mjs';
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 import { RenderMaterial } from './rendermaterial.mjs';
 
+const GL = WebGLRenderingContext; // For enums
+
+
+export class RenderBuffer {
+  private _target: any;
+  private _usage: any;
+  private _length: number;
+  private _buffer: any;
+  private _promise: Promise<Awaited<this>>;
+  constructor(private readonly _gl: WebGL2RenderingContex,
+    target, usage, buffer, length = 0) {
+    this._target = target;
+    this._usage = usage;
+    this._length = length;
+    if (buffer instanceof Promise) {
+      this._buffer = null;
+      this._promise = buffer.then((buffer) => {
+        this._buffer = buffer;
+        return this;
+      });
+    } else {
+      this._buffer = buffer;
+      this._promise = Promise.resolve(this);
+    }
+  }
+
+  waitForComplete() {
+    return this._promise;
+  }
+
+  updateRenderBuffer(data: ArrayBuffer, offset = 0) {
+    if (this._buffer) {
+      let gl = this._gl;
+      gl.bindBuffer(this._target, this._buffer);
+      if (offset == 0 && this._length == data.byteLength) {
+        gl.bufferData(this._target, data, this._usage);
+      } else {
+        gl.bufferSubData(this._target, offset, data);
+      }
+    } else {
+      this.waitForComplete().then((_) => {
+        this.updateRenderBuffer(data, offset);
+      });
+    }
+  }
+}
+
 
 class RenderPrimitiveAttribute {
-  constructor(primitiveAttribute) {
+  _attrib_index: number;
+  _componentCount: number;
+  _componentType: number;
+  _stride: number;
+  _byteOffset: number;
+  _normalized: boolean;
+  constructor(primitiveAttribute: PrimitiveAttribute) {
     this._attrib_index = ATTRIB[primitiveAttribute.name];
     this._componentCount = primitiveAttribute.componentCount;
     this._componentType = primitiveAttribute.componentType;
@@ -16,8 +69,9 @@ class RenderPrimitiveAttribute {
 
 
 class RenderPrimitiveAttributeBuffer {
-  constructor(buffer) {
-    this._buffer = buffer;
+  _attributes: RenderPrimitiveAttribute[];
+  constructor(
+    public readonly _buffer: RenderBuffer) {
     this._attributes = [];
   }
 }
@@ -31,9 +85,11 @@ export class Vao {
   private _promise: null;
   private _vao: null;
   private _complete: boolean;
-  private _attributeBuffers: never[];
+  private _attributeBuffers: RenderPrimitiveAttributeBuffer[];
   private _bb = new BoundingBox();
   private _indexBuffer: RenderBuffer | null = null;
+  private _indexByteOffset = 0;
+  private _indexType = 0;
 
   constructor(
     private readonly _gl: WebGL2RenderingContext,
@@ -53,28 +109,25 @@ export class Vao {
     for (let attribute of primitive.attributes) {
       let renderAttribute = new RenderPrimitiveAttribute(attribute);
       let foundBuffer = false;
+      const buffer = this._createRenderBuffer(attribute.buffer);
       for (let attributeBuffer of this._attributeBuffers) {
-        if (attributeBuffer._buffer == attribute.buffer) {
+        if (attributeBuffer._buffer == buffer) {
           attributeBuffer._attributes.push(renderAttribute);
           foundBuffer = true;
           break;
         }
       }
       if (!foundBuffer) {
-        let attributeBuffer = new RenderPrimitiveAttributeBuffer(attribute.buffer);
+        let attributeBuffer = new RenderPrimitiveAttributeBuffer(buffer);
         attributeBuffer._attributes.push(renderAttribute);
         this._attributeBuffers.push(attributeBuffer);
       }
     }
 
-    this._indexBuffer = null;
-    this._indexByteOffset = 0;
-    this._indexType = 0;
-
     if (primitive.indexBuffer) {
+      this._indexBuffer = this._createRenderBuffer(primitive.indexBuffer);
       this._indexByteOffset = primitive.indexByteOffset;
       this._indexType = primitive.indexType;
-      this._indexBuffer = primitive.indexBuffer;
     }
 
     this._bb = primitive.bb.copy();
@@ -83,6 +136,25 @@ export class Vao {
     this._complete = false;
 
     this.waitForComplete(); // To flip the _complete flag.
+  }
+
+  _createRenderBuffer(buffer: Buffer) {
+    let gl = this._gl;
+    let glBuffer = gl.createBuffer();
+
+    if (buffer.data instanceof Promise) {
+      let renderBuffer = new RenderBuffer(gl, buffer.target, buffer.usage, buffer.data.then((data) => {
+        gl.bindBuffer(buffer.target, glBuffer);
+        gl.bufferData(buffer.target, data, buffer.usage);
+        renderBuffer._length = data.byteLength;
+        return glBuffer;
+      }));
+      return renderBuffer;
+    } else {
+      gl.bindBuffer(buffer.target, glBuffer);
+      gl.bufferData(buffer.target, buffer.data, buffer.usage);
+      return new RenderBuffer(gl, buffer.target, buffer.usage, glBuffer, buffer.data.byteLength);
+    }
   }
 
   markActive(frameId: number) {

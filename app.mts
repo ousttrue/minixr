@@ -48,10 +48,7 @@ export default class App {
     this.leftHand = new Hand(this.renderer, leftBoxColor);
     this.rightHand = new Hand(this.renderer, rightBoxColor);
 
-    // Set the scene's renderer, which creates the necessary GPU resources.
-    this.scene.root._setRenderer(this.renderer);
-
-    this.interaction = new Interaction(this.renderer, defaultBoxColor);
+    this.interaction = new Interaction(defaultBoxColor);
     this.scene.root.addNode(this.interaction.interactionBox);
 
     // Use the new WebGL context to create a XRWebGLLayer and set it as the

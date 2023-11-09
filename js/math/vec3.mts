@@ -679,3 +679,12 @@ export class vec3 {
   //   };
   // })();
 }
+
+// function Distance(nodeA: Node, nodeB: Node): number {
+//   return Math.sqrt(
+//     Math.pow(nodeA.local.translation.x - nodeB.local.translation.x, 2) +
+//     Math.pow(nodeA.local.translation.y - nodeB.local.translation.y, 2) +
+//     Math.pow(nodeA.local.translation.z - nodeB.local.translation.z, 2));
+// }
+
+
