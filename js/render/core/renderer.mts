@@ -20,64 +20,18 @@
 
 import { CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { Node } from '../../scene/node.mjs';
-import { Program } from './program.mjs';
 import { DataTexture, VideoTexture } from './texture.mjs';
-import { PbrMaterial } from '../materials/pbr.mjs';
 import { Primitive } from './primitive.mjs';
 import { mat4, vec3, isPowerOfTwo } from '../../math/gl-matrix.mjs';
-
-export const ATTRIB = {
-  POSITION: 1,
-  NORMAL: 2,
-  TANGENT: 3,
-  TEXCOORD_0: 4,
-  TEXCOORD_1: 5,
-  COLOR_0: 6,
-};
-
-export const ATTRIB_MASK = {
-  POSITION: 0x0001,
-  NORMAL: 0x0002,
-  TANGENT: 0x0004,
-  TEXCOORD_0: 0x0008,
-  TEXCOORD_1: 0x0010,
-  COLOR_0: 0x0020,
-};
+import { RenderPrimitive } from './renderprimitive.mjs';
+import { ATTRIB, ATTRIB_MASK } from './material.mjs';
+import { MaterialFactory } from './materialfactory.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
 const DEF_LIGHT_DIR = vec3.fromValues(-0.1, -1.0, -0.2);
 const DEF_LIGHT_COLOR = vec3.fromValues(3.0, 3.0, 3.0);
 
-const PRECISION_REGEX = new RegExp('precision (lowp|mediump|highp) float;');
-
-const VERTEX_SHADER_SINGLE_ENTRY = `
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-
-void main() {
-  gl_Position = vertex_main(PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX);
-}
-`;
-
-const VERTEX_SHADER_MULTI_ENTRY = `
-uniform mat4 LEFT_PROJECTION_MATRIX, LEFT_VIEW_MATRIX, RIGHT_PROJECTION_MATRIX, RIGHT_VIEW_MATRIX, MODEL_MATRIX;
-void main() {
-  gl_Position = vertex_main(LEFT_PROJECTION_MATRIX, LEFT_VIEW_MATRIX, RIGHT_PROJECTION_MATRIX, RIGHT_VIEW_MATRIX, MODEL_MATRIX);
-}
-`;
-
-const FRAGMENT_SHADER_ENTRY = `
-void main() {
-  gl_FragColor = fragment_main();
-}
-`;
-
-const FRAGMENT_SHADER_MULTI_ENTRY = `
-out vec4 color;
-void main() {
-  color = fragment_main();
-}
-`;
 
 /**
  * Creates a WebGL context and initializes it with some common default state.
@@ -182,151 +136,9 @@ export class RenderBuffer {
   }
 }
 
-class RenderPrimitiveAttribute {
-  constructor(primitiveAttribute) {
-    this._attrib_index = ATTRIB[primitiveAttribute.name];
-    this._componentCount = primitiveAttribute.componentCount;
-    this._componentType = primitiveAttribute.componentType;
-    this._stride = primitiveAttribute.stride;
-    this._byteOffset = primitiveAttribute.byteOffset;
-    this._normalized = primitiveAttribute.normalized;
-  }
-}
 
-class RenderPrimitiveAttributeBuffer {
-  constructor(buffer) {
-    this._buffer = buffer;
-    this._attributes = [];
-  }
-}
 
-export class RenderPrimitive {
-  _activeFrameId: number;
-  _instances: Node[];
-  private _material: undefined;
-  private _mode: any;
-  private _elementCount: any;
-  private _promise: null;
-  private _vao: null;
-  private _complete: boolean;
-  private _attributeBuffers: never[];
-  private _attributeMask: number;
-  private _min: vec3 | null = new vec3();
-  private _max: vec3 | null = new vec3();
-  constructor(primitive: Primitive) {
-    this._activeFrameId = 0;
-    this._instances = [];
-    this._material = null;
-    this.setPrimitive(primitive);
-  }
 
-  setPrimitive(primitive: Primitive) {
-    this._mode = primitive.mode;
-    this._elementCount = primitive.elementCount;
-    this._promise = null;
-    this._vao = null;
-    this._complete = false;
-    this._attributeBuffers = [];
-    this._attributeMask = 0;
-
-    for (let attribute of primitive.attributes) {
-      this._attributeMask |= ATTRIB_MASK[attribute.name];
-      let renderAttribute = new RenderPrimitiveAttribute(attribute);
-      let foundBuffer = false;
-      for (let attributeBuffer of this._attributeBuffers) {
-        if (attributeBuffer._buffer == attribute.buffer) {
-          attributeBuffer._attributes.push(renderAttribute);
-          foundBuffer = true;
-          break;
-        }
-      }
-      if (!foundBuffer) {
-        let attributeBuffer = new RenderPrimitiveAttributeBuffer(attribute.buffer);
-        attributeBuffer._attributes.push(renderAttribute);
-        this._attributeBuffers.push(attributeBuffer);
-      }
-    }
-
-    this._indexBuffer = null;
-    this._indexByteOffset = 0;
-    this._indexType = 0;
-
-    if (primitive.indexBuffer) {
-      this._indexByteOffset = primitive.indexByteOffset;
-      this._indexType = primitive.indexType;
-      this._indexBuffer = primitive.indexBuffer;
-    }
-
-    if (primitive._min) {
-      this._min = primitive._min.copy();
-    } else {
-      this._min = null;
-    }
-    if (primitive._max) {
-      this._max = primitive._max.copy();
-      this._max = null;
-    }
-
-    if (this._material != null) {
-      this.waitForComplete(); // To flip the _complete flag.
-    }
-  }
-
-  setRenderMaterial(material?: RenderMaterial) {
-    this._material = material;
-    this._promise = null;
-    this._complete = false;
-
-    if (this._material != null) {
-      this.waitForComplete(); // To flip the _complete flag.
-    }
-  }
-
-  markActive(frameId: number) {
-    if (this._complete && this._activeFrameId != frameId) {
-      if (this._material) {
-        if (!this._material.markActive(frameId)) {
-          return;
-        }
-      }
-      this._activeFrameId = frameId;
-    }
-  }
-
-  get samplers() {
-    return this._material._samplerDictionary;
-  }
-
-  get uniforms() {
-    return this._material._uniform_dictionary;
-  }
-
-  waitForComplete() {
-    if (!this._promise) {
-      if (!this._material) {
-        return Promise.reject('RenderPrimitive does not have a material');
-      }
-
-      let completionPromises = [];
-
-      for (let attributeBuffer of this._attributeBuffers) {
-        if (!attributeBuffer._buffer._buffer) {
-          completionPromises.push(attributeBuffer._buffer._promise);
-        }
-      }
-
-      if (this._indexBuffer && !this._indexBuffer._buffer) {
-        completionPromises.push(this._indexBuffer._promise);
-      }
-
-      this._promise = Promise.all(completionPromises).then(() => {
-        this._complete = true;
-        return this;
-      });
-    }
-    return this._promise;
-  }
-}
 
 export class RenderTexture {
   constructor(texture) {
@@ -547,37 +359,32 @@ class RenderMaterial {
 export class Renderer {
   private _gl: WebGL2RenderingContext;
   private _frameId: number;
-  private _programCache: {};
   private _textureCache: {};
   private _renderPrimitives: any[];
   private _cameraPositions: vec3[];
   private _vaoExt: any;
-  private _defaultFragPrecision: string;
   private _depthMaskNeedsReset: boolean;
   private _colorMaskNeedsReset: boolean;
-  private _multiview: any;
   private _globalLightColor = new vec3();
   private _globalLightDir = new vec3();
-  constructor(gl: RenderingContext | null, multiview = undefined) {
+
+  private _materialFactory: MaterialFactory;
+
+  constructor(gl: RenderingContext | null, multiview?) {
     this._gl = gl || createWebGLContext();
+    this._materialFactory = new MaterialFactory(this._gl, multiview);
     this._frameId = 0;
-    this._programCache = {};
     this._textureCache = {};
     this._renderPrimitives = Array(RENDER_ORDER.DEFAULT);
     this._cameraPositions = [];
 
     this._vaoExt = gl.getExtension('OES_vertex_array_object');
 
-    let fragHighPrecision = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
-    this._defaultFragPrecision = fragHighPrecision.precision > 0 ? 'highp' : 'mediump';
-
     this._depthMaskNeedsReset = false;
     this._colorMaskNeedsReset = false;
 
     this.globalLightColor = DEF_LIGHT_COLOR.copy();
     this.globalLightDir = DEF_LIGHT_DIR.copy();
-
-    this._multiview = multiview;
   }
 
   get gl() {
@@ -635,10 +442,10 @@ export class Renderer {
     }
   }
 
-  createRenderPrimitive(primitive, material: PbrMaterial) {
+  createRenderPrimitive(primitive: Primitive, material: PbrMaterial) {
     let renderPrimitive = new RenderPrimitive(primitive);
 
-    let program = this._getMaterialProgram(material, renderPrimitive);
+    let program = this._materialFactory.getMaterialProgram(material, renderPrimitive);
     let renderMaterial = new RenderMaterial(this, material, program);
     renderPrimitive.setRenderMaterial(renderMaterial);
 
@@ -651,7 +458,7 @@ export class Renderer {
     return renderPrimitive;
   }
 
-  createMesh(primitive, material) {
+  createMesh(primitive: Primitive, material: Material) {
     let meshNode = new Node();
     meshNode.addRenderPrimitive(this.createRenderPrimitive(primitive, material));
     return meshNode;
@@ -893,68 +700,7 @@ export class Renderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
   }
 
-  _getProgramKey(name, defines) {
-    let key = `${name}:`;
 
-    for (let define in defines) {
-      key += `${define}=${defines[define]},`;
-    }
-
-    return key;
-  }
-
-  _getMaterialProgram(material: PbrMaterial, renderPrimitive) {
-    const multiview = this._multiview;
-    let materialName = material.materialName;
-    let vertexSource = (!multiview) ? material.vertexSource : material.vertexSourceMultiview;
-    let fragmentSource = (!multiview) ? material.fragmentSource : material.fragmentSourceMultiview;
-
-    // These should always be defined for every material
-    if (materialName == null) {
-      throw new Error('Material does not have a name');
-    }
-    if (vertexSource == null) {
-      throw new Error(`Material "${materialName}" does not have a vertex source`);
-    }
-    if (fragmentSource == null) {
-      throw new Error(`Material "${materialName}" does not have a fragment source`);
-    }
-
-    let defines = material.getProgramDefines(renderPrimitive);
-    let key = this._getProgramKey(materialName, defines);
-
-    if (key in this._programCache) {
-      return this._programCache[key];
-    } else {
-      let fullVertexSource = vertexSource;
-      fullVertexSource += multiview ? VERTEX_SHADER_MULTI_ENTRY :
-        VERTEX_SHADER_SINGLE_ENTRY;
-
-      let precisionMatch = fragmentSource.match(PRECISION_REGEX);
-      let fragPrecisionHeader = precisionMatch ? '' : `precision ${this._defaultFragPrecision} float;\n`;
-
-      let fullFragmentSource = fragPrecisionHeader + fragmentSource;
-      fullFragmentSource += multiview ? FRAGMENT_SHADER_MULTI_ENTRY :
-        FRAGMENT_SHADER_ENTRY
-
-      let program = new Program(this._gl, fullVertexSource, fullFragmentSource, ATTRIB, defines);
-      this._programCache[key] = program;
-
-      program.onNextUse((program) => {
-        // Bind the samplers to the right texture index. This is constant for
-        // the lifetime of the program.
-        for (let i = 0; i < material._samplers.length; ++i) {
-          let sampler = material._samplers[i];
-          let uniform = program.uniform[sampler._uniformName];
-          if (uniform) {
-            this._gl.uniform1i(uniform, i);
-          }
-        }
-      });
-
-      return program;
-    }
-  }
 
   _bindPrimitive(primitive, attribMask) {
     let gl = this._gl;

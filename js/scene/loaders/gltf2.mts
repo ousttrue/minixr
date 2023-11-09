@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { PbrMaterial } from './pbr.mjs';
+import { PbrMaterial } from '../../render/core/pbr.mjs';
 import { Node } from '../../scene/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../../render/core/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../../render/core/texture.mjs';
