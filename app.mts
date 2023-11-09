@@ -37,7 +37,8 @@ export default class App {
     // Create a WebGL context to render with, initialized to be compatible
     // with the XRDisplay we're presenting to.
     this.gl = createWebGLContext({
-      xrCompatible: true
+      webgl2: true,
+      xrCompatible: true,
     }) as WebGL2RenderingContext;
 
     // Create a renderer with that GL context (this is just for the samples

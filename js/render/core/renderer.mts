@@ -98,7 +98,6 @@ export class Renderer {
   private _frameId: number;
   private _renderPrimitives: any[];
   private _cameraPositions: vec3[];
-  private _vaoExt: any;
   private _depthMaskNeedsReset: boolean;
   private _colorMaskNeedsReset: boolean;
   private _globalLightColor = new vec3();
@@ -113,7 +112,6 @@ export class Renderer {
     this._renderPrimitives = Array(RENDER_ORDER.DEFAULT);
     this._cameraPositions = [];
 
-    this._vaoExt = gl.getExtension('OES_vertex_array_object');
 
     this._depthMaskNeedsReset = false;
     this._colorMaskNeedsReset = false;
@@ -238,9 +236,7 @@ export class Renderer {
       }
     }
 
-    if (this._vaoExt) {
-      this._vaoExt.bindVertexArrayOES(null);
-    }
+    gl.bindVertexArray(null);
 
     if (this._depthMaskNeedsReset) {
       gl.depthMask(true);
@@ -254,7 +250,6 @@ export class Renderer {
     let gl = this._gl;
     let program: Program | null = null;
     let material: RenderMaterial | null = null;
-    let attribMask = 0;
 
     // Loop through every primitive known to the renderer.
     for (let primitive of renderPrimitives) {
@@ -305,17 +300,12 @@ export class Renderer {
         material = primitive._material;
       }
 
-      if (this._vaoExt) {
-        if (primitive._vao) {
-          this._vaoExt.bindVertexArrayOES(primitive._vao);
-        } else {
-          primitive._vao = this._vaoExt.createVertexArrayOES();
-          this._vaoExt.bindVertexArrayOES(primitive._vao);
-          this._bindPrimitive(primitive);
-        }
+      if (primitive._vao) {
+        gl.bindVertexArray(primitive._vao);
       } else {
-        this._bindPrimitive(primitive, attribMask);
-        attribMask = primitive._attributeMask;
+        primitive._vao = gl.createVertexArray();
+        gl.bindVertexArray(primitive._vao);
+        primitive.bindPrimitive(gl);
       }
 
       for (let i = 0; i < views.length; ++i) {
@@ -362,37 +352,6 @@ export class Renderer {
           break;
         }
       }
-    }
-  }
-
-  _bindPrimitive(primitive, attribMask) {
-    let gl = this._gl;
-
-    // If the active attributes have changed then update the active set.
-    if (attribMask != primitive._attributeMask) {
-      for (let attrib in ATTRIB) {
-        if (primitive._attributeMask & ATTRIB_MASK[attrib]) {
-          gl.enableVertexAttribArray(ATTRIB[attrib]);
-        } else {
-          gl.disableVertexAttribArray(ATTRIB[attrib]);
-        }
-      }
-    }
-
-    // Bind the primitive attributes and indices.
-    for (let attributeBuffer of primitive._attributeBuffers) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer._buffer._buffer);
-      for (let attrib of attributeBuffer._attributes) {
-        gl.vertexAttribPointer(
-          attrib._attrib_index, attrib._componentCount, attrib._componentType,
-          attrib._normalized, attrib._stride, attrib._byteOffset);
-      }
-    }
-
-    if (primitive._indexBuffer) {
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, primitive._indexBuffer._buffer);
-    } else {
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
   }
 }

@@ -36,6 +36,8 @@ export class RenderPrimitive {
   private _attributeBuffers: never[];
   private _attributeMask: number;
   private _bb = new BoundingBox();
+  private _indexBuffer: RenderBuffer | null = null;
+
   constructor(primitive: Primitive) {
     this._activeFrameId = 0;
     this._instances = [];
@@ -140,5 +142,34 @@ export class RenderPrimitive {
       });
     }
     return this._promise;
+  }
+
+  bindPrimitive(gl: WebGL2RenderingContext, attribMask) {
+    // If the active attributes have changed then update the active set.
+    if (attribMask != this._attributeMask) {
+      for (let attrib in ATTRIB) {
+        if (this._attributeMask & ATTRIB_MASK[attrib]) {
+          gl.enableVertexAttribArray(ATTRIB[attrib]);
+        } else {
+          gl.disableVertexAttribArray(ATTRIB[attrib]);
+        }
+      }
+    }
+
+    // Bind the primitive attributes and indices.
+    for (let attributeBuffer of this._attributeBuffers) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer._buffer._buffer);
+      for (let attrib of attributeBuffer._attributes) {
+        gl.vertexAttribPointer(
+          attrib._attrib_index, attrib._componentCount, attrib._componentType,
+          attrib._normalized, attrib._stride, attrib._byteOffset);
+      }
+    }
+
+    if (this._indexBuffer) {
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer._buffer);
+    } else {
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+    }
   }
 }
