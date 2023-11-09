@@ -63,7 +63,10 @@ export class RenderBuffer {
   private _target: any;
   private _usage: any;
   private _length: number;
-  constructor(target, usage, buffer, length = 0) {
+  private _buffer: any;
+  private _promise: Promise<Awaited<this>>;
+  constructor(private readonly _gl: WebGL2RenderingContex,
+    target, usage, buffer, length = 0) {
     this._target = target;
     this._usage = usage;
     this._length = length;
@@ -81,6 +84,22 @@ export class RenderBuffer {
 
   waitForComplete() {
     return this._promise;
+  }
+
+  updateRenderBuffer(data: ArrayBuffer, offset = 0) {
+    if (this._buffer) {
+      let gl = this._gl;
+      gl.bindBuffer(this._target, this._buffer);
+      if (offset == 0 && this._length == data.byteLength) {
+        gl.bufferData(this._target, data, this._usage);
+      } else {
+        gl.bufferSubData(this._target, offset, data);
+      }
+    } else {
+      this.waitForComplete().then((_) => {
+        this.updateRenderBuffer(data, offset);
+      });
+    }
   }
 }
 
@@ -140,7 +159,7 @@ export class Renderer {
     let glBuffer = gl.createBuffer();
 
     if (data instanceof Promise) {
-      let renderBuffer = new RenderBuffer(target, usage, data.then((data) => {
+      let renderBuffer = new RenderBuffer(gl, target, usage, data.then((data) => {
         gl.bindBuffer(target, glBuffer);
         gl.bufferData(target, data, usage);
         renderBuffer._length = data.byteLength;
@@ -150,23 +169,7 @@ export class Renderer {
     } else {
       gl.bindBuffer(target, glBuffer);
       gl.bufferData(target, data, usage);
-      return new RenderBuffer(target, usage, glBuffer, data.byteLength);
-    }
-  }
-
-  updateRenderBuffer(buffer, data, offset = 0) {
-    if (buffer._buffer) {
-      let gl = this._gl;
-      gl.bindBuffer(buffer._target, buffer._buffer);
-      if (offset == 0 && buffer._length == data.byteLength) {
-        gl.bufferData(buffer._target, data, buffer._usage);
-      } else {
-        gl.bufferSubData(buffer._target, offset, data);
-      }
-    } else {
-      buffer.waitForComplete().then((buffer) => {
-        this.updateRenderBuffer(buffer, data, offset);
-      });
+      return new RenderBuffer(gl, target, usage, glBuffer, data.byteLength);
     }
   }
 

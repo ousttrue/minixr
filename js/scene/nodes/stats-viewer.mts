@@ -244,7 +244,7 @@ export class StatsViewer extends Node {
     if (this._lastSegment == SEGMENTS - 1) {
       // If we're updating the last segment we need to do two bufferSubDatas
       // to update the segment and turn the first segment into the progress line.
-      this._renderer.updateRenderBuffer(this._fpsVertexBuffer, new Float32Array(updateVerts),
+      this._fpsVertexBuffer?.updateRenderBuffer(new Float32Array(updateVerts),
         this._lastSegment * 24 * 4);
       updateVerts = [
         segmentToX(0), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
@@ -252,7 +252,7 @@ export class StatsViewer extends Node {
         segmentToX(0), fpsToY(0), 0.02, color.r, color.g, color.b,
         segmentToX(.25), fpsToY(0), 0.02, color.r, color.g, color.b,
       ];
-      this._renderer.updateRenderBuffer(this._fpsVertexBuffer, new Float32Array(updateVerts), 0);
+      this._fpsVertexBuffer?.updateRenderBuffer(new Float32Array(updateVerts), 0);
     } else {
       updateVerts.push(
         segmentToX(this._lastSegment + 1), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
@@ -260,7 +260,7 @@ export class StatsViewer extends Node {
         segmentToX(this._lastSegment + 1), fpsToY(0), 0.02, color.r, color.g, color.b,
         segmentToX(this._lastSegment + 1.25), fpsToY(0), 0.02, color.r, color.g, color.b
       );
-      this._renderer.updateRenderBuffer(this._fpsVertexBuffer, new Float32Array(updateVerts),
+      this._fpsVertexBuffer?.updateRenderBuffer(new Float32Array(updateVerts),
         this._lastSegment * 24 * 4);
     }
 
