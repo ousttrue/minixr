@@ -30,7 +30,7 @@ import { Node } from '../node.mjs';
 import { Primitive, PrimitiveAttribute } from '../../render/core/primitive.mjs';
 import { SevenSegmentText } from './seven-segment-text.mjs';
 import { Renderer, RenderBuffer } from '../../render/core/renderer.mjs';
-import { vec3 } from '../../math/gl-matrix.mjs';
+import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
 const SEGMENTS = 30;
 const MAX_FPS = 90;
@@ -106,6 +106,7 @@ export class StatsViewer extends Node {
       0, 0, 1, 0,
       -0.3625, 0.3625, 0.02, 1,
     );
+    this._sevenSegmentNode.local.invalidate();
   }
 
   onRendererChanged(renderer: Renderer) {
@@ -167,7 +168,7 @@ export class StatsViewer extends Node {
 
     let fpsPrimitive = new Primitive(fpsAttribs, fpsIndices.length);
     fpsPrimitive.setIndexBuffer(fpsIndexBuffer);
-    fpsPrimitive.setBounds(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
+    fpsPrimitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
 
     this._fpsRenderPrimitive = renderer.createRenderPrimitive(fpsPrimitive, new StatsMaterial());
     this._fpsNode = new Node('fps');

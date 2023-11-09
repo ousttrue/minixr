@@ -23,7 +23,7 @@ import { Node } from '../../scene/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../../render/core/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../../render/core/texture.mjs';
 import { Renderer } from '../../render/core/renderer.mjs';
-import { vec3, quat, mat4 } from '../../math/gl-matrix.mjs';
+import { vec3, quat, mat4, BoundingBox } from '../../math/gl-matrix.mjs';
 import * as GLTF2 from './GLTF.js';
 
 const GL = WebGLRenderingContext; // For enums
@@ -286,7 +286,7 @@ export class Gltf2Loader {
           }
 
           if (min && max) {
-            glPrimitive.setBounds(vec3.fromValues(...min), vec3.fromValues(...max));
+            glPrimitive.bb = new BoundingBox(vec3.fromValues(...min), vec3.fromValues(...max));
           }
 
           // After all the attributes have been processed, get a program that is

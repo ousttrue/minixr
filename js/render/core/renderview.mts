@@ -11,7 +11,7 @@ export class RenderView {
   static fromXRView(view: XRView): RenderView {
     return new RenderView(
       new mat4(view.projectionMatrix),
-      new mat4(view.transform.matrix),
+      new mat4(view.transform.inverse.matrix),
       view.eye
     );
   }

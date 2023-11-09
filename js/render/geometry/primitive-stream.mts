@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
-import { mat3, vec3 } from '../../math/gl-matrix.mjs';
+import { mat3, vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -27,42 +27,36 @@ const tempVec3 = new vec3();
 
 export class PrimitiveStream {
   private _vertices: never[] = [];
-  private _indices: never[] = [];
+  private _indices: number[] = [];
   private _geometryStarted: boolean = false;
   private _vertexOffset: number = 0;
   private _vertexIndex: number = 0;
   private _highIndex: number = 0;
-  private _flipWinding: boolean = false;
-  private _invertNormals: boolean = false;
-  private _transform: null = null;
-  private _normalTransform: null = null;
-  private _min: vec3 | null = null;
-  private _max: vec3 | null = null;
-  constructor() {
-  }
 
-  set flipWinding(value) {
+  private _flipWinding: boolean = false;
+  set flipWinding(value: boolean) {
     if (this._geometryStarted) {
       throw new Error(`Cannot change flipWinding before ending the current geometry.`);
     }
     this._flipWinding = value;
   }
-
-  get flipWinding() {
-    this._flipWinding;
+  get flipWinding(): boolean {
+    return this._flipWinding;
   }
 
-  set invertNormals(value) {
+  private _invertNormals: boolean = false;
+  set invertNormals(value: boolean) {
     if (this._geometryStarted) {
       throw new Error(`Cannot change invertNormals before ending the current geometry.`);
     }
     this._invertNormals = value;
   }
-
-  get invertNormals() {
-    this._invertNormals;
+  get invertNormals(): boolean {
+    return this._invertNormals;
   }
 
+  private _transform: null = null;
+  private _normalTransform: null = null;
   set transform(value) {
     if (this._geometryStarted) {
       throw new Error(`Cannot change transform before ending the current geometry.`);
@@ -75,9 +69,12 @@ export class PrimitiveStream {
       mat3.fromMat4(this._normalTransform, this._transform);
     }
   }
-
   get transform() {
-    this._transform;
+    return this._transform;
+  }
+
+  private _bb = new BoundingBox();
+  constructor() {
   }
 
   startGeometry() {
@@ -102,24 +99,23 @@ export class PrimitiveStream {
 
     this._geometryStarted = false;
     this._vertexOffset += this._vertexIndex;
-
     // TODO: Anything else need to be done to finish processing here?
   }
 
-  pushVertex(x, y, z, u = 0, v = 0, nx = 0, ny = 0, nz = 1) {
+  pushVertex(x: number, y: number, z: number, u = 0, v = 0, nx = 0, ny = 0, nz = 1) {
     if (!this._geometryStarted) {
       throw new Error(`Cannot push vertices before calling startGeometry().`);
     }
 
     // Transform the incoming vertex if we have a transformation matrix
     if (this._transform) {
-      tempVec3[0] = x;
-      tempVec3[1] = y;
-      tempVec3[2] = z;
+      tempVec3.x = x;
+      tempVec3.y = y;
+      tempVec3.z = z;
       vec3.transformMat4(tempVec3, tempVec3, this._transform);
-      x = tempVec3[0];
-      y = tempVec3[1];
-      z = tempVec3[2];
+      x = tempVec3.x;
+      y = tempVec3.y;
+      z = tempVec3.z;
 
       tempVec3[0] = nx;
       tempVec3[1] = ny;
@@ -138,17 +134,7 @@ export class PrimitiveStream {
 
     this._vertices.push(x, y, z, u, v, nx, ny, nz);
 
-    if (this._min) {
-      this._min[0] = Math.min(this._min[0], x);
-      this._min[1] = Math.min(this._min[1], y);
-      this._min[2] = Math.min(this._min[2], z);
-      this._max[0] = Math.max(this._max[0], x);
-      this._max[1] = Math.max(this._max[1], y);
-      this._max[2] = Math.max(this._max[2], z);
-    } else {
-      this._min = vec3.fromValues(x, y, z);
-      this._max = vec3.fromValues(x, y, z);
-    }
+    this._bb.expand(x, y, z);
 
     return this._vertexIndex++;
   }
@@ -157,7 +143,7 @@ export class PrimitiveStream {
     return this._vertexIndex;
   }
 
-  pushTriangle(idxA, idxB, idxC) {
+  pushTriangle(idxA: number, idxB: number, idxC: number) {
     if (!this._geometryStarted) {
       throw new Error(`Cannot push triangles before calling startGeometry().`);
     }
@@ -183,8 +169,7 @@ export class PrimitiveStream {
     this._vertices = [];
     this._indices = [];
     this._vertexOffset = 0;
-    this._min = null;
-    this._max = null;
+    this._bb = new BoundingBox();
   }
 
   finishPrimitive(renderer) {
@@ -203,13 +188,14 @@ export class PrimitiveStream {
 
     let primitive = new Primitive(attribs, this._indices.length);
     primitive.setIndexBuffer(indexBuffer);
-    primitive.setBounds(this._min, this._max);
+    primitive.bb = this._bb
 
     return primitive;
   }
 }
 
 export class GeometryBuilderBase {
+  private _stream: PrimitiveStream;
   constructor(primitiveStream = null) {
     if (primitiveStream) {
       this._stream = primitiveStream;

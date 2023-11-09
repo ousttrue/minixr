@@ -30,4 +30,4 @@ export * from './vec3.mjs';
 export * from './vec4.mjs';
 export * from './ray.mjs';
 export * from './transform.mjs';
-
+export * from './bb.mjs';

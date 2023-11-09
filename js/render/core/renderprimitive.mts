@@ -1,4 +1,4 @@
-import { vec3 } from '../../math/gl-matrix.mjs';
+import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 import { ATTRIB, ATTRIB_MASK } from './material.mjs';
 import { Primitive } from './primitive.mjs';
 
@@ -34,8 +34,7 @@ export class RenderPrimitive {
   private _complete: boolean;
   private _attributeBuffers: never[];
   private _attributeMask: number;
-  private _min: vec3 | null = new vec3();
-  private _max: vec3 | null = new vec3();
+  private _bb = new BoundingBox();
   constructor(primitive: Primitive) {
     this._activeFrameId = 0;
     this._instances = [];
@@ -80,15 +79,7 @@ export class RenderPrimitive {
       this._indexBuffer = primitive.indexBuffer;
     }
 
-    if (primitive._min) {
-      this._min = primitive._min.copy();
-    } else {
-      this._min = null;
-    }
-    if (primitive._max) {
-      this._max = primitive._max.copy();
-      this._max = null;
-    }
+    this._bb = primitive.bb.copy();
 
     if (this._material != null) {
       this.waitForComplete(); // To flip the _complete flag.
