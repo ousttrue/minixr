@@ -4,7 +4,48 @@
  * 4 Dimensional Vector
  * @module vec4
  */
-export class vec4 { }
+export class vec4 {
+  constructor(public array = new Float32Array(4)) { }
+  get x() { return this.array[0]; }
+  get y() { return this.array[1]; }
+  get z() { return this.array[2]; }
+  get w() { return this.array[3]; }
+  set x(n: number) { this.array[0] = n; }
+  set y(n: number) { this.array[1] = n; }
+  set z(n: number) { this.array[2] = n; }
+  set w(n: number) { this.array[3] = n; }
+  equal(rhs: vec4): boolean {
+    return this.x == rhs.x && this.y == rhs.y && this.z == rhs.z && this.w == rhs.w;
+  }
+
+  /**
+   * Creates a new vec4 initialized with values from an existing vector
+   */
+  copy(option?: { out: vec4 }): vec4 {
+    const dst = option?.out ?? new vec4();
+    dst.array.set(this.array);
+    return dst;
+  }
+
+  /**
+   * Set the components of a vec4 to the given values
+   */
+  set(x: number, y: number, z: number, w: number) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.w = w;
+  }
+
+  /**
+   * Creates a vec4
+   */
+  static fromValues(x: number, y: number, z: number, w: number, option?: { out: vec4 }): vec4 {
+    const dst = option?.out ?? new vec4();
+    dst.set(x, y, z, w)
+    return dst
+  }
+}
 
 // /**
 //  * Creates a new, empty vec4

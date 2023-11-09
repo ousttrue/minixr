@@ -6,98 +6,47 @@ import { quat } from './quat.mjs';
  * 4x4 Matrix<br>Format: column-major, when typed out it looks like row-major<br>The matrices are being post multiplied.
  */
 export class mat4 {
-  constructor(public array: Float32Array) { }
-
-  /**
-   * Creates a new identity mat4
-   */
-  static create(
-    m00: number, m01: number, m02: number, m03: number,
-    m10: number, m11: number, m12: number, m13: number,
-    m20: number, m21: number, m22: number, m23: number,
-    m30: number, m31: number, m32: number, m33: number
-  ): mat4 {
-    return new mat4(new Float32Array([
-      m00, m01, m02, m03,
-      m10, m11, m12, m13,
-      m20, m21, m22, m23,
-      m30, m31, m32, m33,
-    ]));
+  constructor(public array = new Float32Array(16)) { }
+  get m00() { return this.array[0]; }
+  get m01() { return this.array[1]; }
+  get m02() { return this.array[2]; }
+  get m03() { return this.array[3]; }
+  get m10() { return this.array[4]; }
+  get m11() { return this.array[5]; }
+  get m12() { return this.array[6]; }
+  get m13() { return this.array[7]; }
+  get m20() { return this.array[8]; }
+  get m21() { return this.array[9]; }
+  get m22() { return this.array[10]; }
+  get m23() { return this.array[11]; }
+  get m30() { return this.array[12]; }
+  get m31() { return this.array[13]; }
+  get m32() { return this.array[14]; }
+  get m33() { return this.array[15]; }
+  set m00(n: number) { this.array[0] = n; }
+  set m01(n: number) { this.array[1] = n; }
+  set m02(n: number) { this.array[2] = n; }
+  set m03(n: number) { this.array[3] = n; }
+  set m10(n: number) { this.array[4] = n; }
+  set m11(n: number) { this.array[5] = n; }
+  set m12(n: number) { this.array[6] = n; }
+  set m13(n: number) { this.array[7] = n; }
+  set m20(n: number) { this.array[8] = n; }
+  set m21(n: number) { this.array[9] = n; }
+  set m22(n: number) { this.array[10] = n; }
+  set m23(n: number) { this.array[11] = n; }
+  set m30(n: number) { this.array[12] = n; }
+  set m31(n: number) { this.array[13] = n; }
+  set m32(n: number) { this.array[14] = n; }
+  set m33(n: number) { this.array[15] = n; }
+  equal(rhs: mat4): boolean {
+    return (
+      this.m00 == rhs.m00 && this.m01 == rhs.m01 && this.m02 == rhs.m02 && this.m03 == rhs.m03
+      && this.m10 == rhs.m10 && this.m11 == rhs.m11 && this.m12 == rhs.m12 && this.m13 == rhs.m13
+      && this.m20 == rhs.m20 && this.m21 == rhs.m21 && this.m22 == rhs.m22 && this.m23 == rhs.m23
+      && this.m30 == rhs.m30 && this.m31 == rhs.m31 && this.m32 == rhs.m32 && this.m33 == rhs.m33
+    );
   }
-
-  /**
-   * Creates a new mat4 initialized with values from an existing matrix
-   */
-  clone(): mat4 {
-    if (this.array.length != 16) {
-      throw new Error(`${this.array.length}`);
-    }
-    return new mat4(new Float32Array(this.array));
-  }
-
-  /**
-   * Copy the values from one mat4 to another
-   */
-  copyFrom(a: mat4) {
-    this.array[0] = a.array[0];
-    this.array[1] = a.array[1];
-    this.array[2] = a.array[2];
-    this.array[3] = a.array[3];
-    this.array[4] = a.array[4];
-    this.array[5] = a.array[5];
-    this.array[6] = a.array[6];
-    this.array[7] = a.array[7];
-    this.array[8] = a.array[8];
-    this.array[9] = a.array[9];
-    this.array[10] = a.array[10];
-    this.array[11] = a.array[11];
-    this.array[12] = a.array[12];
-    this.array[13] = a.array[13];
-    this.array[14] = a.array[14];
-    this.array[15] = a.array[15];
-  }
-
-  // /**
-  //  * Create a new mat4 with the given values
-  //  *
-  //  * @param {Number} m00 Component in column 0, row 0 position (index 0)
-  //  * @param {Number} m01 Component in column 0, row 1 position (index 1)
-  //  * @param {Number} m02 Component in column 0, row 2 position (index 2)
-  //  * @param {Number} m03 Component in column 0, row 3 position (index 3)
-  //  * @param {Number} m10 Component in column 1, row 0 position (index 4)
-  //  * @param {Number} m11 Component in column 1, row 1 position (index 5)
-  //  * @param {Number} m12 Component in column 1, row 2 position (index 6)
-  //  * @param {Number} m13 Component in column 1, row 3 position (index 7)
-  //  * @param {Number} m20 Component in column 2, row 0 position (index 8)
-  //  * @param {Number} m21 Component in column 2, row 1 position (index 9)
-  //  * @param {Number} m22 Component in column 2, row 2 position (index 10)
-  //  * @param {Number} m23 Component in column 2, row 3 position (index 11)
-  //  * @param {Number} m30 Component in column 3, row 0 position (index 12)
-  //  * @param {Number} m31 Component in column 3, row 1 position (index 13)
-  //  * @param {Number} m32 Component in column 3, row 2 position (index 14)
-  //  * @param {Number} m33 Component in column 3, row 3 position (index 15)
-  //  * @returns {mat4} A new mat4
-  //  */
-  // export function fromValues(m00: number, m01: number, m02: number, m03: number, m10: number, m11: number, m12: number, m13: number, m20: number, m21: number, m22: number, m23: number, m30: number, m31: number, m32: number, m33: number): mat4 {
-  //   let out = new Float32Array(16);
-  //   out[0] = m00;
-  //   out[1] = m01;
-  //   out[2] = m02;
-  //   out[3] = m03;
-  //   out[4] = m10;
-  //   out[5] = m11;
-  //   out[6] = m12;
-  //   out[7] = m13;
-  //   out[8] = m20;
-  //   out[9] = m21;
-  //   out[10] = m22;
-  //   out[11] = m23;
-  //   out[12] = m30;
-  //   out[13] = m31;
-  //   out[14] = m32;
-  //   out[15] = m33;
-  //   return out;
-  // }
 
   /**
    * Set the components of a mat4 to the given values
@@ -125,31 +74,64 @@ export class mat4 {
     this.array[15] = m33;
   }
 
-  // /**
-  //  * Set a mat4 to the identity matrix
-  //  *
-  //  * @param {mat4} out the receiving matrix
-  //  * @returns {mat4} out
-  //  */
-  // export function identity(out: mat4): mat4 {
-  //   out[0] = 1;
-  //   out[1] = 0;
-  //   out[2] = 0;
-  //   out[3] = 0;
-  //   out[4] = 0;
-  //   out[5] = 1;
-  //   out[6] = 0;
-  //   out[7] = 0;
-  //   out[8] = 0;
-  //   out[9] = 0;
-  //   out[10] = 1;
-  //   out[11] = 0;
-  //   out[12] = 0;
-  //   out[13] = 0;
-  //   out[14] = 0;
-  //   out[15] = 1;
-  //   return out;
-  // }
+  /**
+   * Creates a new identity mat4
+   */
+  static fromValues(
+    m00: number, m01: number, m02: number, m03: number,
+    m10: number, m11: number, m12: number, m13: number,
+    m20: number, m21: number, m22: number, m23: number,
+    m30: number, m31: number, m32: number, m33: number,
+    option?: { out: mat4 }
+  ): mat4 {
+    const dst = option?.out ?? new mat4();
+    dst.set(m00, m01, m02, m03
+      , m10, m11, m12, m13
+      , m20, m21, m22, m23
+      , m30, m31, m32, m33
+    );
+    return dst;
+  }
+
+  static zero(option?: { out: mat4 }): mat4 {
+    const dst = option?.out ?? new mat4();
+    dst.array.fill(0);
+    return dst;
+  }
+
+  /**
+   * Set a mat4 to the identity matrix
+   */
+  static identity(option?: { out: mat4 }): mat4 {
+    const dst = option?.out ?? new mat4();
+    dst.array[0] = 1;
+    dst.array[1] = 0;
+    dst.array[2] = 0;
+    dst.array[3] = 0;
+    dst.array[4] = 0;
+    dst.array[5] = 1;
+    dst.array[6] = 0;
+    dst.array[7] = 0;
+    dst.array[8] = 0;
+    dst.array[9] = 0;
+    dst.array[10] = 1;
+    dst.array[11] = 0;
+    dst.array[12] = 0;
+    dst.array[13] = 0;
+    dst.array[14] = 0;
+    dst.array[15] = 1;
+    return dst;
+  }
+
+  /**
+   * Copy the values from one mat4 to another
+   */
+  copy(option?: { out: mat4 }): mat4 {
+    const dst = option?.out ?? new mat4();
+    dst.array.set(this.array);
+    return dst;
+  }
+
   //
   // /**
   //  * Transpose the values of a mat4
@@ -580,38 +562,36 @@ export class mat4 {
   //   out[7] = a13 * c - a03 * s;
   //   return out;
   // }
-  //
-  // /**
-  //  * Creates a matrix from a vector translation
-  //  * This is equivalent to (but much faster than):
-  //  *
-  //  *     mat4.identity(dest);
-  //  *     mat4.translate(dest, dest, vec);
-  //  *
-  //  * @param {mat4} out mat4 receiving operation result
-  //  * @param {vec3} v Translation vector
-  //  * @returns {mat4} out
-  //  */
-  // export function fromTranslation(out: mat4, v: vec3): mat4 {
-  //   out[0] = 1;
-  //   out[1] = 0;
-  //   out[2] = 0;
-  //   out[3] = 0;
-  //   out[4] = 0;
-  //   out[5] = 1;
-  //   out[6] = 0;
-  //   out[7] = 0;
-  //   out[8] = 0;
-  //   out[9] = 0;
-  //   out[10] = 1;
-  //   out[11] = 0;
-  //   out[12] = v[0];
-  //   out[13] = v[1];
-  //   out[14] = v[2];
-  //   out[15] = 1;
-  //   return out;
-  // }
-  //
+
+  /**
+   * Creates a matrix from a vector translation
+   * This is equivalent to (but much faster than):
+   *
+   *     mat4.identity(dest);
+   *     mat4.translate(dest, dest, vec);
+   *
+   */
+  static fromTranslation(x: number, y: number, z: number, option?: { out: mat4 }): mat4 {
+    const dst = option?.out ?? new mat4();
+    dst.array[0] = 1;
+    dst.array[1] = 0;
+    dst.array[2] = 0;
+    dst.array[3] = 0;
+    dst.array[4] = 0;
+    dst.array[5] = 1;
+    dst.array[6] = 0;
+    dst.array[7] = 0;
+    dst.array[8] = 0;
+    dst.array[9] = 0;
+    dst.array[10] = 1;
+    dst.array[11] = 0;
+    dst.array[12] = x;
+    dst.array[13] = y;
+    dst.array[14] = z;
+    dst.array[15] = 1;
+    return dst;
+  }
+
   // /**
   //  * Creates a matrix from a vector scaling
   //  * This is equivalent to (but much faster than):
@@ -881,9 +861,17 @@ export class mat4 {
    *  the returned vector will be the same as the translation vector
    *  originally supplied.
    */
-  getTranslation(): vec3 {
-    const m = this.array;
-    return new vec3(new Float32Array([m[12], m[13], m[14]]));
+  getTranslation(option?: { out: vec3 }): vec3 {
+    if (option?.out) {
+      const dst = option?.out;
+      // copy
+      dst.array.set(this.array.subarray(12, 15));
+      return dst;
+    }
+    else {
+      // reference
+      return new vec3(this.array.subarray(12, 15));
+    }
   }
 
   // /**

@@ -61,7 +61,7 @@ export class Interaction {
 
       this.interactionBox.local.matrix.rotateX(delta / 1000);
       this.interactionBox.local.matrix.rotateY(delta / 1500);
-      this.interactionBox.local._invaliate();
+      this.interactionBox.local.invalidate();
     }
     this.lastTime = time;
   }

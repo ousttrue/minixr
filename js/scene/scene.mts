@@ -18,22 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Renderer, RenderView } from '../render/core/renderer.mjs';
+import { Renderer } from '../render/core/renderer.mjs';
+import { RenderView } from '../render/core/renderview.mjs';
 import { InputRenderer } from './nodes/input-renderer.mjs';
 import { StatsViewer } from './nodes/stats-viewer.mjs';
 import { Node } from './node.mjs';
 import { vec3, quat, mat4, Ray } from '../math/gl-matrix.mjs';
-
-export class WebXRView extends RenderView {
-  constructor(view, layer, viewport) {
-    super(
-      view ? view.projectionMatrix : null,
-      view ? view.transform : null,
-      viewport ? viewport : ((layer && view) ? layer.getViewport(view) : null),
-      view ? view.eye : 'left'
-    );
-  }
-}
 
 export class Scene {
   root = new Node("__root__");
@@ -184,15 +174,6 @@ export class Scene {
       this._stats.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
       this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
     }
-  }
-
-  draw(projectionMatrix: Float32Array, viewTransform: XRRigidTransform, eye = undefined) {
-    let view = new RenderView(projectionMatrix, viewTransform);
-    if (eye) {
-      view.eye = eye;
-    }
-
-    this.root._renderer!.drawViews([view], this.root);
   }
 
   /** Draws the scene into the base layer of the XRFrame's session */

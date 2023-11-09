@@ -18,10 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Renderer, RenderPrimitive } from '../render/core/renderer.mjs'
+import { Renderer } from '../render/core/renderer.mjs'
 import { mat4, vec3, quat, Ray, Transform } from '../math/gl-matrix.mjs';
 
-let tmpRayMatrix = mat4.create();
+const tmpRayMatrix = new mat4();
 
 type NodeIntersection = {
   node: Node,
@@ -32,22 +32,44 @@ type NodeIntersection = {
 export class Node {
   children: Node[] = [];
   parent: Node | null = null;
-  visible: boolean = true;
-  selectable: boolean = false;
   local: Transform = new Transform();
-  private _activeFrameId: number = -1;
-  _hoverFrameId: number = -1;
-  private _renderPrimitives: RenderPrimitive[] = [];
-  _renderer: Renderer | null = null;
-  private _selectHandler: Function | null = null;
-  private _worldMatrix: mat4 | null = null;
+  private _worldMatrix = mat4.identity();
   private _dirtyWorldMatrix = false;
-  constructor(public name: string) {
-    this.local.onInvalidated.push(() => {
-      this.setMatrixDirty();
-    });
+  setMatrixDirty() {
+    if (!this._dirtyWorldMatrix) {
+      this._dirtyWorldMatrix = true;
+      for (let child of this.children) {
+        child.setMatrixDirty();
+      }
+    }
+  }
+  get worldMatrix(): mat4 {
+    if (this._dirtyWorldMatrix) {
+      this._dirtyWorldMatrix = false;
+      const local = this.local.matrix;
+      if (this.parent) {
+        // TODO: Some optimizations that could be done here if the node matrix
+        // is an identity matrix.
+        mat4.mul(this._worldMatrix, this.parent.worldMatrix, local);
+      } else {
+        local.copy({ out: this._worldMatrix });
+      }
+    }
+    return this._worldMatrix;
   }
 
+  visible = true;
+  selectable = false;
+
+  private _activeFrameId: number = -1;
+  _hoverFrameId: number = -1;
+
+  private _renderPrimitives: RenderPrimitive[] = [];
+
+  _renderer: Renderer | null = null;
+  onRendererChanged(renderer: Renderer) {
+    // Override in other node types to respond to changes in the renderer.
+  }
   _setRenderer(renderer: Renderer) {
     if (this._renderer == renderer) {
       return;
@@ -69,15 +91,18 @@ export class Node {
     }
   }
 
-  onRendererChanged(renderer: Renderer) {
-    // Override in other node types to respond to changes in the renderer.
+  private _selectHandler: Function | null = null;
+  constructor(public name: string) {
+    this.local.onInvalidated.push(() => {
+      this.setMatrixDirty();
+    });
   }
 
   // Create a clone of this node and all of it's children. Does not duplicate
   // RenderPrimitives, the cloned nodes will be treated as new instances of the
   // geometry.
   clone(): Node {
-    let cloneNode = new Node(this.name);
+    const cloneNode = new Node(this.name);
     cloneNode.visible = this.visible;
     cloneNode._renderer = this._renderer;
     cloneNode.local = this.local.clone();
@@ -137,36 +162,6 @@ export class Node {
       child.parent = null;
     }
     this.children = [];
-  }
-
-  setMatrixDirty() {
-    if (!this._dirtyWorldMatrix) {
-      this._dirtyWorldMatrix = true;
-      for (let child of this.children) {
-        child.setMatrixDirty();
-      }
-    }
-  }
-
-  get worldMatrix(): mat4 {
-    if (!this._worldMatrix) {
-      this._dirtyWorldMatrix = true;
-      this._worldMatrix = mat4.create();
-    }
-
-    if (this._dirtyWorldMatrix) {
-      this._dirtyWorldMatrix = false;
-      const local = this.local.matrix;
-      if (this.parent) {
-        // TODO: Some optimizations that could be done here if the node matrix
-        // is an identity matrix.
-        mat4.mul(this._worldMatrix, this.parent.worldMatrix, local);
-      } else {
-        this._worldMatrix.copyFrom(local);
-      }
-    }
-
-    return this._worldMatrix;
   }
 
   async waitForComplete() {

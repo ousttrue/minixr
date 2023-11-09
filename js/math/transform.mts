@@ -2,120 +2,88 @@ import { mat4, vec3, quat } from '../math/gl-matrix.mjs';
 
 
 const DEFAULT_TRANSLATION = vec3.fromValues(0, 0, 0);
-const DEFAULT_ROTATION = quat.create(0, 0, 0, 1);
+const DEFAULT_ROTATION = quat.fromValues(0, 0, 0, 1);
 const DEFAULT_SCALE = vec3.fromValues(1, 1, 1);
 
 
 export class Transform {
-  private _matrix = mat4.create(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-  private _dirtyTRS: boolean = false;
-  private _translation = vec3.fromValues(0, 0, 0);
-  private _rotation = quat.create(0, 0, 0, 1);
-  private _scale = vec3.fromValues(1, 1, 1);
-  onInvalidated: Function[] = [];
-  constructor() { }
+  private _dirtyTRS = false;
 
-  clone(): Transform {
-    const cloneNode = new Transform();
-    cloneNode._dirtyTRS = this._dirtyTRS;
-    this._translation.copy({ out: cloneNode._translation });
-    cloneNode._rotation.copyFrom(this._rotation);
-    this._scale.copy({ out: cloneNode._scale });
-    if (!cloneNode._dirtyTRS && this._matrix) {
-      // Only copy the matrices if they're not already dirty.
-      cloneNode._matrix.copyFrom(this._matrix);
-    }
-    return cloneNode;
+  private _translation = DEFAULT_TRANSLATION.copy();
+  set translation(value: vec3) {
+    value.copy({ out: this._translation });
+    this._dirtyTRS = true;
+    this.invalidate();
+  }
+  get translation(): vec3 {
+    return this._translation;
   }
 
-  _invaliate() {
-    for (const callback of this.onInvalidated) {
-      callback();
-    }
+  private _rotation = DEFAULT_ROTATION.copy();
+  set rotation(value: quat) {
+    value.copy({ out: this._rotation });
+    this._dirtyTRS = true;
+    this.invalidate();
+  }
+  get rotation(): quat {
+    return this._rotation;
   }
 
+  private _scale = DEFAULT_SCALE.copy();
+  set scale(value: vec3) {
+    value.copy({ out: this._scale });
+    this._dirtyTRS = true;
+    this.invalidate();
+  }
+  get scale(): vec3 {
+    return this._scale;
+  }
+
+  private _matrix = mat4.identity();
   set matrix(value: mat4) {
     if (!value) {
       throw new Error("no value");
     }
 
-    if (!this._matrix) {
-      this._matrix = mat4.create();
-    }
-    this._matrix.copyFrom(value);
+    value.copy({ out: this._matrix });
     this._dirtyTRS = false;
+    // TODO: decompose
     this._translation.set(0, 0, 0);
     this._rotation.set(0, 0, 0, 1);
     this._scale.set(1, 1, 1);
-    this._invaliate();
+    this.invalidate();
   }
-
   get matrix() {
-    let updated = false;
-    if (!this._matrix) {
-      this._matrix = mat4.create();
-      updated = true;
-    }
-
     if (this._dirtyTRS) {
-      this._dirtyTRS = false;
-      updated = true;
       this._matrix.fromRotationTranslationScale(
         this._rotation || DEFAULT_ROTATION,
         this._translation || DEFAULT_TRANSLATION,
         this._scale || DEFAULT_SCALE);
     }
 
-    if (updated) {
-      this._invaliate();
+    if (this._dirtyTRS) {
+      this.invalidate();
     }
+    this._dirtyTRS = false;
 
     return this._matrix;
   }
-
-  // TODO: Decompose matrix when fetching these?
-  set translation(value) {
-    if (value != null) {
-      this._dirtyTRS = true;
-      this._invaliate();
+  onInvalidated: Function[] = [];
+  invalidate() {
+    for (const callback of this.onInvalidated) {
+      callback();
     }
-    this._translation = value;
   }
 
-  get translation() {
-    if (!this._translation) {
-      this._translation = vec3.clone(DEFAULT_TRANSLATION);
-    }
-    return this._translation;
-  }
+  constructor() { }
 
-  set rotation(value) {
-    if (value != null) {
-      this._dirtyTRS = true;
-      this._invaliate();
-    }
-    this._rotation = value;
-  }
-
-  get rotation() {
-    if (!this._rotation) {
-      this._rotation = quat.clone(DEFAULT_ROTATION);
-    }
-    return this._rotation;
-  }
-
-  set scale(value) {
-    if (value != null) {
-      this._dirtyTRS = true;
-      this._invaliate();
-    }
-    this._scale = value;
-  }
-
-  get scale() {
-    if (!this._scale) {
-      this._scale = DEFAULT_SCALE.copy();
-    }
-    return this._scale;
+  clone(): Transform {
+    const cloneNode = new Transform();
+    cloneNode._dirtyTRS = this._dirtyTRS;
+    this._translation.copy({ out: cloneNode._translation });
+    this._rotation.copy({ out: cloneNode._rotation });
+    this._scale.copy({ out: cloneNode._scale });
+    this._matrix.copy({ out: cloneNode._matrix });
+    return cloneNode;
   }
 }

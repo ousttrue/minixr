@@ -4,7 +4,7 @@
  * Quaternion
  */
 export class quat {
-  constructor(public array: Float32Array) { }
+  constructor(public array = new Float32Array([0, 0, 0, 1])) { }
 
   get x() { return this.array[0]; }
   get y() { return this.array[1]; }
@@ -16,10 +16,12 @@ export class quat {
   set w(n: number) { this.array[3] = n; }
 
   /**
-   * Creates a new identity quat
+   * Copy the values from one quat to another
    */
-  static create(x = 0, y = 0, z = 0, w = 1): quat {
-    return new quat(new Float32Array([x, y, z, w]));
+  copy(option?: { out: quat }): quat {
+    const dst = option?.out ?? new quat();
+    dst.array.set(this.array);
+    return dst;
   }
 
   set(x: number, y: number, z: number, w: number) {
@@ -30,13 +32,12 @@ export class quat {
   }
 
   /**
-   * Copy the values from one vec4 to another
+   * Creates a new identity quat
    */
-  copyFrom(a: quat) {
-    this.array[0] = a.array[0];
-    this.array[1] = a.array[1];
-    this.array[2] = a.array[2];
-    this.array[3] = a.array[3];
+  static fromValues(x: number, y: number, z: number, w: number, option?: { out: quat }): quat {
+    const dst = option?.out ?? new quat();
+    dst.set(x, y, z, w);
+    return dst;
   }
 
   // /**

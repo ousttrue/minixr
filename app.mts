@@ -1,5 +1,6 @@
 import { Scene } from './js/scene/scene.mjs';
 import { Renderer, createWebGLContext } from './js/render/core/renderer.mjs';
+import { RenderView } from './js/render/core/renderview.mjs';
 import { Gltf2Node } from './js/scene/nodes/gltf2.mjs';
 import { vec3, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Interaction } from './interaction.mjs';
@@ -136,7 +137,8 @@ export default class App {
         // projection matrix and view transform from the current view.
         // We bound the framebuffer and viewport up above, and are passing
         // in the appropriate matrices here to be used when rendering.
-        this.scene.draw(view.projectionMatrix, view.transform);
+
+        this.renderer.drawViews([RenderView.fromXRView(view)], this.scene.root);
       }
     } else {
       // There's several options for handling cases where no pose is given.

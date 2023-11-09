@@ -26,6 +26,8 @@ import { mat4, vec3, isPowerOfTwo } from '../../math/gl-matrix.mjs';
 import { RenderPrimitive } from './renderprimitive.mjs';
 import { ATTRIB, ATTRIB_MASK } from './material.mjs';
 import { MaterialFactory } from './materialfactory.mjs';
+import { RenderView } from './renderview.mjs';
+
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -56,59 +58,6 @@ export function createWebGLContext(glAttribs: any): RenderingContext | null {
   }
 
   return context;
-}
-
-export class RenderView {
-  projectionMatrix: Float32Array;
-  viewport: null;
-  private _eye: string;
-  private _eyeIndex: number;
-  private _viewMatrix: mat4;
-  viewTransform: any;
-  constructor(projectionMatrix: Float32Array, viewTransform: XRRigidTransform, viewport = null, eye = 'left') {
-    this.projectionMatrix = projectionMatrix;
-    this.viewport = viewport;
-    // If an eye isn't given the left eye is assumed.
-    this._eye = eye;
-    this._eyeIndex = (eye == 'left' ? 0 : 1);
-
-    // Compute the view matrix
-    if (viewTransform instanceof Float32Array) {
-      this._viewMatrix = mat4.clone(viewTransform);
-      this.viewTransform = new XRRigidTransform(); // TODO
-    } else {
-      this.viewTransform = viewTransform;
-      this._viewMatrix = viewTransform.inverse.matrix;
-
-      // Alternative view matrix code path
-      /*this._viewMatrix = mat4.create();
-      let q = viewTransform.orientation;
-      let t = viewTransform.position;
-      mat4.fromRotationTranslation(
-          this._viewMatrix,
-          [q.x, q.y, q.z, q.w],
-          [t.x, t.y, t.z]
-      );
-      mat4.invert(this._viewMatrix, this._viewMatrix);*/
-    }
-  }
-
-  get viewMatrix() {
-    return this._viewMatrix;
-  }
-
-  get eye() {
-    return this._eye;
-  }
-
-  set eye(value) {
-    this._eye = value;
-    this._eyeIndex = (value == 'left' ? 0 : 1);
-  }
-
-  get eyeIndex() {
-    return this._eyeIndex;
-  }
 }
 
 export class RenderBuffer {
@@ -156,7 +105,7 @@ export class RenderTexture {
   }
 }
 
-const inverseMatrix = mat4.create();
+const inverseMatrix = new mat4();
 
 function setCap(gl, glEnum, cap, prevState, state) {
   let change = (state & cap) - (prevState & cap);
@@ -484,12 +433,11 @@ export class Renderer {
     // Get the positions of the 'camera' for each view matrix.
     for (let i = 0; i < views.length; ++i) {
       if (this._cameraPositions.length <= i) {
-        this._cameraPositions.push(new vec3());
+        this._cameraPositions.push(views[i].viewMatrix.getTranslation());
       }
-      let p = views[i].viewTransform.position;
-      this._cameraPositions[i].x = p.x;
-      this._cameraPositions[i].x = p.y;
-      this._cameraPositions[i].x = p.z;
+      else {
+        views[i].viewMatrix.getTranslation({ out: this._cameraPositions[i] });
+      }
 
       /*mat4.invert(inverseMatrix, views[i].viewMatrix);
       let cameraPosition = this._cameraPositions[i];
@@ -546,8 +494,10 @@ export class Renderer {
 
         if (views.length == 1) {
           if (!this._multiview) {
-            gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false, views[0].projectionMatrix);
-            gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false, views[0].viewMatrix);
+            gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false, 
+              views[0].projectionMatrix.array);
+            gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false, 
+              views[0].viewMatrix.array);
             gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0].array);
             gl.uniform1i(program.uniform.EYE_INDEX, views[0].eyeIndex);
           } else {
