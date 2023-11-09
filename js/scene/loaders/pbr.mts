@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Material, MaterialSampler, MaterialUniform } from '../core/material.mjs';
-import { ATTRIB_MASK } from '../core/renderer.mjs';
+import { Material, MaterialSampler, MaterialUniform } from '../../render/core/material.mjs';
+import { ATTRIB_MASK } from '../../render/core/renderer.mjs';
 
 const VERTEX_SOURCE = `
 attribute vec3 POSITION, NORMAL;

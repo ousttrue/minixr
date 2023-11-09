@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
-import { Node } from './node.mjs';
+import { Node } from '../../scene/node.mjs';
 import { Program } from './program.mjs';
 import { DataTexture, VideoTexture } from './texture.mjs';
 import { PbrMaterial } from '../materials/pbr.mjs';

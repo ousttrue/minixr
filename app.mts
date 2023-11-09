@@ -1,7 +1,6 @@
-import { Scene } from './js/render/scenes/scene.mjs';
-import { Node } from './js/render/core/node.mjs';
+import { Scene } from './js/scene/scene.mjs';
 import { Renderer, createWebGLContext } from './js/render/core/renderer.mjs';
-import { Gltf2Node } from './js/render/nodes/gltf2.mjs';
+import { Gltf2Node } from './js/scene/nodes/gltf2.mjs';
 import { vec3, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Interaction } from './interaction.mjs';
 import Hand from './hand.mjs';

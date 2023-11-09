@@ -25,12 +25,12 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
-import { Material } from '../core/material.mjs';
-import { Node } from '../core/node.mjs';
-import { Primitive, PrimitiveAttribute } from '../core/primitive.mjs';
+import { Material } from '../../render/core/material.mjs';
+import { Node } from '../node.mjs';
+import { Primitive, PrimitiveAttribute } from '../../render/core/primitive.mjs';
 import { SevenSegmentText } from './seven-segment-text.mjs';
-import { Renderer, RenderBuffer } from '../core/renderer.mjs';
-import { vec3 } from '../..//math/gl-matrix.mjs';
+import { Renderer, RenderBuffer } from '../../render/core/renderer.mjs';
+import { vec3 } from '../../math/gl-matrix.mjs';
 
 const SEGMENTS = 30;
 const MAX_FPS = 90;

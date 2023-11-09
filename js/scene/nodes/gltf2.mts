@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node } from '../core/node.mjs';
-import { Renderer } from '../core/renderer.mjs';
+import { Node } from '../node.mjs';
+import { Renderer } from '../../render/core/renderer.mjs';
 import { Gltf2Loader } from '../loaders/gltf2.mjs';
 
 // Using a weak map here allows us to cache a loader per-renderer without

@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Renderer, RenderPrimitive } from './renderer.mjs'
-import { mat4, vec3, quat, Ray, Transform } from '../../math/gl-matrix.mjs';
+import { Renderer, RenderPrimitive } from '../render/core/renderer.mjs'
+import { mat4, vec3, quat, Ray, Transform } from '../math/gl-matrix.mjs';
 
 let tmpRayMatrix = mat4.create();
 

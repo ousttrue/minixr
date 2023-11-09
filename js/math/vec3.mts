@@ -54,21 +54,17 @@ export class vec3 {
     return dst;
   }
 
-  // /**
-  //  * Subtracts vector b from vector a
-  //  *
-  //  * @param {vec3} out the receiving vector
-  //  * @param {vec3} a the first operand
-  //  * @param {vec3} b the second operand
-  //  * @returns {vec3} out
-  //  */
-  // export function subtract(out: vec3, a: vec3, b: vec3): vec3 {
-  //   out[0] = a[0] - b[0];
-  //   out[1] = a[1] - b[1];
-  //   out[2] = a[2] - b[2];
-  //   return out;
-  // }
-  //
+  /**
+   * Subtracts vector b from vector a
+   */
+  subtract(b: vec3, option?: { out: vec3 }): vec3 {
+    const dst = option?.out ?? new vec3();
+    dst.x = this.x - b.x;
+    dst.y = this.y - b.y;
+    dst.z = this.z - b.z;
+    return dst;
+  }
+
   // /**
   //  * Multiplies two vec3's
   //  *
@@ -83,7 +79,7 @@ export class vec3 {
   //   out[2] = a[2] * b[2];
   //   return out;
   // }
-  //
+
   // /**
   //  * Divides two vec3's
   //  *
@@ -98,7 +94,7 @@ export class vec3 {
   //   out[2] = a[2] / b[2];
   //   return out;
   // }
-  //
+
   // /**
   //  * Math.ceil the components of a vec3
   //  *
@@ -112,7 +108,7 @@ export class vec3 {
   //   out[2] = Math.ceil(a[2]);
   //   return out;
   // }
-  //
+
   // /**
   //  * Math.floor the components of a vec3
   //  *
@@ -126,7 +122,7 @@ export class vec3 {
   //   out[2] = Math.floor(a[2]);
   //   return out;
   // }
-  //
+
   // /**
   //  * Returns the minimum of two vec3's
   //  *
@@ -141,7 +137,7 @@ export class vec3 {
   //   out[2] = Math.min(a[2], b[2]);
   //   return out;
   // }
-  //
+
   // /**
   //  * Returns the maximum of two vec3's
   //  *
@@ -156,7 +152,7 @@ export class vec3 {
   //   out[2] = Math.max(a[2], b[2]);
   //   return out;
   // }
-  //
+
   // /**
   //  * Math.round the components of a vec3
   //  *
@@ -206,7 +202,7 @@ export class vec3 {
   //   let z = b[2] - a[2];
   //   return Math.sqrt(x * x + y * y + z * z);
   // }
-  //
+
   // /**
   //  * Calculates the squared euclidian distance between two vec3's
   //  *
@@ -220,20 +216,7 @@ export class vec3 {
   //   let z = b[2] - a[2];
   //   return x * x + y * y + z * z;
   // }
-  //
-  // /**
-  //  * Calculates the squared length of a vec3
-  //  *
-  //  * @param {vec3} a vector to calculate squared length of
-  //  * @returns {Number} squared length of a
-  //  */
-  // export function squaredLength(a: vec3): number {
-  //   let x = a[0];
-  //   let y = a[1];
-  //   let z = a[2];
-  //   return x * x + y * y + z * z;
-  // }
-  //
+
   // /**
   //  * Negates the components of a vec3
   //  *
@@ -247,7 +230,7 @@ export class vec3 {
   //   out[2] = -a[2];
   //   return out;
   // }
-  //
+
   // /**
   //  * Returns the inverse of the components of a vec3
   //  *
@@ -309,7 +292,7 @@ export class vec3 {
   //   out[2] = ax * by - ay * bx;
   //   return out;
   // }
-  //
+
   // /**
   //  * Performs a linear interpolation between two vec3's
   //  *

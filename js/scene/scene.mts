@@ -18,12 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { RenderView } from '../core/renderer.mjs';
-import { InputRenderer } from '../nodes/input-renderer.mjs';
-import { StatsViewer } from '../nodes/stats-viewer.mjs';
-import { Node } from '../core/node.mjs';
-import { vec3, quat, mat4, Ray } from '../../math/gl-matrix.mjs';
-import { Renderer } from '../core/renderer.mjs';
+import { Renderer, RenderView } from '../render/core/renderer.mjs';
+import { InputRenderer } from './nodes/input-renderer.mjs';
+import { StatsViewer } from './nodes/stats-viewer.mjs';
+import { Node } from './node.mjs';
+import { vec3, quat, mat4, Ray } from '../math/gl-matrix.mjs';
 
 export class WebXRView extends RenderView {
   constructor(view, layer, viewport) {
