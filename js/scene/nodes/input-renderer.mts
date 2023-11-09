@@ -20,7 +20,7 @@
 
 import { Material, RENDER_ORDER } from '../../render/core/material.mjs';
 import { Node } from '../node.mjs';
-import { Primitive, PrimitiveAttribute } from '../../render/core/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { DataTexture } from '../../render/core/texture.mjs';
 import { Gltf2Node } from '../nodes/gltf2.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';

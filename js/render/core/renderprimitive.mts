@@ -1,5 +1,5 @@
+import { ATTRIB, ATTRIB_MASK, Primitive } from '../../scene/geometry/primitive.mjs';
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
-import { ATTRIB, ATTRIB_MASK, Primitive } from './primitive.mjs';
 import { RenderMaterial } from './rendermaterial.mjs';
 
 

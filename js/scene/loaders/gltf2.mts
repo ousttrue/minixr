@@ -20,7 +20,7 @@
 
 import { PbrMaterial } from '../../render/core/pbr.mjs';
 import { Node } from '../../scene/node.mjs';
-import { Primitive, PrimitiveAttribute } from '../../render/core/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../../render/core/texture.mjs';
 import { Renderer } from '../../render/core/renderer.mjs';
 import { vec3, quat, mat4, BoundingBox } from '../../math/gl-matrix.mjs';

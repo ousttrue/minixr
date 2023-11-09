@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { Material, MaterialSampler, MaterialUniform } from './material.mjs';
-import { ATTRIB_MASK } from './primitive.mjs';
+import { ATTRIB_MASK } from '../../scene/geometry/primitive.mjs';
 
 const VERTEX_SOURCE = `
 attribute vec3 POSITION, NORMAL;

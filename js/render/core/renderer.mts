@@ -18,10 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
-import { Node } from '../../scene/node.mjs';
-import { Primitive, getAttributeMask } from './primitive.mjs';
 import { mat4, vec3 } from '../../math/gl-matrix.mjs';
+import { Node } from '../../scene/node.mjs';
+import { Primitive, getAttributeMask } from '../../scene/geometry/primitive.mjs';
+import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { Vao } from './renderprimitive.mjs';
 import { RenderView } from './renderview.mjs';
 import { Program } from './program.mjs';
@@ -83,10 +83,6 @@ export class RenderBuffer {
     return this._promise;
   }
 }
-
-
-
-
 
 
 const inverseMatrix = new mat4();
@@ -184,12 +180,6 @@ export class Renderer {
     }
     this._renderPrimitives[renderMaterial._renderOrder].push(vao);
     return vao;
-  }
-
-  createMesh(primitive: Primitive, material: Material) {
-    let meshNode = new Node();
-    meshNode.addRenderPrimitive(this.createRenderPrimitive(primitive, material));
-    return meshNode;
   }
 
   drawViews(views: RenderView[], rootNode: Node) {

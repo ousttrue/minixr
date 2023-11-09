@@ -1,6 +1,6 @@
+import { ATTRIB, ATTRIB_MASK } from '../../scene/geometry/primitive.mjs';
 import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
 import { Program } from './program.mjs';
-import { ATTRIB, ATTRIB_MASK } from './primitive.mjs';
 import { DataTexture, VideoTexture } from './texture.mjs';
 import { isPowerOfTwo } from '../../math/gl-matrix.mjs';
 

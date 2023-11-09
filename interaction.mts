@@ -1,7 +1,7 @@
 import { Node } from './js/scene/node.mjs';
+import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
 import { Renderer } from './js/render/core/renderer.mjs';
-import { BoxBuilder } from './js/render/geometry/box-builder.mjs';
-import { PbrMaterial } from './js/render/core//pbr.mjs';
+import { PbrMaterial } from './js/render/core/pbr.mjs';
 import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 
 
