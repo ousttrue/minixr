@@ -21,7 +21,7 @@
 import { Node } from '../node.mjs';
 import { Material, RENDER_ORDER } from '../material.mjs';
 import { Buffer, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { DataTexture } from '../../render/core/texture.mjs';
+import { DataTexture } from '../../render/texture.mjs';
 import { Gltf2Node } from '../nodes/gltf2.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';
 

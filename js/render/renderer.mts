@@ -18,10 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { mat4, vec3 } from '../../math/gl-matrix.mjs';
-import { Node } from '../../scene/node.mjs';
-import { Primitive, getAttributeMask } from '../../scene/geometry/primitive.mjs';
-import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../../scene/material.mjs';
+import { mat4, vec3 } from '../math/gl-matrix.mjs';
+import { Node } from '../scene/node.mjs';
+import { Primitive, getAttributeMask } from '../scene/geometry/primitive.mjs';
+import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../scene/material.mjs';
 import { Vao } from './renderprimitive.mjs';
 import { RenderView } from './renderview.mjs';
 import { Program } from './program.mjs';

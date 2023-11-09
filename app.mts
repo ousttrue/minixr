@@ -1,6 +1,6 @@
 import { Scene } from './js/scene/scene.mjs';
-import { Renderer, createWebGLContext } from './js/render/core/renderer.mjs';
-import { RenderView } from './js/render/core/renderview.mjs';
+import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
+import { RenderView } from './js/render/renderview.mjs';
 import { Gltf2Node } from './js/scene/nodes/gltf2.mjs';
 import { vec3, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Interaction } from './interaction.mjs';

@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { Node } from '../node.mjs';
-import { Renderer } from '../../render/core/renderer.mjs';
+import { Renderer } from '../../render/renderer.mjs';
 import { Gltf2Loader } from '../loaders/gltf2.mjs';
 
 // Using a weak map here allows us to cache a loader per-renderer without

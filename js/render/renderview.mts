@@ -1,4 +1,4 @@
-import { mat4 } from '../../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 
 export class RenderView {
   constructor(
