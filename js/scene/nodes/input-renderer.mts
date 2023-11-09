@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Material, RENDER_ORDER } from '../../render/core/material.mjs';
 import { Node } from '../node.mjs';
+import { Material, RENDER_ORDER } from '../material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { DataTexture } from '../../render/core/texture.mjs';
 import { Gltf2Node } from '../nodes/gltf2.mjs';
@@ -410,12 +410,12 @@ export class InputRenderer extends Node {
       new PrimitiveAttribute('TEXCOORD_0', laserVertexBuffer, 2, gl.FLOAT, 20, 12),
     ];
 
-    let laserPrimitive = new Primitive(laserAttribs, laserIndexCount);
-    laserPrimitive.setIndexBuffer(laserIndexBuffer);
-
     let laserMaterial = new LaserMaterial();
 
-    let laserRenderPrimitive = this._renderer.createRenderPrimitive(laserPrimitive, laserMaterial);
+    let laserPrimitive = new Primitive(laserMaterial, laserAttribs, laserIndexCount);
+    laserPrimitive.setIndexBuffer(laserIndexBuffer);
+
+    let laserRenderPrimitive = this._renderer.createRenderPrimitive(laserPrimitive);
     let meshNode = new Node();
     meshNode.addRenderPrimitive(laserRenderPrimitive);
     return meshNode;
@@ -476,17 +476,17 @@ export class InputRenderer extends Node {
       new PrimitiveAttribute('POSITION', cursorVertexBuffer, 4, gl.FLOAT, 16, 0),
     ];
 
-    let cursorPrimitive = new Primitive(cursorAttribs, cursorIndexCount);
-    cursorPrimitive.setIndexBuffer(cursorIndexBuffer);
-
     let cursorMaterial = new CursorMaterial();
     let cursorHiddenMaterial = new CursorHiddenMaterial();
+
+    let cursorPrimitive = new Primitive(cursorMaterial, cursorAttribs, cursorIndexCount);
+    cursorPrimitive.setIndexBuffer(cursorIndexBuffer);
 
     // Cursor renders two parts: The bright opaque cursor for areas where it's
     // not obscured and a more transparent, darker version for areas where it's
     // behind another object.
-    let cursorRenderPrimitive = this._renderer.createRenderPrimitive(cursorPrimitive, cursorMaterial);
-    let cursorHiddenRenderPrimitive = this._renderer.createRenderPrimitive(cursorPrimitive, cursorHiddenMaterial);
+    let cursorRenderPrimitive = this._renderer.createRenderPrimitive(cursorPrimitive);
+    let cursorHiddenRenderPrimitive = this._renderer.createRenderPrimitive(cursorPrimitive);
     let meshNode = new Node();
     meshNode.addRenderPrimitive(cursorRenderPrimitive);
     meshNode.addRenderPrimitive(cursorHiddenRenderPrimitive);

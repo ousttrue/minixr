@@ -25,8 +25,8 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
-import { Material } from '../../render/core/material.mjs';
 import { Node } from '../node.mjs';
+import { Material } from '../material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { SevenSegmentText } from './seven-segment-text.mjs';
 import { Renderer, RenderBuffer } from '../../render/core/renderer.mjs';
@@ -166,11 +166,13 @@ export class StatsViewer extends Node {
       new PrimitiveAttribute('COLOR_0', this._fpsVertexBuffer, 3, gl.FLOAT, 24, 12),
     ];
 
-    let fpsPrimitive = new Primitive(fpsAttribs, fpsIndices.length);
+    const material = new StatsMaterial()
+
+    let fpsPrimitive = new Primitive(material, fpsAttribs, fpsIndices.length);
     fpsPrimitive.setIndexBuffer(fpsIndexBuffer);
     fpsPrimitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
 
-    this._fpsRenderPrimitive = renderer.createRenderPrimitive(fpsPrimitive, new StatsMaterial());
+    this._fpsRenderPrimitive = renderer.createRenderPrimitive(fpsPrimitive);
     this._fpsNode = new Node('fps');
     this._fpsNode.addRenderPrimitive(this._fpsRenderPrimitive);
 

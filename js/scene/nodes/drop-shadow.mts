@@ -112,8 +112,8 @@ export class DropShadowNode extends Node {
 
     stream.endGeometry();
 
-    let shadowPrimitive = stream.finishPrimitive(renderer);
-    this._shadowRenderPrimitive = renderer.createRenderPrimitive(shadowPrimitive, new DropShadowMaterial());
+    let shadowPrimitive = stream.finishPrimitive(renderer, new DropShadowMaterial());
+    this._shadowRenderPrimitive = renderer.createRenderPrimitive(shadowPrimitive);
     this.addRenderPrimitive(this._shadowRenderPrimitive);
   }
 }

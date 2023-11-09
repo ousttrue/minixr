@@ -172,7 +172,7 @@ export class PrimitiveStream {
     this._bb = new BoundingBox();
   }
 
-  finishPrimitive(renderer) {
+  finishPrimitive(renderer, material) {
     if (!this._vertexOffset) {
       throw new Error(`Attempted to call finishPrimitive() before creating any geometry.`);
     }
@@ -186,7 +186,7 @@ export class PrimitiveStream {
       new PrimitiveAttribute('NORMAL', vertexBuffer, 3, GL.FLOAT, 32, 20),
     ];
 
-    let primitive = new Primitive(attribs, this._indices.length);
+    let primitive = new Primitive(material, attribs, this._indices.length);
     primitive.setIndexBuffer(indexBuffer);
     primitive.bb = this._bb
 
@@ -212,8 +212,8 @@ export class GeometryBuilderBase {
     return this._stream;
   }
 
-  finishPrimitive(renderer) {
-    return this._stream.finishPrimitive(renderer);
+  finishPrimitive(renderer, material) {
+    return this._stream.finishPrimitive(renderer, material);
   }
 
   clear() {

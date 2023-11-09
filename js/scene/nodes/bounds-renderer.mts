@@ -126,10 +126,10 @@ export class BoundsRenderer extends Node {
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
     ];
 
-    let primitive = new Primitive(attribs, indices.length);
+    let primitive = new Primitive(new BoundsMaterial(), attribs, indices.length);
     primitive.setIndexBuffer(indexBuffer);
 
-    let renderPrimitive = this._renderer.createRenderPrimitive(primitive, new BoundsMaterial());
+    let renderPrimitive = this._renderer.createRenderPrimitive(primitive);
     this.addRenderPrimitive(renderPrimitive);
   }
 }

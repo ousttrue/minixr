@@ -288,10 +288,10 @@ export class CubeSeaNode extends Node {
       // the short index range past 12 cubes.
       boxBuilder.indexType = 5125; // gl.UNSIGNED_INT
     }
-    let cubeSeaPrimitive = boxBuilder.finishPrimitive(this._renderer);
+    let cubeSeaPrimitive = boxBuilder.finishPrimitive(this._renderer, this._material);
 
     if (!this._renderPrimitive) {
-      this._renderPrimitive = this._renderer.createRenderPrimitive(cubeSeaPrimitive, this._material);
+      this._renderPrimitive = this._renderer.createRenderPrimitive(cubeSeaPrimitive);
     } else {
       this._renderPrimitive.setPrimitive(cubeSeaPrimitive);
     }

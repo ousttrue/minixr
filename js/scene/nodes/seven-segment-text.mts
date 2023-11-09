@@ -24,9 +24,9 @@ for numbers and a limited number of other characters.
 */
 
 import { Node } from '../node.mjs';
+import { Material } from '../material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';
-import { Material } from '../../render/core/material.mjs';
 import { Renderer } from '../../render/core/renderer.mjs';
 
 const TEXT_KERNING = 2.0;
@@ -158,17 +158,17 @@ export class SevenSegmentText extends Node {
       new PrimitiveAttribute('POSITION', vertexBuffer, 2, gl.FLOAT, 8, 0),
     ];
 
-    let primitive = new Primitive(vertexAttribs, indices.length);
-    primitive.setIndexBuffer(indexBuffer);
-
     let material = new SevenSegmentMaterial();
+
+    let primitive = new Primitive(material, vertexAttribs, indices.length);
+    primitive.setIndexBuffer(indexBuffer);
 
     this._charPrimitives = {};
     for (let char in characters) {
       let charDef = characters[char];
       primitive.elementCount = charDef.count;
       primitive.indexByteOffset = charDef.offset;
-      this._charPrimitives[char] = renderer.createRenderPrimitive(primitive, material);
+      this._charPrimitives[char] = renderer.createRenderPrimitive(primitive);
     }
 
     this.text = this._text;

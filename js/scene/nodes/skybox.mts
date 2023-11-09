@@ -90,6 +90,24 @@ export class SkyboxNode extends Node {
   }
 
   onRendererChanged(renderer) {
+    let material = new SkyboxMaterial();
+    material.image.texture = new UrlTexture(this._url);
+
+    switch (this._displayMode) {
+      case 'mono':
+        material.texCoordScaleOffset.value = [1.0, 1.0, 0.0, 0.0,
+                                              1.0, 1.0, 0.0, 0.0];
+        break;
+      case 'stereoTopBottom':
+        material.texCoordScaleOffset.value = [1.0, 0.5, 0.0, 0.0,
+                                              1.0, 0.5, 0.0, 0.5];
+        break;
+      case 'stereoLeftRight':
+        material.texCoordScaleOffset.value = [0.5, 1.0, 0.0, 0.0,
+                                              0.5, 1.0, 0.5, 0.0];
+        break;
+    }
+
     let vertices = [];
     let indices = [];
 
@@ -135,28 +153,10 @@ export class SkyboxNode extends Node {
       new PrimitiveAttribute('TEXCOORD_0', vertexBuffer, 2, GL.FLOAT, 20, 12),
     ];
 
-    let primitive = new Primitive(attribs, indices.length);
+    let primitive = new Primitive(material, attribs, indices.length);
     primitive.setIndexBuffer(indexBuffer);
 
-    let material = new SkyboxMaterial();
-    material.image.texture = new UrlTexture(this._url);
-
-    switch (this._displayMode) {
-      case 'mono':
-        material.texCoordScaleOffset.value = [1.0, 1.0, 0.0, 0.0,
-                                              1.0, 1.0, 0.0, 0.0];
-        break;
-      case 'stereoTopBottom':
-        material.texCoordScaleOffset.value = [1.0, 0.5, 0.0, 0.0,
-                                              1.0, 0.5, 0.0, 0.5];
-        break;
-      case 'stereoLeftRight':
-        material.texCoordScaleOffset.value = [0.5, 1.0, 0.0, 0.0,
-                                              0.5, 1.0, 0.5, 0.0];
-        break;
-    }
-
-    let renderPrimitive = renderer.createRenderPrimitive(primitive, material);
+    let renderPrimitive = renderer.createRenderPrimitive(primitive);
     this.addRenderPrimitive(renderPrimitive);
   }
 }

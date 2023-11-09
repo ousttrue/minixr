@@ -21,7 +21,7 @@
 import { mat4, vec3 } from '../../math/gl-matrix.mjs';
 import { Node } from '../../scene/node.mjs';
 import { Primitive, getAttributeMask } from '../../scene/geometry/primitive.mjs';
-import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from './material.mjs';
+import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../../scene/material.mjs';
 import { Vao } from './renderprimitive.mjs';
 import { RenderView } from './renderview.mjs';
 import { Program } from './program.mjs';
@@ -170,10 +170,10 @@ export class Renderer {
     }
   }
 
-  createRenderPrimitive(primitive: Primitive, material: Material) {
+  createRenderPrimitive(primitive: Primitive) {
     const attributeMask = getAttributeMask(primitive.attributes);
-    const program = this._materialFactory.getMaterialProgram(material, attributeMask);
-    const renderMaterial = this._materialFactory.createMaterial(material, program);
+    const program = this._materialFactory.getMaterialProgram(primitive.material, attributeMask);
+    const renderMaterial = this._materialFactory.createMaterial(primitive.material, program);
     const vao = new Vao(this._gl, primitive, renderMaterial, attributeMask);
     if (!this._renderPrimitives[renderMaterial._renderOrder]) {
       this._renderPrimitives[renderMaterial._renderOrder] = [];

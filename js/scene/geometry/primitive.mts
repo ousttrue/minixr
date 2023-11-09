@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
+import { Material } from '../material.mjs';
 
 export const ATTRIB: { [key: string]: number } = {
   POSITION: 1,
@@ -71,7 +72,8 @@ export class Primitive {
   indexType: number = 0;
   bb = new BoundingBox();
   constructor(
-    public attributes = [],
+    public material: Material,
+    public attributes: PrimitiveAttribute[] = [],
     public elementCount = 0,
     public mode = 4) {
   }

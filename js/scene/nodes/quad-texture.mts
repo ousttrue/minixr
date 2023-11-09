@@ -61,7 +61,7 @@ class ButtonIconMaterial extends Material {
 }
 
 export class QuadNode extends Node {
-  constructor(texturePath, textureSize, selectable=false) {
+  constructor(texturePath, textureSize, selectable = false) {
     super();
 
     this.selectable = selectable;
@@ -85,13 +85,11 @@ export class QuadNode extends Node {
 
     stream.endGeometry();
 
-    let iconPrimitive = stream.finishPrimitive(renderer);
     let iconMaterial = new ButtonIconMaterial();
     iconMaterial.icon.texture = this._iconTexture;
-    this._iconRenderPrimitive = renderer.createRenderPrimitive(
-      iconPrimitive,
-      iconMaterial
-    );
+
+    let iconPrimitive = stream.finishPrimitive(renderer, iconMaterial);
+    this._iconRenderPrimitive = renderer.createRenderPrimitive(iconPrimitive);
     this.addRenderPrimitive(this._iconRenderPrimitive);
   }
 }

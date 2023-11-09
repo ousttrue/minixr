@@ -98,6 +98,24 @@ export class VideoNode extends Node {
   }
 
   onRendererChanged(renderer) {
+    let material = new VideoMaterial();
+    material.image.texture = this._video_texture;
+
+    switch (this._displayMode) {
+      case 'mono':
+        material.texCoordScaleOffset.value = [1.0, 1.0, 0.0, 0.0,
+                                                 1.0, 1.0, 0.0, 0.0];
+        break;
+      case 'stereoTopBottom':
+        material.texCoordScaleOffset.value = [1.0, 0.5, 0.0, 0.0,
+                                                 1.0, 0.5, 0.0, 0.5];
+        break;
+      case 'stereoLeftRight':
+        material.texCoordScaleOffset.value = [0.5, 1.0, 0.0, 0.0,
+                                                 0.5, 1.0, 0.5, 0.0];
+        break;
+    }
+
     let vertices = [
       -1.0, 1.0, 0.0, 0.0, 0.0,
        1.0, 1.0, 0.0, 1.0, 0.0,
@@ -117,29 +135,11 @@ export class VideoNode extends Node {
       new PrimitiveAttribute('TEXCOORD_0', vertexBuffer, 2, GL.FLOAT, 20, 12),
     ];
 
-    let primitive = new Primitive(attribs, indices.length);
+    let primitive = new Primitive(material, attribs, indices.length);
     primitive.setIndexBuffer(indexBuffer);
     primitive.setBounds([-1.0, -1.0, 0.0], [1.0, 1.0, 0.015]);
 
-    let material = new VideoMaterial();
-    material.image.texture = this._video_texture;
-
-    switch (this._displayMode) {
-      case 'mono':
-        material.texCoordScaleOffset.value = [1.0, 1.0, 0.0, 0.0,
-                                                 1.0, 1.0, 0.0, 0.0];
-        break;
-      case 'stereoTopBottom':
-        material.texCoordScaleOffset.value = [1.0, 0.5, 0.0, 0.0,
-                                                 1.0, 0.5, 0.0, 0.5];
-        break;
-      case 'stereoLeftRight':
-        material.texCoordScaleOffset.value = [0.5, 1.0, 0.0, 0.0,
-                                                 0.5, 1.0, 0.5, 0.0];
-        break;
-    }
-
-    let renderPrimitive = renderer.createRenderPrimitive(primitive, material);
+    let renderPrimitive = renderer.createRenderPrimitive(primitive);
     this.addRenderPrimitive(renderPrimitive);
   }
 }

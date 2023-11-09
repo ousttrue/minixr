@@ -1,7 +1,7 @@
 import { Node } from './js/scene/node.mjs';
+import { PbrMaterial } from './js/scene/pbr.mjs';
 import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
 import { Renderer } from './js/render/core/renderer.mjs';
-import { PbrMaterial } from './js/render/core/pbr.mjs';
 import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 
 
@@ -20,10 +20,10 @@ export function addBox(
 export function createBoxPrimitive(renderer: Renderer, r: number, g: number, b: number) {
   let boxBuilder = new BoxBuilder();
   boxBuilder.pushCube([0, 0, 0], 1);
-  let boxPrimitive = boxBuilder.finishPrimitive(renderer);
   let boxMaterial = new PbrMaterial();
+  let boxPrimitive = boxBuilder.finishPrimitive(renderer, boxMaterial);
   boxMaterial.baseColorFactor.value = [r, g, b, 1];
-  return renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
+  return renderer.createRenderPrimitive(boxPrimitive);
 }
 
 // function Distance(nodeA: Node, nodeB: Node): number {

@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { PbrMaterial } from '../../render/core/pbr.mjs';
+import { PbrMaterial } from '../pbr.mjs';
 import { Node } from '../../scene/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../../render/core/texture.mjs';
@@ -269,7 +269,7 @@ export class Gltf2Loader {
             attributes.push(glAttribute);
           }
 
-          let glPrimitive = new Primitive(attributes, elementCount, primitive.mode);
+          let glPrimitive = new Primitive(material, attributes, elementCount, primitive.mode);
 
           if ('indices' in primitive) {
             let accessor = accessors[primitive.indices];
@@ -292,7 +292,7 @@ export class Gltf2Loader {
           // After all the attributes have been processed, get a program that is
           // appropriate for both the material and the primitive attributes.
           glMesh.primitives.push(
-            this.renderer.createRenderPrimitive(glPrimitive, material));
+            this.renderer.createRenderPrimitive(glPrimitive));
         }
       }
     }

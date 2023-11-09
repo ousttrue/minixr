@@ -187,8 +187,8 @@ export class ButtonNode extends Node {
 
     stream.endGeometry();
 
-    let buttonPrimitive = stream.finishPrimitive(renderer);
-    this._buttonRenderPrimitive = renderer.createRenderPrimitive(buttonPrimitive, new ButtonMaterial());
+    let buttonPrimitive = stream.finishPrimitive(renderer, new ButtonMaterial());
+    this._buttonRenderPrimitive = renderer.createRenderPrimitive(buttonPrimitive);
     this.addRenderPrimitive(this._buttonRenderPrimitive);
 
     // Build a simple textured quad for the foreground.
@@ -206,10 +206,10 @@ export class ButtonNode extends Node {
 
     stream.endGeometry();
 
-    let iconPrimitive = stream.finishPrimitive(renderer);
+    let iconPrimitive = stream.finishPrimitive(renderer, iconMaterial);
     let iconMaterial = new ButtonIconMaterial();
     iconMaterial.icon.texture = this._iconTexture;
-    this._iconRenderPrimitive = renderer.createRenderPrimitive(iconPrimitive, iconMaterial);
+    this._iconRenderPrimitive = renderer.createRenderPrimitive(iconPrimitive);
     this.addRenderPrimitive(this._iconRenderPrimitive);
   }
 
