@@ -166,18 +166,18 @@ export class Gltf2Loader {
     let textures: ImageTexture[] = [];
     if (json.textures) {
       for (let texture of json.textures) {
-        if (!texture.source) {
+        if (texture.source == null) {
           continue;
         }
         let image = images[texture.source];
         let glTexture = image.texture(bufferViews);
-        // if (texture.sampler) {
-        //   let sampler = sampler[texture.sampler];
-        //   glTexture.sampler.minFilter = sampler.minFilter;
-        //   glTexture.sampler.magFilter = sampler.magFilter;
-        //   glTexture.sampler.wrapS = sampler.wrapS;
-        //   glTexture.sampler.wrapT = sampler.wrapT;
-        // }
+        if (texture.sampler != null) {
+          //   let sampler = sampler[texture.sampler];
+          //   glTexture.sampler.minFilter = sampler.minFilter;
+          //   glTexture.sampler.magFilter = sampler.magFilter;
+          //   glTexture.sampler.wrapS = sampler.wrapS;
+          //   glTexture.sampler.wrapT = sampler.wrapT;
+        }
         textures.push(glTexture);
       }
     }
@@ -208,7 +208,7 @@ export class Gltf2Loader {
           material.occlusionTexture.strength : 1.0;
         glMaterial.emissiveFactor.value = material.emissiveFactor || [0, 0, 0];
         glMaterial.emissive.texture = getTexture(material.emissiveTexture);
-        if (!glMaterial.emissive.texture && material.emissiveFactor) {
+        if (glMaterial.emissive.texture == null && material.emissiveFactor) {
           glMaterial.emissive.texture = new ColorTexture(1.0, 1.0, 1.0, 1.0);
         }
 
@@ -242,7 +242,7 @@ export class Gltf2Loader {
 
         for (let primitive of mesh.primitives) {
           let material = null;
-          if (primitive.material) {
+          if (primitive.material != null) {
             material = materials[primitive.material];
           } else {
             // Create a "default" material if the primitive has none.
@@ -250,9 +250,6 @@ export class Gltf2Loader {
           }
 
           let attributes = [];
-          let elementCount = 0;
-          /* let glPrimitive = new Gltf2Primitive(primitive, material);
-          glMesh.primitives.push(glPrimitive); */
 
           let min = null;
           let max = null;
@@ -266,17 +263,15 @@ export class Gltf2Loader {
               continue;
             }
             const bufferView = bufferViews[bufferViewId];
-            elementCount = accessor.count;
             const bytes = await bufferView.dataViewAsync()
-
             let glAttribute = new PrimitiveAttribute(
               name,
               bytes,
               getComponentCount(accessor.type),
               accessor.componentType,
-              bufferView.byteStride || 0,
-              accessor.byteOffset || 0,
-              accessor.normalized || false
+              bufferView.byteStride ?? 0,
+              accessor.byteOffset ?? 0,
+              accessor.normalized ?? false
             );
 
             if (name == 'POSITION') {
@@ -288,22 +283,28 @@ export class Gltf2Loader {
           }
 
           let indexBuffer: Uint8Array | Uint16Array | Uint32Array | undefined = undefined;
-          if (primitive.indices) {
+          if (primitive.indices != null) {
             let accessor = accessors[primitive.indices];
-            if (accessor.bufferView) {
+            if (accessor.bufferView != null) {
               let bufferView = bufferViews[accessor.bufferView];
-              const indexBytes = await bufferView.bytesAsync();
+              const indexBytes = await bufferView.dataViewAsync();
               switch (accessor.componentType) {
                 case GL.UNSIGNED_BYTE:
-                  indexBuffer = indexBytes.subarray(accessor.byteOffset ?? 0).subarray(0, accessor.count);
+                  indexBuffer = new Uint8Array(indexBytes.buffer,
+                    indexBytes.byteOffset + (accessor.byteOffset ?? 0)
+                  ).subarray(0, accessor.count);
                   break;
 
                 case GL.UNSIGNED_SHORT:
-                  indexBuffer = new Uint16Array(indexBytes.subarray(accessor.byteOffset ?? 0)).subarray(0, accessor.count);
+                  indexBuffer = new Uint16Array(indexBytes.buffer,
+                    indexBytes.byteOffset + (accessor.byteOffset ?? 0)
+                  ).subarray(0, accessor.count);
                   break;
 
                 case GL.UNSIGNED_INT:
-                  indexBuffer = new Uint32Array(indexBytes.subarray(accessor.byteOffset ?? 0)).subarray(0, accessor.count);
+                  indexBuffer = new Uint32Array(indexBytes.buffer,
+                    indexBytes.byteOffset + (accessor.byteOffset ?? 0)
+                  ).subarray(0, accessor.count);
                   break;
 
                 default:
@@ -351,7 +352,7 @@ export class Gltf2Loader {
   processNodes(node: GLTF2.Node, nodes: GLTF2.Node[], meshes: Gltf2Mesh[]) {
     let glNode = new Node(node.name);
 
-    if (node.mesh) {
+    if (node.mesh != null) {
       let mesh = meshes[node.mesh];
       for (let primitive of mesh.primitives) {
         glNode.primitives.push(primitive);
