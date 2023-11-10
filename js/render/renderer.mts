@@ -103,7 +103,7 @@ export class Renderer {
     return vbo;
   }
 
-  private _getOrCreateIndexBuffer(indices: Uint8Array | Uint16Array | Uint32Array, usage: number): Ibo | null {
+  private _getOrCreateIndexBuffer(indices: Uint8Array | Uint16Array | Uint32Array, usage: number): Ibo {
     let ibo = this._iboMap.get(indices);
     if (ibo) {
       return ibo;
@@ -131,9 +131,22 @@ export class Renderer {
     return ibo;
   }
 
-  private _getOrCreatePrimtive(primitive: Primitive) {
+  _used = new Set();
+  private _getOrCreatePrimtive(primitive: Primitive, vertexUpdated: boolean) {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
+      if (vertexUpdated) {
+        this._used.clear();
+        for (const attrib of primitive.attributes) {
+          const vbo = vao.vboMap.get(attrib.buffer);
+          if (vbo) {
+            if (!this._used.has(vbo)) {
+              this._used.add(vbo);
+              vbo.updateRenderBuffer(this._gl, attrib.buffer);
+            }
+          }
+        }
+      }
       return vao;
     }
 
@@ -142,7 +155,7 @@ export class Renderer {
     const renderMaterial = this._materialFactory.createMaterial(primitive.material, program);
 
     // IBO
-    let ibo: Ibo | null = null;
+    let ibo: Ibo | undefined = undefined;
     if (primitive.indices) {
       ibo = this._getOrCreateIndexBuffer(primitive.indices, primitive.options?.indicesUsage ?? GL.STATIC_DRAW);
     }
@@ -154,6 +167,7 @@ export class Renderer {
       vboList.push(vbo);
     }
 
+    // VAO
     vao = new Vao(this._gl, primitive, renderMaterial, vboList, attributeMask, ibo);
     this._primVaoMap.set(primitive, vao);
     return vao;
@@ -186,10 +200,12 @@ export class Renderer {
   }
 
   private _drawNode(views: RenderView[], node: Node) {
+
     for (let prim of node.primitives) {
-      const vao = this._getOrCreatePrimtive(prim);
+      const vao = this._getOrCreatePrimtive(prim, node.vertexUpdated);
       this._drawRenderPrimitiveSet(views, vao, node.worldMatrix)
     }
+    node.vertexUpdated = false;
 
     for (let child of node.children) {
       this._drawNode(views, child);

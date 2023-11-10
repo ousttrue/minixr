@@ -29,7 +29,8 @@ import { Node } from '../node.mjs';
 import { Material } from '../material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { SevenSegmentText } from './seven-segment-text.mjs';
-import { Renderer, RenderBuffer } from '../../render/core/renderer.mjs';
+import { Renderer } from '../../render/renderer.mjs';
+import { Vbo } from '../../render/vao.mjs';
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
@@ -93,8 +94,8 @@ export class StatsViewer extends Node {
   private _fpsMin: number = 0;
   private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
   private _lastSegment: number = 0;
-  private _fpsVertexBuffer: RenderBuffer | null = null;
-  private _fpsNode: Node | null = null;
+  private _fpsVertexBuffer: Float32Array;
+  private _fpsNode: Node;
   private _sevenSegmentNode: SevenSegmentText = new SevenSegmentText();
   constructor() {
     super('__stats__');
@@ -109,12 +110,8 @@ export class StatsViewer extends Node {
       -0.3625, 0.3625, 0.02, 1,
     );
     this._sevenSegmentNode.local.invalidate();
-  }
 
-  onRendererChanged(renderer: Renderer) {
     this.clearNodes();
-
-    let gl = renderer.gl;
 
     let fpsVerts = [];
     let fpsIndices = [];
@@ -164,8 +161,8 @@ export class StatsViewer extends Node {
     const fpsVertexBuffer = new DataView(this._fpsVertexBuffer.buffer);
     const fpsIndexBuffer = new Uint16Array(fpsIndices);
     const fpsAttribs = [
-      new PrimitiveAttribute('POSITION', fpsVertexBuffer, 3, gl.FLOAT, 24, 0),
-      new PrimitiveAttribute('COLOR_0', fpsVertexBuffer, 3, gl.FLOAT, 24, 12),
+      new PrimitiveAttribute('POSITION', fpsVertexBuffer, 3, GL.FLOAT, 24, 0),
+      new PrimitiveAttribute('COLOR_0', fpsVertexBuffer, 3, GL.FLOAT, 24, 12),
     ];
     const material = new StatsMaterial()
     let fpsPrimitive = new Primitive(material,
@@ -241,32 +238,31 @@ export class StatsViewer extends Node {
     color.g = 1.0;
     color.b = 0.2;
 
-    // TODO:
-    // if (this._lastSegment == SEGMENTS - 1) {
-    //   // If we're updating the last segment we need to do two bufferSubDatas
-    //   // to update the segment and turn the first segment into the progress line.
-    //   this._fpsVertexBuffer?.updateRenderBuffer(new Float32Array(updateVerts),
-    //     this._lastSegment * 24 * 4);
-    //   updateVerts = [
-    //     segmentToX(0), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
-    //     segmentToX(.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
-    //     segmentToX(0), fpsToY(0), 0.02, color.r, color.g, color.b,
-    //     segmentToX(.25), fpsToY(0), 0.02, color.r, color.g, color.b,
-    //   ];
-    //   this._fpsVertexBuffer?.updateRenderBuffer(new Float32Array(updateVerts), 0);
-    // } else {
-    //   updateVerts.push(
-    //     segmentToX(this._lastSegment + 1), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
-    //     segmentToX(this._lastSegment + 1.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
-    //     segmentToX(this._lastSegment + 1), fpsToY(0), 0.02, color.r, color.g, color.b,
-    //     segmentToX(this._lastSegment + 1.25), fpsToY(0), 0.02, color.r, color.g, color.b
-    //   );
-    //   this._fpsVertexBuffer?.updateRenderBuffer(new Float32Array(updateVerts),
-    //     this._lastSegment * 24 * 4);
-    // }
+    if (this._lastSegment == SEGMENTS - 1) {
+      // If we're updating the last segment we need to do two bufferSubDatas
+      // to update the segment and turn the first segment into the progress line.
+      this._fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
+      updateVerts = [
+        segmentToX(0), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
+        segmentToX(.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
+        segmentToX(0), fpsToY(0), 0.02, color.r, color.g, color.b,
+        segmentToX(.25), fpsToY(0), 0.02, color.r, color.g, color.b,
+      ];
+      this._fpsVertexBuffer.set(updateVerts);
+    } else {
+      updateVerts.push(
+        segmentToX(this._lastSegment + 1), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
+        segmentToX(this._lastSegment + 1.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
+        segmentToX(this._lastSegment + 1), fpsToY(0), 0.02, color.r, color.g, color.b,
+        segmentToX(this._lastSegment + 1.25), fpsToY(0), 0.02, color.r, color.g, color.b
+      );
+      this._fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
+    }
 
     this._lastSegment = (this._lastSegment + 1) % SEGMENTS;
 
     this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
+
+    this._fpsNode.vertexUpdated = true;
   }
 }

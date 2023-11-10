@@ -18,10 +18,10 @@ export class Vbo {
     this._length = src.byteLength;
   }
 
-  updateRenderBuffer(gl: WebGL2RenderingContext, data: ArrayBuffer, offset = 0) {
+  updateRenderBuffer(gl: WebGL2RenderingContext, data: DataView, offset = 0) {
     this.bind(gl);
-    if (offset == 0 && this._length == data.byteLength) {
-      gl.bufferData(this.target, data, this.usage);
+    if (offset == 0 && data.byteOffset == 0 && this._length == data.byteLength) {
+      gl.bufferData(this.target, data.buffer, this.usage);
     } else {
       gl.bufferSubData(this.target, offset, data);
     }
@@ -47,6 +47,7 @@ export class Ibo {
 
 export class Vao {
   private _vao: WebGLVertexArrayObject;
+  vboMap: Map<DataView, Vbo> = new Map();
   private _indexBuffer: Vbo | null = null;
   private _indexType: number = 0;
   private _indexOffset: number = 0;
@@ -89,6 +90,7 @@ export class Vao {
     for (let i = 0; i < primitive.attributes.length; ++i) {
       const attrib = primitive.attributes[i];
       const buffer = vboList[i];
+      this.vboMap.set(attrib.buffer, buffer);
       buffer.bind(gl);
       gl.vertexAttribPointer(
         ATTRIB[attrib.name], attrib.componentCount, attrib.componentType,

@@ -71,9 +71,7 @@ export class SevenSegmentText extends Node {
   private _charPrimitives: { [key: string]: Primitive } = {};
   constructor() {
     super('SevenSegmentText');
-  }
 
-  onRendererChanged() {
     this.clearNodes();
     this._charNodes = [];
 
@@ -103,7 +101,7 @@ export class SevenSegmentText extends Node {
     function defineCharacter(c: string, segments: number[]) {
       let character = {
         character: c,
-        offset: indices.length * 2,
+        offset: indices.length,
         count: 0,
       };
 
@@ -163,32 +161,25 @@ export class SevenSegmentText extends Node {
     let vertexAttribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 2, GL.FLOAT, 8, 0),
     ];
-    let primitive = new Primitive(material, 
-      vertexAttribs, vertices.length / 2, indexBuffer,
-      {
-        attributesUsage: GL.DYNAMIC_DRAW,
-      });
 
     this._charPrimitives = {};
     for (let char in characters) {
-      // TODO:
-      // let charDef = characters[char];
-      // primitive.elementCount = charDef.count;
-      // primitive.indexByteOffset = charDef.offset;
+      let charDef = characters[char];
+      let primitive = new Primitive(material,
+        vertexAttribs, vertices.length / 2,
+        indexBuffer.subarray(charDef.offset, charDef.offset + charDef.count));
       this._charPrimitives[char] = primitive;
     }
 
     this.text = this._text;
   }
 
-  get text() {
+  get text(): string {
     return this._text;
   }
 
-  set text(value) {
+  set text(value: string) {
     this._text = value;
-    // TODO:
-    return;
 
     let i = 0;
     let charPrimitive = null;
@@ -201,7 +192,7 @@ export class SevenSegmentText extends Node {
 
       if (this._charNodes.length <= i) {
         let node = new Node('');
-        node.addRenderPrimitive(charPrimitive);
+        node.primitives.push(charPrimitive);
         let offset = i * TEXT_KERNING;
         node.local.translation = vec3.fromValues(offset, 0, 0);
         this._charNodes.push(node);
@@ -210,8 +201,7 @@ export class SevenSegmentText extends Node {
         // This is sort of an abuse of how these things are expected to work,
         // but it's the cheapest thing I could think of that didn't break the
         // world.
-        this._charNodes[i].clearRenderPrimitives();
-        this._charNodes[i].addRenderPrimitive(charPrimitive);
+        this._charNodes[i].primitives = [charPrimitive];
         this._charNodes[i].visible = true;
       }
     }
