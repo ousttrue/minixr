@@ -157,15 +157,12 @@ export class SevenSegmentText extends Node {
     defineCharacter(' ', []);
     defineCharacter('_', [2]); // Used for undefined characters
 
-
     let material = new SevenSegmentMaterial();
     let vertexBuffer = new DataView(new Float32Array(vertices).buffer);
     let indexBuffer = new Uint16Array(indices);
-
     let vertexAttribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 2, GL.FLOAT, 8, 0),
     ];
-
     let primitive = new Primitive(material, 
       vertexAttribs, vertices.length / 2, indexBuffer,
       {

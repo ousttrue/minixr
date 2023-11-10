@@ -21,7 +21,7 @@
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 import { Node } from '../scene/node.mjs';
 import { Primitive, getAttributeMask } from '../scene/geometry/primitive.mjs';
-import { Vao } from './renderprimitive.mjs';
+import { Vao, Vbo, Ibo } from './vao.mjs';
 import { RenderView } from './renderview.mjs';
 import { Program } from './program.mjs';
 import { RenderMaterial, MaterialFactory } from './rendermaterial.mjs';
@@ -81,6 +81,8 @@ export class Renderer {
   private _cameraPositions: vec3[];
   private _lighting = new Lighting();
   private _materialFactory: MaterialFactory;
+  private _iboMap: Map<Object, Ibo> = new Map();
+  private _vboMap: Map<DataView, Vbo> = new Map();
   private _primVaoMap: Map<Primitive, Vao> = new Map();
 
   constructor(
@@ -90,17 +92,70 @@ export class Renderer {
     this._cameraPositions = [];
   }
 
-  private _getOrCreatePrimtive(prim: Primitive) {
-    let vao = this._primVaoMap.get(prim);
+  private _getOrCreateVertexBuffer(buffer: DataView, usage: number) {
+    let vbo = this._vboMap.get(buffer);
+    if (vbo) {
+      return vbo;
+    }
+
+    vbo = new Vbo(this._gl, GL.ARRAY_BUFFER, buffer, usage);
+    this._vboMap.set(buffer, vbo);
+    return vbo;
+  }
+
+  private _getOrCreateIndexBuffer(indices: Uint8Array | Uint16Array | Uint32Array, usage: number): Ibo | null {
+    let ibo = this._iboMap.get(indices);
+    if (ibo) {
+      return ibo;
+    }
+
+    const indexBuffer = new Vbo(this._gl, GL.ELEMENT_ARRAY_BUFFER,
+      new DataView(indices.buffer, indices.byteOffset, indices.byteLength),
+      usage);
+    let indexType = 0;
+    if (indices instanceof Uint16Array) {
+      indexType = GL.UNSIGNED_SHORT;
+    }
+    else if (indices instanceof Uint8Array) {
+      indexType = GL.UNSIGNED_BYTE;
+    }
+    else if (indices instanceof Uint32Array) {
+      indexType = GL.UNSIGNED_INT;
+    }
+    else {
+      throw new Error("unknown");
+    }
+
+    ibo = new Ibo(indexBuffer, indexType, indices.length);
+    this._iboMap.set(indices, ibo);
+    return ibo;
+  }
+
+  private _getOrCreatePrimtive(primitive: Primitive) {
+    let vao = this._primVaoMap.get(primitive);
     if (vao) {
       return vao;
     }
 
-    const attributeMask = getAttributeMask(prim.attributes);
-    const program = this._materialFactory.getMaterialProgram(prim.material, attributeMask);
-    const renderMaterial = this._materialFactory.createMaterial(prim.material, program);
-    vao = new Vao(this._gl, prim, renderMaterial, attributeMask);
-    this._primVaoMap.set(prim, vao);
+    const attributeMask = getAttributeMask(primitive.attributes);
+    const program = this._materialFactory.getMaterialProgram(primitive.material, attributeMask);
+    const renderMaterial = this._materialFactory.createMaterial(primitive.material, program);
+
+    // IBO
+    let ibo: Ibo | null = null;
+    if (primitive.indices) {
+      ibo = this._getOrCreateIndexBuffer(primitive.indices, primitive.options?.indicesUsage ?? GL.STATIC_DRAW);
+    }
+
+    // VBO
+    const vboList: Vbo[] = [];
+    for (let attrib of primitive.attributes) {
+      const vbo = this._getOrCreateVertexBuffer(attrib.buffer, primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
+      vboList.push(vbo);
+    }
+
+    vao = new Vao(this._gl, primitive, renderMaterial, vboList, attributeMask, ibo);
+    this._primVaoMap.set(primitive, vao);
     return vao;
   }
 
