@@ -20,7 +20,7 @@
 
 import { Node } from '../node.mjs';
 import { Material, RENDER_ORDER } from '../material.mjs';
-import { VertexBuffer, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { DataTexture } from '../../render/texture.mjs';
 import { Gltf2Node } from '../nodes/gltf2.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';
@@ -388,21 +388,15 @@ export class InputRenderer extends Node {
       12, 13, 14, 13, 15, 14,
     ];
 
-    let laserVertexBuffer = new VertexBuffer(GL.ARRAY_BUFFER, new Float32Array(laserVerts));
-    let laserIndexBuffer = new VertexBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(laserIndices));
-
-    let laserIndexCount = laserIndices.length;
-
+    let laserMaterial = new LaserMaterial();
+    let laserVertexBuffer = new Uint8Array(new Float32Array(laserVerts));
     let laserAttribs = [
       new PrimitiveAttribute('POSITION', laserVertexBuffer, 3, GL.FLOAT, 20, 0),
       new PrimitiveAttribute('TEXCOORD_0', laserVertexBuffer, 2, GL.FLOAT, 20, 12),
     ];
-
-    let laserMaterial = new LaserMaterial();
-
-    let laserPrimitive = new Primitive(laserMaterial, laserAttribs, laserIndexCount);
-    laserPrimitive.setIndexBuffer(laserIndexBuffer);
-
+    let laserIndexBuffer = new Uint16Array(laserIndices);
+    let laserPrimitive = new Primitive(laserMaterial,
+      laserAttribs, laserVerts.length / 5, laserIndexBuffer);
     let meshNode = new Node('laser');
     meshNode.primitives.push(laserPrimitive);
     return meshNode;
@@ -452,27 +446,24 @@ export class InputRenderer extends Node {
     cursorIndices.push(idx - 2, idx - 1, indexOffset);
     cursorIndices.push(idx - 1, indexOffset + 1, indexOffset);
 
-    let cursorVertexBuffer = new VertexBuffer(GL.ARRAY_BUFFER, new Float32Array(cursorVerts));
-    let cursorIndexBuffer = new VertexBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(cursorIndices));
-
-    let cursorIndexCount = cursorIndices.length;
-
+    let cursorMaterial = new CursorMaterial();
+    let cursorHiddenMaterial = new CursorHiddenMaterial();
+    let cursorVertexBuffer = new Uint8Array(new Float32Array(cursorVerts));
+    let cursorIndexBuffer = new Uint16Array(cursorIndices);
     let cursorAttribs = [
       new PrimitiveAttribute('POSITION', cursorVertexBuffer, 4, GL.FLOAT, 16, 0),
     ];
-
-    let cursorMaterial = new CursorMaterial();
-    let cursorHiddenMaterial = new CursorHiddenMaterial();
-
-    let cursorPrimitive = new Primitive(cursorMaterial, cursorAttribs, cursorIndexCount);
-    cursorPrimitive.setIndexBuffer(cursorIndexBuffer);
+    let cursorPrimitive = new Primitive(cursorMaterial,
+      cursorAttribs, cursorVerts.length / 4, cursorIndexBuffer);
+    let cursorHiddenPrimitive = new Primitive(cursorHiddenMaterial,
+      cursorAttribs, cursorVerts.length / 4, cursorIndexBuffer);
 
     // Cursor renders two parts: The bright opaque cursor for areas where it's
     // not obscured and a more transparent, darker version for areas where it's
     // behind another object.
     let meshNode = new Node('cursor');
     meshNode.primitives.push(cursorPrimitive);
-    // meshNode.primitives.push(cursorHiddenPrimitive);
+    meshNode.primitives.push(cursorHiddenPrimitive);
     return meshNode;
   }
 }

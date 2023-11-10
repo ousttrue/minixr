@@ -20,7 +20,7 @@
 
 import { PbrMaterial } from '../pbr.mjs';
 import { Node } from '../../scene/node.mjs';
-import { VertexBuffer, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../../render/texture.mjs';
 import { Renderer } from '../../render/renderer.mjs';
 import { vec3, quat, mat4, BoundingBox } from '../../math/gl-matrix.mjs';
@@ -57,8 +57,19 @@ function getComponentCount(type: string): number {
     case 'VEC2': return 2;
     case 'VEC3': return 3;
     case 'VEC4': return 4;
-    default: return 0;
+    default: throw new Error("unknown");
   }
+}
+
+function getTypeSize(type: number): number {
+  switch (type) {
+    case GL.UNSIGNED_SHORT: return 2;
+    default: throw new Error("unknown");
+  }
+}
+
+function getItemSize(accessor: GLTF2.Accessor): number {
+  return getComponentCount(accessor.type) * getTypeSize(accessor.componentType)
 }
 
 /**
@@ -99,13 +110,13 @@ export class Gltf2Loader {
       throw new Error('Incompatible version in binary header.');
     }
 
-    let chunks: { [key: string]: DataView } = {};
+    let chunks: { [key: string]: Uint8Array } = {};
     let chunkOffset = 12;
     while (chunkOffset < length) {
       let chunkHeaderView = new DataView(arrayBuffer, chunkOffset, 8);
       let chunkLength = chunkHeaderView.getUint32(0, true);
       let chunkType = chunkHeaderView.getUint32(4, true);
-      chunks[chunkType] = new DataView(arrayBuffer, chunkOffset + 8, chunkOffset + 8 + chunkLength);
+      chunks[chunkType] = new Uint8Array(arrayBuffer).subarray(chunkOffset + 8, chunkOffset + 8 + chunkLength);
       chunkOffset += chunkLength + 8;
     }
 
@@ -119,7 +130,7 @@ export class Gltf2Loader {
     return await this.loadFromJson(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
   }
 
-  async loadFromJson(json: GLTF2.GlTf, baseUrl: string, binaryChunk?: DataView): Promise<Node> {
+  async loadFromJson(json: GLTF2.GlTf, baseUrl: string, binaryChunk?: Uint8Array): Promise<Node> {
     if (!json.asset) {
       throw new Error('Missing asset description.');
     }
@@ -231,7 +242,7 @@ export class Gltf2Loader {
 
         for (let primitive of mesh.primitives) {
           let material = null;
-          if ('material' in primitive) {
+          if (primitive.material) {
             material = materials[primitive.material];
           } else {
             // Create a "default" material if the primitive has none.
@@ -246,19 +257,21 @@ export class Gltf2Loader {
           let min = null;
           let max = null;
 
+          let vertexCount = 0;
           for (let name in primitive.attributes) {
             const accessor = accessors[primitive.attributes[name]];
+            vertexCount = accessor.count;
             const bufferViewId = accessor.bufferView;
             if (bufferViewId == null) {
               continue;
             }
             const bufferView = bufferViews[bufferViewId];
             elementCount = accessor.count;
-            const vertexBuffer = await bufferView.bufferViewAsync(GL.ARRAY_BUFFER)
+            const bytes = await bufferView.bufferViewAsync()
 
             let glAttribute = new PrimitiveAttribute(
               name,
-              vertexBuffer,
+              bytes,
               getComponentCount(accessor.type),
               accessor.componentType,
               bufferView.byteStride || 0,
@@ -274,27 +287,43 @@ export class Gltf2Loader {
             attributes.push(glAttribute);
           }
 
-          let glPrimitive = new Primitive(
-            material, attributes, elementCount, primitive.mode);
-
-          if ('indices' in primitive) {
+          let indexBuffer: Uint8Array | Uint16Array | Uint32Array | undefined = undefined;
+          if (primitive.indices) {
             let accessor = accessors[primitive.indices];
-            let bufferView = bufferViews[accessor.bufferView];
-            const indexBuffer = await bufferView.bufferViewAsync(
-              GL.ELEMENT_ARRAY_BUFFER);
+            if (accessor.bufferView) {
+              let bufferView = bufferViews[accessor.bufferView];
+              const indexBytes = await bufferView.bufferViewAsync();
+              switch (accessor.componentType) {
+                case GL.UNSIGNED_BYTE:
+                  indexBuffer = indexBytes.subarray(accessor.byteOffset ?? 0).subarray(0, accessor.count);
+                  break;
 
-            glPrimitive.setIndexBuffer(
-              indexBuffer,
-              accessor.byteOffset || 0,
-              accessor.componentType
-            );
-            glPrimitive.indexType = accessor.componentType;
-            glPrimitive.indexByteOffset = accessor.byteOffset || 0;
-            glPrimitive.elementCount = accessor.count;
+                case GL.UNSIGNED_SHORT:
+                  indexBuffer = new Uint16Array(indexBytes.subarray(accessor.byteOffset ?? 0)).subarray(0, accessor.count);
+                  break;
+
+                case GL.UNSIGNED_INT:
+                  indexBuffer = new Uint32Array(indexBytes.subarray(accessor.byteOffset ?? 0)).subarray(0, accessor.count);
+                  break;
+
+                default:
+                  throw new Error("unknown indices type");
+              }
+            }
           }
 
+          let glPrimitive = new Primitive(
+            material,
+            attributes,
+            vertexCount,
+            indexBuffer, {
+            mode: primitive.mode ?? GL.TRIANGLES
+          });
+
           if (min && max) {
-            glPrimitive.bb = new BoundingBox(vec3.fromValues(...min), vec3.fromValues(...max));
+            glPrimitive.bb = new BoundingBox(
+              vec3.fromValues(min[0], min[1], min[2]),
+              vec3.fromValues(max[0], max[1], max[2]));
           }
 
           // After all the attributes have been processed, get a program that is
@@ -322,7 +351,7 @@ export class Gltf2Loader {
   processNodes(node: GLTF2.Node, nodes: GLTF2.Node[], meshes: Gltf2Mesh[]) {
     let glNode = new Node(node.name);
 
-    if ('mesh' in node) {
+    if (node.mesh) {
       let mesh = meshes[node.mesh];
       for (let primitive of mesh.primitives) {
         glNode.primitives.push(primitive);
@@ -367,7 +396,7 @@ class Gltf2BufferView {
   byteOffset: number;
   byteLength: number;
   byteStride: number;
-  private _viewPromise: Promise<DataView> | null = null;
+  private _viewPromise: Promise<Uint8Array> | null = null;
   constructor(json: GLTF2.BufferView, buffers: Gltf2Resource[]) {
     this.buffer = buffers[json.buffer];
     this.byteLength = json.byteLength;
@@ -375,37 +404,35 @@ class Gltf2BufferView {
     this.byteStride = json.byteStride || 0;
   }
 
-  dataViewAsync(): Promise<DataView> {
+  dataViewAsync(): Promise<Uint8Array> {
     if (!this._viewPromise) {
-      this._viewPromise = this.buffer.dataViewAsync().then((data) => {
+      this._viewPromise = this.buffer.bytesAsync().then((data) => {
         if (data.byteLength < this.byteLength) {
           throw Error("not enugh byteLength");
         }
-        return new DataView(data.buffer,
-          data.byteOffset + this.byteOffset, this.byteLength);
+        return data.subarray(this.byteOffset, this.byteOffset + this.byteLength);
       });
     }
     return this._viewPromise;
   }
 
-  async bufferViewAsync(target: number): Promise<VertexBuffer> {
+  async bufferViewAsync(): Promise<Uint8Array> {
     const data = await this.dataViewAsync();
-    const view = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-    return new VertexBuffer(target, view);
+    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
   }
 }
 
 class Gltf2Resource {
-  private _dataPromise: Promise<DataView> | null = null;
+  private _dataPromise: Promise<Uint8Array> | null = null;
   private _texture: ImageTexture | null = null;
   constructor(public json: GLTF2.Buffer, public baseUrl: string,
-    data?: DataView) {
+    data?: Uint8Array) {
     if (data) {
       this._dataPromise = Promise.resolve(data);
     }
   }
 
-  async dataViewAsync(): Promise<DataView> {
+  async bytesAsync(): Promise<Uint8Array> {
     if (this._dataPromise) {
       return this._dataPromise;
     }
@@ -418,13 +445,13 @@ class Gltf2Resource {
       // decode base64
       let base64String = this.json.uri.replace('data:application/octet-stream;base64,', '');
       let binaryArray = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
-      this._dataPromise = Promise.resolve(new DataView(binaryArray.buffer));
+      this._dataPromise = Promise.resolve(binaryArray);
       return await this._dataPromise;
     }
 
     this._dataPromise = fetch(resolveUri(this.json.uri, this.baseUrl))
       .then((response) => response.arrayBuffer())
-      .then((arrayBuffer) => new DataView(arrayBuffer));
+      .then((arrayBuffer) => new Uint8Array(arrayBuffer));
     return this._dataPromise;
   }
 

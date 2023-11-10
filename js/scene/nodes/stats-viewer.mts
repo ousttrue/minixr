@@ -32,6 +32,8 @@ import { SevenSegmentText } from './seven-segment-text.mjs';
 import { Renderer, RenderBuffer } from '../../render/core/renderer.mjs';
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
+const GL = WebGLRenderingContext; // For enums
+
 const SEGMENTS = 30;
 const MAX_FPS = 90;
 
@@ -158,23 +160,21 @@ export class StatsViewer extends Node {
     // 60 FPS line
     addBGSquare(-0.45, fpsToY(60), 0.45, fpsToY(62), 0.015, 0.2, 0.0, 0.75);
 
-    this._fpsVertexBuffer = renderer.createRenderBuffer(gl.ARRAY_BUFFER, new Float32Array(fpsVerts), gl.DYNAMIC_DRAW);
-    let fpsIndexBuffer = renderer.createRenderBuffer(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(fpsIndices));
-
-    let fpsAttribs = [
-      new PrimitiveAttribute('POSITION', this._fpsVertexBuffer, 3, gl.FLOAT, 24, 0),
-      new PrimitiveAttribute('COLOR_0', this._fpsVertexBuffer, 3, gl.FLOAT, 24, 12),
+    this._fpsVertexBuffer = new Float32Array(fpsVerts);
+    const fpsVertexBuffer = new Uint8Array(this._fpsVertexBuffer);
+    const fpsIndexBuffer = new Uint16Array(fpsIndices);
+    const fpsAttribs = [
+      new PrimitiveAttribute('POSITION', fpsVertexBuffer, 3, gl.FLOAT, 24, 0),
+      new PrimitiveAttribute('COLOR_0', fpsVertexBuffer, 3, gl.FLOAT, 24, 12),
     ];
-
     const material = new StatsMaterial()
-
-    let fpsPrimitive = new Primitive(material, fpsAttribs, fpsIndices.length);
-    fpsPrimitive.setIndexBuffer(fpsIndexBuffer);
+    let fpsPrimitive = new Primitive(material,
+      fpsAttribs, fpsVerts.length / 6, fpsIndexBuffer,
+      { attributesUsage: GL.DYNAMIC_DRAW });
     fpsPrimitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
 
-    this._fpsRenderPrimitive = renderer.createRenderPrimitive(fpsPrimitive);
     this._fpsNode = new Node('fps');
-    this._fpsNode.addRenderPrimitive(this._fpsRenderPrimitive);
+    this._fpsNode.primitives.push(fpsPrimitive);
 
     this.addNode(this._fpsNode);
     this.addNode(this._sevenSegmentNode);

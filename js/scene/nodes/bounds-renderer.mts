@@ -25,9 +25,9 @@ The bounds `geometry` is a series of DOMPointReadOnlys in
 clockwise-order.
 */
 
-import {Material, RENDER_ORDER} from '../core/material.mjs';
-import {Node} from '../core/node.mjs';
-import {Primitive, PrimitiveAttribute} from '../core/primitive.mjs';
+import { Material, RENDER_ORDER } from '../material.mjs';
+import { Node } from '../node.mjs';
+import { Primitive, PrimitiveIndices, PrimitiveAttribute } from '../geometry/primitive.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -109,27 +109,23 @@ export class BoundsRenderer extends Node {
 
       lastIndex += 2;
       if (i > 0) {
-        indices.push(lastIndex, lastIndex-1, lastIndex-2);
-        indices.push(lastIndex-2, lastIndex-1, lastIndex-3);
+        indices.push(lastIndex, lastIndex - 1, lastIndex - 2);
+        indices.push(lastIndex - 2, lastIndex - 1, lastIndex - 3);
       }
     }
 
     if (pointCount > 1) {
       indices.push(1, 0, lastIndex);
-      indices.push(lastIndex, 0, lastIndex-1);
+      indices.push(lastIndex, 0, lastIndex - 1);
     }
 
-    let vertexBuffer = this._renderer.createRenderBuffer(GL.ARRAY_BUFFER, new Float32Array(verts));
-    let indexBuffer = this._renderer.createRenderBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices));
-
-    let attribs = [
-      new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
-    ];
-
-    let primitive = new Primitive(new BoundsMaterial(), attribs, indices.length);
-    primitive.setIndexBuffer(indexBuffer);
-
-    let renderPrimitive = this._renderer.createRenderPrimitive(primitive);
-    this.addRenderPrimitive(renderPrimitive);
+    let vertexBuffer = new Uint8Array(new Float32Array(verts));
+    let indexBuffer = new Uint16Array(indices);
+    let primitive = new Primitive(
+      new BoundsMaterial(), [
+      new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0)],
+      verts.length / 3,
+      indexBuffer);
+    this.primitives.push(primitive);
   }
 }

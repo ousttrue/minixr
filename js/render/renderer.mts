@@ -160,7 +160,6 @@ export class Renderer {
     //   }
     // }
     this.drawNode(views, rootNode);
-
     gl.bindVertexArray(null);
 
     if (this._depthMaskNeedsReset) {
@@ -248,14 +247,6 @@ export class Renderer {
         material = vao.material;
       }
 
-      if (vao._vao) {
-        gl.bindVertexArray(vao._vao);
-      } else {
-        vao._vao = gl.createVertexArray();
-        gl.bindVertexArray(vao._vao);
-        vao.bindPrimitive(gl);
-      }
-
       for (let i = 0; i < views.length; ++i) {
         let view = views[i];
         if (views.length > 1) {
@@ -290,12 +281,7 @@ export class Renderer {
           gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false,
             worldMatrix.array);
 
-          if (vao._indexBuffer) {
-            gl.drawElements(vao._mode, vao._elementCount,
-              vao._indexType, vao._indexByteOffset);
-          } else {
-            gl.drawArrays(vao._mode, 0, vao._elementCount);
-          }
+          vao.draw(gl);
         }
         if (this._multiview) {
           break;

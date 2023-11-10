@@ -27,9 +27,18 @@ import { Node } from '../node.mjs';
 import { Material } from '../material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';
-import { Renderer } from '../../render/core/renderer.mjs';
+
+const GL = WebGLRenderingContext; // For enums
 
 const TEXT_KERNING = 2.0;
+
+
+type Character = {
+  character: string;
+  offset: number;
+  count: number;
+};
+
 
 class SevenSegmentMaterial extends Material {
   get materialName() {
@@ -57,21 +66,19 @@ class SevenSegmentMaterial extends Material {
 }
 
 export class SevenSegmentText extends Node {
-  private _text: string;
-  private _charNodes: Node[];
+  private _text: string = '';
+  private _charNodes: Node[] = [];
+  private _charPrimitives: { [key: string]: Primitive } = {};
   constructor() {
     super('SevenSegmentText');
-
-    this._text = '';
-    this._charNodes = [];
   }
 
-  onRendererChanged(renderer: Renderer) {
+  onRendererChanged() {
     this.clearNodes();
     this._charNodes = [];
 
     let vertices: number[] = [];
-    let segmentIndices = {};
+    let segmentIndices: { [key: number]: number[] } = {};
     let indices: number[] = [];
 
     const width = 0.5;
@@ -92,8 +99,8 @@ export class SevenSegmentText extends Node {
       ];
     }
 
-    let characters = {};
-    function defineCharacter(c: string, segments: string | any[]) {
+    let characters: { [key: string]: Character } = {};
+    function defineCharacter(c: string, segments: number[]) {
       let character = {
         character: c,
         offset: indices.length * 2,
@@ -150,25 +157,28 @@ export class SevenSegmentText extends Node {
     defineCharacter(' ', []);
     defineCharacter('_', [2]); // Used for undefined characters
 
-    let gl = renderer.gl;
-    let vertexBuffer = renderer.createRenderBuffer(gl.ARRAY_BUFFER, new Float32Array(vertices));
-    let indexBuffer = renderer.createRenderBuffer(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices));
-
-    let vertexAttribs = [
-      new PrimitiveAttribute('POSITION', vertexBuffer, 2, gl.FLOAT, 8, 0),
-    ];
 
     let material = new SevenSegmentMaterial();
+    let vertexBuffer = new Uint8Array(new Float32Array(vertices));
+    let indexBuffer = new Uint16Array(indices);
 
-    let primitive = new Primitive(material, vertexAttribs, indices.length);
-    primitive.setIndexBuffer(indexBuffer);
+    let vertexAttribs = [
+      new PrimitiveAttribute('POSITION', vertexBuffer, 2, GL.FLOAT, 8, 0),
+    ];
+
+    let primitive = new Primitive(material, 
+      vertexAttribs, vertices.length / 2, indexBuffer,
+      {
+        attributesUsage: GL.DYNAMIC_DRAW,
+      });
 
     this._charPrimitives = {};
     for (let char in characters) {
-      let charDef = characters[char];
-      primitive.elementCount = charDef.count;
-      primitive.indexByteOffset = charDef.offset;
-      this._charPrimitives[char] = renderer.createRenderPrimitive(primitive);
+      // TODO:
+      // let charDef = characters[char];
+      // primitive.elementCount = charDef.count;
+      // primitive.indexByteOffset = charDef.offset;
+      this._charPrimitives[char] = primitive;
     }
 
     this.text = this._text;

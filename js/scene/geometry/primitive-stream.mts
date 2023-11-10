@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { VertexBuffer, Primitive, PrimitiveAttribute } from './primitive.mjs';
+import { Primitive, PrimitiveAttribute } from './primitive.mjs';
 import { Material } from '../material.mjs';
 import { mat3, vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
@@ -178,17 +178,16 @@ export class PrimitiveStream {
       throw new Error(`Attempted to call finishPrimitive() before creating any geometry.`);
     }
 
-    let vertexBuffer = new VertexBuffer(GL.ARRAY_BUFFER, new Float32Array(this._vertices));
-    let indexBuffer = new VertexBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(this._indices));
-
+    let vertexBuffer = new Uint8Array(new Float32Array(this._vertices));
     let attribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 32, 0),
       new PrimitiveAttribute('TEXCOORD_0', vertexBuffer, 2, GL.FLOAT, 32, 12),
       new PrimitiveAttribute('NORMAL', vertexBuffer, 3, GL.FLOAT, 32, 20),
     ];
+    let indexBuffer = new Uint16Array(this._indices);
 
-    let primitive = new Primitive(material, attribs, this._indices.length);
-    primitive.setIndexBuffer(indexBuffer);
+    let primitive = new Primitive(material,
+      attribs, this._vertices.length / 8, indexBuffer);
     primitive.bb = this._bb
 
     return primitive;

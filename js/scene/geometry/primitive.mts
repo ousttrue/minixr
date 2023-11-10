@@ -41,17 +41,11 @@ export const ATTRIB_MASK: { [key: string]: number } = {
   COLOR_0: 0x0020,
 };
 
-export class VertexBuffer {
-  constructor(
-    public readonly target: number,
-    public readonly data: Uint8Array,
-    public readonly usage = GL.STATIC_DRAW) { }
-}
-
 export class PrimitiveAttribute {
   constructor(
     public readonly name: string,
-    public readonly buffer: VertexBuffer,
+    /** may sharing from multi PrimitiveAttributes */
+    public readonly buffer: Uint8Array,
     public readonly componentCount: number = 3,
     public readonly componentType: number = GL.FLOAT,
     public readonly stride: number = 0,
@@ -69,20 +63,20 @@ export function getAttributeMask(attributes: PrimitiveAttribute[]): number {
 }
 
 export class Primitive {
-  indexBuffer: VertexBuffer | null = null;
-  indexByteOffset: number = 0;
-  indexType: number = 0;
   bb = new BoundingBox();
   constructor(
     public material: Material,
-    public attributes: PrimitiveAttribute[] = [],
-    public elementCount = 0,
-    public mode = 4) {
-  }
-
-  setIndexBuffer(indexBuffer: VertexBuffer, byteOffset = 0, indexType = GL.UNSIGNED_SHORT) {
-    this.indexBuffer = indexBuffer;
-    this.indexByteOffset = byteOffset;
-    this.indexType = indexType;
+    public attributes: PrimitiveAttribute[],
+    public vertexCount: number,
+    public indices?: Uint8Array | Uint16Array | Uint32Array,
+    public options?: {
+      /** GL.TRIANGLES */
+      mode?: number,
+      /** GL.STATIC_DRAW */
+      attributesUsage?: number,
+      /** GL.STATIC_DRAW */
+      indicesUsage?: number,
+    }
+  ) {
   }
 }

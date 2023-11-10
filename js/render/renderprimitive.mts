@@ -1,210 +1,94 @@
-import { ATTRIB, ATTRIB_MASK, VertexBuffer, PrimitiveAttribute, Primitive } from '../scene/geometry/primitive.mjs';
-import { vec3, BoundingBox } from '../math/gl-matrix.mjs';
+import { ATTRIB, ATTRIB_MASK, PrimitiveAttribute, Primitive } from '../scene/geometry/primitive.mjs';
 import { RenderMaterial } from './rendermaterial.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
 
-export class RenderBuffer {
-  private _target: any;
-  private _usage: any;
+class RenderBuffer {
+  buffer: WebGLBuffer;
   private _length: number;
-  private _buffer: any;
-  private _promise: Promise<Awaited<this>>;
-  constructor(private readonly _gl: WebGL2RenderingContex,
-    target, usage, buffer, length = 0) {
-    this._target = target;
-    this._usage = usage;
-    this._length = length;
-    if (buffer instanceof Promise) {
-      this._buffer = null;
-      this._promise = buffer.then((buffer) => {
-        this._buffer = buffer;
-        return this;
-      });
+  constructor(gl: WebGL2RenderingContext,
+    public readonly target: number, src: Uint8Array,
+    public readonly usage: number = GL.STATIC_DRAW) {
+    this.buffer = gl.createBuffer()!;
+    this.bind(gl);
+    gl.bufferData(this.target, src, this.usage);
+    this.unbind(gl);
+    this._length = src.byteLength;
+  }
+
+  updateRenderBuffer(gl: WebGL2RenderingContext, data: ArrayBuffer, offset = 0) {
+    this.bind(gl);
+    if (offset == 0 && this._length == data.byteLength) {
+      gl.bufferData(this.target, data, this.usage);
     } else {
-      this._buffer = buffer;
-      this._promise = Promise.resolve(this);
+      gl.bufferSubData(this.target, offset, data);
     }
+    this.unbind(gl);
   }
 
-  waitForComplete() {
-    return this._promise;
+  bind(gl: WebGL2RenderingContext) {
+    gl.bindBuffer(this.target, this.buffer);
   }
-
-  updateRenderBuffer(data: ArrayBuffer, offset = 0) {
-    if (this._buffer) {
-      let gl = this._gl;
-      gl.bindBuffer(this._target, this._buffer);
-      if (offset == 0 && this._length == data.byteLength) {
-        gl.bufferData(this._target, data, this._usage);
-      } else {
-        gl.bufferSubData(this._target, offset, data);
-      }
-    } else {
-      this.waitForComplete().then((_) => {
-        this.updateRenderBuffer(data, offset);
-      });
-    }
-  }
-}
-
-
-class RenderPrimitiveAttribute {
-  _attrib_index: number;
-  _componentCount: number;
-  _componentType: number;
-  _stride: number;
-  _byteOffset: number;
-  _normalized: boolean;
-  constructor(primitiveAttribute: PrimitiveAttribute) {
-    this._attrib_index = ATTRIB[primitiveAttribute.name];
-    this._componentCount = primitiveAttribute.componentCount;
-    this._componentType = primitiveAttribute.componentType;
-    this._stride = primitiveAttribute.stride;
-    this._byteOffset = primitiveAttribute.byteOffset;
-    this._normalized = primitiveAttribute.normalized;
-  }
-}
-
-
-class RenderPrimitiveAttributeBuffer {
-  _attributes: RenderPrimitiveAttribute[];
-  constructor(
-    public readonly _buffer: RenderBuffer) {
-    this._attributes = [];
+  unbind(gl: WebGL2RenderingContext) {
+    gl.bindBuffer(this.target, null);
   }
 }
 
 
 export class Vao {
-  _activeFrameId: number;
-  _instances: Node[];
-  private _mode: any;
-  private _elementCount: any;
-  private _promise: null;
-  private _vao: null;
-  private _complete: boolean;
-  private _attributeBuffers: RenderPrimitiveAttributeBuffer[];
-  private _bb = new BoundingBox();
+  private _vao: WebGLVertexArrayObject;
+  private _attributes: PrimitiveAttribute[] = [];
+  private _buffers: RenderBuffer[] = [];
   private _indexBuffer: RenderBuffer | null = null;
-  private _indexByteOffset = 0;
-  private _indexType = 0;
+  private _indexType: number = 0;
+  private _indexOffset: number = 0;
+  private _mode: number = GL.TRIANGLES;
+  private _drawCount: number = 0;
 
   constructor(
-    private readonly _gl: WebGL2RenderingContext,
+    gl: WebGL2RenderingContext,
     primitive: Primitive,
     public readonly material: RenderMaterial,
     private _attributeMask: number) {
-    this._activeFrameId = 0;
-    this._instances = [];
 
-    this._mode = primitive.mode;
-    this._elementCount = primitive.elementCount;
-    this._promise = null;
-    this._vao = null;
-    this._complete = false;
-    this._attributeBuffers = [];
-
+    // VBO
     for (let attribute of primitive.attributes) {
-      let renderAttribute = new RenderPrimitiveAttribute(attribute);
-      let foundBuffer = false;
-      const buffer = this._createRenderBuffer(attribute.buffer);
-      for (let attributeBuffer of this._attributeBuffers) {
-        if (attributeBuffer._buffer == buffer) {
-          attributeBuffer._attributes.push(renderAttribute);
-          foundBuffer = true;
-          break;
-        }
-      }
-      if (!foundBuffer) {
-        let attributeBuffer = new RenderPrimitiveAttributeBuffer(buffer);
-        attributeBuffer._attributes.push(renderAttribute);
-        this._attributeBuffers.push(attributeBuffer);
-      }
+      this._attributes.push(attribute);
+      const buffer = new RenderBuffer(gl, GL.ARRAY_BUFFER,
+        attribute.buffer,
+        primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
+      this._buffers.push(buffer);
     }
 
-    if (primitive.indexBuffer) {
-      this._indexBuffer = this._createRenderBuffer(primitive.indexBuffer);
-      this._indexByteOffset = primitive.indexByteOffset;
-      this._indexType = primitive.indexType;
-    }
-
-    this._bb = primitive.bb.copy();
-
-    this._promise = null;
-    this._complete = false;
-
-    this.waitForComplete(); // To flip the _complete flag.
-  }
-
-  _createRenderBuffer(buffer: VertexBuffer) {
-    let gl = this._gl;
-    let glBuffer = gl.createBuffer();
-
-    if (buffer.data instanceof Promise) {
-      throw new Error("invalid promise");
-      let renderBuffer = new RenderBuffer(gl, buffer.target, buffer.usage, buffer.data.then((data) => {
-        gl.bindBuffer(buffer.target, glBuffer);
-        gl.bufferData(buffer.target, data, buffer.usage);
-        renderBuffer._length = data.byteLength;
-        return glBuffer;
-      }));
-      return renderBuffer;
-    } else {
-      console.log(buffer.data);
-      gl.bindBuffer(buffer.target, glBuffer);
-      gl.bufferData(buffer.target, buffer.data, buffer.usage);
-      return new RenderBuffer(gl, buffer.target, buffer.usage, glBuffer, buffer.data.byteLength);
-    }
-  }
-
-  markActive(frameId: number) {
-    if (this._complete && this._activeFrameId != frameId) {
-      if (this.material) {
-        if (!this.material.markActive(frameId)) {
-          return;
-        }
+    // IBO
+    if (primitive.indices) {
+      this._indexBuffer = new RenderBuffer(gl, GL.ELEMENT_ARRAY_BUFFER,
+        new Uint8Array(primitive.indices),
+        primitive.options?.indicesUsage ?? GL.STATIC_DRAW);
+      if (primitive.indices instanceof Uint16Array) {
+        this._indexType = GL.UNSIGNED_SHORT;
       }
-      this._activeFrameId = frameId;
+      else if (primitive.indices instanceof Uint8Array) {
+        this._indexType = GL.UNSIGNED_BYTE;
+      }
+      else if (primitive.indices instanceof Uint32Array) {
+        this._indexType = GL.UNSIGNED_INT;
+      }
+      else {
+        throw new Error("unknown");
+      }
+      this._drawCount = primitive.indices.length;
     }
-  }
-
-  get samplers() {
-    return this.material._samplerDictionary;
-  }
-
-  get uniforms() {
-    return this.material._uniform_dictionary;
-  }
-
-  waitForComplete() {
-    if (!this._promise) {
-      if (!this.material) {
-        return Promise.reject('RenderPrimitive does not have a material');
-      }
-
-      let completionPromises = [];
-
-      for (let attributeBuffer of this._attributeBuffers) {
-        if (!attributeBuffer._buffer._buffer) {
-          completionPromises.push(attributeBuffer._buffer._promise);
-        }
-      }
-
-      if (this._indexBuffer && !this._indexBuffer._buffer) {
-        completionPromises.push(this._indexBuffer._promise);
-      }
-
-      this._promise = Promise.all(completionPromises).then(() => {
-        this._complete = true;
-        return this;
-      });
+    else {
+      this._drawCount = primitive.vertexCount;
     }
-    return this._promise;
-  }
+    this._mode = primitive.options?.mode ?? GL.TRIANGLES;
 
-  bindPrimitive(gl: WebGL2RenderingContext) {
+    // VAO
+    this._vao = gl.createVertexArray()!;
+    gl.bindVertexArray(this._vao);
+
     // If the active attributes have changed then update the active set.
     for (let attrib in ATTRIB) {
       if (this._attributeMask & ATTRIB_MASK[attrib]) {
@@ -216,7 +100,7 @@ export class Vao {
 
     // Bind the primitive attributes and indices.
     for (let attributeBuffer of this._attributeBuffers) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer._buffer._buffer);
+      attributeBuffer._buffer.bind(gl);
       for (let attrib of attributeBuffer._attributes) {
         gl.vertexAttribPointer(
           attrib._attrib_index, attrib._componentCount, attrib._componentType,
@@ -225,9 +109,26 @@ export class Vao {
     }
 
     if (this._indexBuffer) {
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer._buffer);
-    } else {
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+      this._indexBuffer.bind(gl);
     }
+
+    gl.bindVertexArray(null);
+    gl.bindBuffer(GL.ARRAY_BUFFER, null);
+    gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+  }
+
+  draw(gl: WebGL2RenderingContext) {
+    gl.bindVertexArray(this._vao);
+
+    if (this._indexBuffer) {
+      gl.drawElements(GL.TRIANGLES, this._drawCount,
+        this._indexType, this._indexOffset);
+    } else {
+      gl.drawArrays(GL.TRIANGLES, 0, this._drawCount);
+    }
+
+    gl.getError();
+
+    gl.bindVertexArray(null);
   }
 }

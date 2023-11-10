@@ -22,10 +22,11 @@
 Node for displaying 2D or stereo videos on a quad.
 */
 
-import {Material} from '../core/material.mjs';
-import {Primitive, PrimitiveAttribute} from '../core/primitive.mjs';
-import {Node} from '../core/node.mjs';
-import {VideoTexture} from '../core/texture.mjs';
+import { Material } from '../material.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Node } from '../node.mjs';
+import { VideoTexture } from '../../render/texture.mjs';
+import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -36,8 +37,8 @@ class VideoMaterial extends Material {
     this.image = this.defineSampler('diffuse');
 
     this.texCoordScaleOffset = this.defineUniform('texCoordScaleOffset',
-                                                      [1.0, 1.0, 0.0, 0.0,
-                                                       1.0, 1.0, 0.0, 0.0], 4);
+      [1.0, 1.0, 0.0, 0.0,
+        1.0, 1.0, 0.0, 0.0], 4);
   }
 
   get materialName() {
@@ -72,6 +73,9 @@ class VideoMaterial extends Material {
 }
 
 export class VideoNode extends Node {
+  private _video: any;
+  private _displayMode: any;
+  private _video_texture: VideoTexture;
   constructor(options) {
     super();
 
@@ -97,29 +101,29 @@ export class VideoNode extends Node {
     return width / height;
   }
 
-  onRendererChanged(renderer) {
+  onRendererChanged() {
     let material = new VideoMaterial();
     material.image.texture = this._video_texture;
 
     switch (this._displayMode) {
       case 'mono':
         material.texCoordScaleOffset.value = [1.0, 1.0, 0.0, 0.0,
-                                                 1.0, 1.0, 0.0, 0.0];
+          1.0, 1.0, 0.0, 0.0];
         break;
       case 'stereoTopBottom':
         material.texCoordScaleOffset.value = [1.0, 0.5, 0.0, 0.0,
-                                                 1.0, 0.5, 0.0, 0.5];
+          1.0, 0.5, 0.0, 0.5];
         break;
       case 'stereoLeftRight':
         material.texCoordScaleOffset.value = [0.5, 1.0, 0.0, 0.0,
-                                                 0.5, 1.0, 0.5, 0.0];
+          0.5, 1.0, 0.5, 0.0];
         break;
     }
 
     let vertices = [
       -1.0, 1.0, 0.0, 0.0, 0.0,
-       1.0, 1.0, 0.0, 1.0, 0.0,
-       1.0, -1.0, 0.0, 1.0, 1.0,
+      1.0, 1.0, 0.0, 1.0, 0.0,
+      1.0, -1.0, 0.0, 1.0, 1.0,
       -1.0, -1.0, 0.0, 0.0, 1.0,
     ];
     let indices = [
@@ -127,19 +131,16 @@ export class VideoNode extends Node {
       0, 3, 2,
     ];
 
-    let vertexBuffer = renderer.createRenderBuffer(GL.ARRAY_BUFFER, new Float32Array(vertices));
-    let indexBuffer = renderer.createRenderBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices));
-
+    let vertexBuffer = new Uint8Array(new Float32Array(vertices));
+    let indexBuffer = new Uint16Array(indices);
     let attribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 20, 0),
       new PrimitiveAttribute('TEXCOORD_0', vertexBuffer, 2, GL.FLOAT, 20, 12),
     ];
-
-    let primitive = new Primitive(material, attribs, indices.length);
-    primitive.setIndexBuffer(indexBuffer);
-    primitive.setBounds([-1.0, -1.0, 0.0], [1.0, 1.0, 0.015]);
-
-    let renderPrimitive = renderer.createRenderPrimitive(primitive);
-    this.addRenderPrimitive(renderPrimitive);
+    let primitive = new Primitive(material, attribs, vertices.length / 5, indexBuffer);
+    primitive.bb = new BoundingBox(
+      vec3.fromValues(-1.0, -1.0, 0.00),
+      vec3.fromValues(1.0, 1.0, 0.015));
+    this.primitives.push(primitive);
   }
 }
