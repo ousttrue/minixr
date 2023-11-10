@@ -21,12 +21,10 @@
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 import { Node } from '../scene/node.mjs';
 import { Primitive, getAttributeMask } from '../scene/geometry/primitive.mjs';
-import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../scene/material.mjs';
 import { Vao } from './renderprimitive.mjs';
 import { RenderView } from './renderview.mjs';
 import { Program } from './program.mjs';
 import { RenderMaterial, MaterialFactory } from './rendermaterial.mjs';
-
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -59,67 +57,50 @@ export function createWebGLContext(glAttribs: any): RenderingContext | null {
   return context;
 }
 
-const inverseMatrix = new mat4();
 
-
-export class Renderer {
-  private _gl: WebGL2RenderingContext;
-  private _frameId: number;
-  private _renderPrimitives: any[];
-  private _cameraPositions: vec3[];
-  private _depthMaskNeedsReset: boolean;
-  private _colorMaskNeedsReset: boolean;
-  private _globalLightColor = new vec3();
-  private _globalLightDir = new vec3();
-
-  private _materialFactory: MaterialFactory;
-
-  private _primVaoMap: Map<Primitive, Vao> = new Map();
-
-  constructor(gl: RenderingContext | null, multiview?) {
-    this._gl = gl || createWebGLContext();
-    this._materialFactory = new MaterialFactory(this._gl, multiview);
-    this._frameId = 0;
-    this._renderPrimitives = Array(RENDER_ORDER.DEFAULT);
-    this._cameraPositions = [];
-
-
-    this._depthMaskNeedsReset = false;
-    this._colorMaskNeedsReset = false;
-
-    this.globalLightColor = DEF_LIGHT_COLOR.copy();
-    this.globalLightDir = DEF_LIGHT_DIR.copy();
-  }
-
-  get gl() {
-    return this._gl;
-  }
-
+class Lighting {
+  private _globalLightColor = DEF_LIGHT_COLOR.copy();
   set globalLightColor(value: vec3) {
     value.copy({ out: this._globalLightColor });
   }
-
   get globalLightColor() {
     return this._globalLightColor;
   }
 
+  private _globalLightDir = DEF_LIGHT_DIR.copy();
   set globalLightDir(value: vec3) {
     value.copy({ out: this._globalLightDir });
   }
-
   get globalLightDir() {
     return this._globalLightDir;
   }
+}
 
-  _createRenderPrimitive(primitive: Primitive): Vao {
-    const attributeMask = getAttributeMask(primitive.attributes);
-    const program = this._materialFactory.getMaterialProgram(primitive.material, attributeMask);
-    const renderMaterial = this._materialFactory.createMaterial(primitive.material, program);
-    const vao = new Vao(this._gl, primitive, renderMaterial, attributeMask);
-    if (!this._renderPrimitives[renderMaterial._renderOrder]) {
-      this._renderPrimitives[renderMaterial._renderOrder] = [];
+
+export class Renderer {
+  private _cameraPositions: vec3[];
+  private _lighting = new Lighting();
+  private _materialFactory: MaterialFactory;
+  private _primVaoMap: Map<Primitive, Vao> = new Map();
+
+  constructor(
+    private readonly _gl: WebGL2RenderingContext,
+    private _multiview = false) {
+    this._materialFactory = new MaterialFactory(this._gl, _multiview);
+    this._cameraPositions = [];
+  }
+
+  private _getOrCreatePrimtive(prim: Primitive) {
+    let vao = this._primVaoMap.get(prim);
+    if (vao) {
+      return vao;
     }
-    this._renderPrimitives[renderMaterial._renderOrder].push(vao);
+
+    const attributeMask = getAttributeMask(prim.attributes);
+    const program = this._materialFactory.getMaterialProgram(prim.material, attributeMask);
+    const renderMaterial = this._materialFactory.createMaterial(prim.material, program);
+    vao = new Vao(this._gl, prim, renderMaterial, attributeMask);
+    this._primVaoMap.set(prim, vao);
     return vao;
   }
 
@@ -127,9 +108,6 @@ export class Renderer {
     if (!rootNode) {
       return;
     }
-
-    let gl = this._gl;
-    this._frameId++;
 
     // If there's only one view then flip the algorithm a bit so that we're only
     // setting the viewport once.
@@ -146,146 +124,114 @@ export class Renderer {
       else {
         views[i].viewMatrix.getTranslation({ out: this._cameraPositions[i] });
       }
-
-      /*mat4.invert(inverseMatrix, views[i].viewMatrix);
-      let cameraPosition = this._cameraPositions[i];
-      vec3.set(cameraPosition, 0, 0, 0);
-      vec3.transformMat4(cameraPosition, cameraPosition, inverseMatrix);*/
     }
 
-    // Draw each set of render primitives in order
-    // for (let renderPrimitives of this._renderPrimitives) {
-    //   if (renderPrimitives && renderPrimitives.length) {
-    //     this._drawRenderPrimitiveSet(views, renderPrimitives);
-    //   }
-    // }
-    this.drawNode(views, rootNode);
-    gl.bindVertexArray(null);
-
-    if (this._depthMaskNeedsReset) {
-      gl.depthMask(true);
-    }
-    if (this._colorMaskNeedsReset) {
-      gl.colorMask(true, true, true, true);
-    }
+    // Draw node redursive
+    this._drawNode(views, rootNode);
   }
 
-  _getOrCreatePrimtive(prim: Primitive) {
-    let vao = this._primVaoMap.get(prim);
-    if (vao) {
-      return vao;
-    }
-
-    vao = this._createRenderPrimitive(prim);
-    this._primVaoMap.set(prim, vao);
-    return vao;
-  }
-
-  drawNode(views: RenderView[], node: Node) {
+  private _drawNode(views: RenderView[], node: Node) {
     for (let prim of node.primitives) {
       const vao = this._getOrCreatePrimtive(prim);
       this._drawRenderPrimitiveSet(views, vao, node.worldMatrix)
     }
 
     for (let child of node.children) {
-      this.drawNode(views, child);
+      this._drawNode(views, child);
     }
   }
 
-  _drawRenderPrimitiveSet(views: RenderView[], vao: Vao, worldMatrix: mat4) {
+  private _drawRenderPrimitiveSet(views: RenderView[], vao: Vao, worldMatrix: mat4) {
     let gl = this._gl;
     let program: Program | null = null;
     let material: RenderMaterial | undefined = undefined;
 
     // Loop through every primitive known to the renderer.
-    // for (let vao of vaoList) 
-    {
-      // Skip over those that haven't been marked as active for this frame.
-      // if (vao._activeFrameId != this._frameId) {
-      //   continue;
-      // }
+    // Bind the primitive material's program if it's different than the one we
+    // were using for the previous primitive.
+    // TODO: The ording of this could be more efficient.
+    if (program != vao.material.program) {
+      program = vao.material.program;
+      program.use();
 
-      // Bind the primitive material's program if it's different than the one we
-      // were using for the previous primitive.
-      // TODO: The ording of this could be more efficient.
-      if (program != vao.material.program) {
-        program = vao.material.program;
-        program.use();
-
-        if (program.uniform.LIGHT_DIRECTION) {
-          gl.uniform3fv(program.uniform.LIGHT_DIRECTION, this._globalLightDir.array);
-        }
-
-        if (program.uniform.LIGHT_COLOR) {
-          gl.uniform3fv(program.uniform.LIGHT_COLOR, this._globalLightColor.array);
-        }
-
-        if (views.length == 1) {
-          if (!this._multiview) {
-            gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false,
-              views[0].projectionMatrix.array);
-            gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false,
-              views[0].viewMatrix.array);
-            gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0].array);
-            gl.uniform1i(program.uniform.EYE_INDEX, views[0].eyeIndex);
-          } else {
-            let vp = views[0].viewport;
-            gl.viewport(vp.x, vp.y, vp.width, vp.height);
-            gl.uniformMatrix4fv(program.uniform.LEFT_PROJECTION_MATRIX, false, views[0].projectionMatrix);
-            gl.uniformMatrix4fv(program.uniform.LEFT_VIEW_MATRIX, false, views[0].viewMatrix);
-            gl.uniformMatrix4fv(program.uniform.RIGHT_PROJECTION_MATRIX, false, views[0].projectionMatrix);
-            gl.uniformMatrix4fv(program.uniform.RIGHT_VIEW_MATRIX, false, views[0].viewMatrix);
-            gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0]);
-            gl.uniform1i(program.uniform.EYE_INDEX, views[0].eyeIndex);
-          }
-        }
+      if (program.uniform.LIGHT_DIRECTION) {
+        gl.uniform3fv(program.uniform.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
       }
 
-      if (material != vao.material) {
-        this._materialFactory.bindMaterialState(vao.material, material);
-        vao.material.bind(gl);
-        material = vao.material;
+      if (program.uniform.LIGHT_COLOR) {
+        gl.uniform3fv(program.uniform.LIGHT_COLOR, this._lighting.globalLightColor.array);
       }
 
-      for (let i = 0; i < views.length; ++i) {
-        let view = views[i];
-        if (views.length > 1) {
-          if (view.viewport) {
-            let vp = view.viewport;
+      if (views.length == 1) {
+        if (!this._multiview) {
+          gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false,
+            views[0].projectionMatrix.array);
+          gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false,
+            views[0].viewMatrix.array);
+          gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0].array);
+          gl.uniform1i(program.uniform.EYE_INDEX, views[0].eyeIndex);
+        } else {
+          let vp = views[0].viewport;
+          if (vp) {
             gl.viewport(vp.x, vp.y, vp.width, vp.height);
           }
-          if (this._multiview) {
-            if (i == 0) {
-              gl.uniformMatrix4fv(program.uniform.LEFT_PROJECTION_MATRIX, false, views[0].projectionMatrix);
-              gl.uniformMatrix4fv(program.uniform.LEFT_VIEW_MATRIX, false, views[0].viewMatrix);
-              gl.uniformMatrix4fv(program.uniform.RIGHT_PROJECTION_MATRIX, false, views[1].projectionMatrix);
-              gl.uniformMatrix4fv(program.uniform.RIGHT_VIEW_MATRIX, false, views[1].viewMatrix);
-            }
-            // TODO(AB): modify shaders which use CAMERA_POSITION and EYE_INDEX to work with Multiview
-            gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[i]);
-            gl.uniform1i(program.uniform.EYE_INDEX, view.eyeIndex);
-          } else {
-            gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false, view.projectionMatrix);
-            gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false, view.viewMatrix);
-            gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[i]);
-            gl.uniform1i(program.uniform.EYE_INDEX, view.eyeIndex);
-          }
+          gl.uniformMatrix4fv(program.uniform.LEFT_PROJECTION_MATRIX,
+            false, views[0].projectionMatrix.array);
+          gl.uniformMatrix4fv(program.uniform.LEFT_VIEW_MATRIX,
+            false, views[0].viewMatrix.array);
+          gl.uniformMatrix4fv(program.uniform.RIGHT_PROJECTION_MATRIX,
+            false, views[0].projectionMatrix.array);
+          gl.uniformMatrix4fv(program.uniform.RIGHT_VIEW_MATRIX,
+            false, views[0].viewMatrix.array);
+          gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[0].array);
+          gl.uniform1i(program.uniform.EYE_INDEX, views[0].eyeIndex);
         }
+      }
+    }
 
-        // for (let instance of vao._instances) 
-        {
-          // if (instance._activeFrameId != this._frameId) {
-          //   continue;
-          // }
+    if (material != vao.material) {
+      this._materialFactory.bindMaterialState(vao.material, material);
+      vao.material.bind(gl);
+      material = vao.material;
+    }
 
-          gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false,
-            worldMatrix.array);
-
-          vao.draw(gl);
+    for (let i = 0; i < views.length; ++i) {
+      let view = views[i];
+      if (views.length > 1) {
+        if (view.viewport) {
+          let vp = view.viewport;
+          gl.viewport(vp.x, vp.y, vp.width, vp.height);
         }
         if (this._multiview) {
-          break;
+          if (i == 0) {
+            gl.uniformMatrix4fv(program.uniform.LEFT_PROJECTION_MATRIX,
+              false, views[0].projectionMatrix.array);
+            gl.uniformMatrix4fv(program.uniform.LEFT_VIEW_MATRIX,
+              false, views[0].viewMatrix.array);
+            gl.uniformMatrix4fv(program.uniform.RIGHT_PROJECTION_MATRIX,
+              false, views[1].projectionMatrix.array);
+            gl.uniformMatrix4fv(program.uniform.RIGHT_VIEW_MATRIX,
+              false, views[1].viewMatrix.array);
+          }
+          // TODO(AB): modify shaders which use CAMERA_POSITION and EYE_INDEX to work with Multiview
+          gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[i].array);
+          gl.uniform1i(program.uniform.EYE_INDEX, view.eyeIndex);
+        } else {
+          gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX,
+            false, view.projectionMatrix.array);
+          gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX,
+            false, view.viewMatrix.array);
+          gl.uniform3fv(program.uniform.CAMERA_POSITION, this._cameraPositions[i].array);
+          gl.uniform1i(program.uniform.EYE_INDEX, view.eyeIndex);
         }
+      }
+
+      gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false,
+        worldMatrix.array);
+
+      vao.draw(gl);
+      if (this._multiview) {
+        break;
       }
     }
   }
