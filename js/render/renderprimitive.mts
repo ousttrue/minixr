@@ -81,7 +81,6 @@ export class Vao {
       this._vao = gl.createVertexArray()!;
       gl.bindVertexArray(this._vao);
 
-      // If the active attributes have changed then update the active set.
       for (let attrib in ATTRIB) {
         if (this._attributeMask & ATTRIB_MASK[attrib]) {
           gl.enableVertexAttribArray(ATTRIB[attrib]);
@@ -91,10 +90,15 @@ export class Vao {
       }
 
       // VBO
+      const bufferMap: Map<DataView, RenderBuffer> = new Map();
       for (let attrib of primitive.attributes) {
-        const buffer = new RenderBuffer(gl, GL.ARRAY_BUFFER,
-          attrib.buffer,
-          primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
+        let buffer = bufferMap.get(attrib.buffer);
+        if (!buffer) {
+          buffer = new RenderBuffer(gl, GL.ARRAY_BUFFER,
+            attrib.buffer,
+            primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
+          bufferMap.set(attrib.buffer, buffer);
+        }
         this._buffers.push(buffer);
         buffer.bind(gl);
         gl.vertexAttribPointer(
@@ -102,10 +106,12 @@ export class Vao {
           attrib.normalized, attrib.stride, attrib.byteOffset);
       }
 
+      // IBO
       if (this._indexBuffer) {
         this._indexBuffer.bind(gl);
       }
 
+      // clear
       gl.bindVertexArray(null);
       gl.bindBuffer(GL.ARRAY_BUFFER, null);
       gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
@@ -116,10 +122,10 @@ export class Vao {
     gl.bindVertexArray(this._vao);
 
     if (this._indexBuffer) {
-      gl.drawElements(GL.TRIANGLES, this._drawCount,
+      gl.drawElements(this._mode, this._drawCount,
         this._indexType, this._indexOffset);
     } else {
-      gl.drawArrays(GL.TRIANGLES, 0, this._drawCount);
+      gl.drawArrays(this._mode, 0, this._drawCount);
     }
 
     gl.getError();
