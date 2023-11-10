@@ -161,7 +161,7 @@ export class StatsViewer extends Node {
     addBGSquare(-0.45, fpsToY(60), 0.45, fpsToY(62), 0.015, 0.2, 0.0, 0.75);
 
     this._fpsVertexBuffer = new Float32Array(fpsVerts);
-    const fpsVertexBuffer = new Uint8Array(this._fpsVertexBuffer);
+    const fpsVertexBuffer = new DataView(this._fpsVertexBuffer.buffer);
     const fpsIndexBuffer = new Uint16Array(fpsIndices);
     const fpsAttribs = [
       new PrimitiveAttribute('POSITION', fpsVertexBuffer, 3, gl.FLOAT, 24, 0),

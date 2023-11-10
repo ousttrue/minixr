@@ -119,7 +119,7 @@ export class BoundsRenderer extends Node {
       indices.push(lastIndex, 0, lastIndex - 1);
     }
 
-    let vertexBuffer = new Uint8Array(new Float32Array(verts));
+    let vertexBuffer = new DataView(new Float32Array(verts).buffer);
     let indexBuffer = new Uint16Array(indices);
     let primitive = new Primitive(
       new BoundsMaterial(), [

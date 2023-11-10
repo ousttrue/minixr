@@ -389,7 +389,7 @@ export class InputRenderer extends Node {
     ];
 
     let laserMaterial = new LaserMaterial();
-    let laserVertexBuffer = new Uint8Array(new Float32Array(laserVerts));
+    let laserVertexBuffer = new DataView(new Float32Array(laserVerts).buffer);
     let laserAttribs = [
       new PrimitiveAttribute('POSITION', laserVertexBuffer, 3, GL.FLOAT, 20, 0),
       new PrimitiveAttribute('TEXCOORD_0', laserVertexBuffer, 2, GL.FLOAT, 20, 12),
@@ -448,7 +448,7 @@ export class InputRenderer extends Node {
 
     let cursorMaterial = new CursorMaterial();
     let cursorHiddenMaterial = new CursorHiddenMaterial();
-    let cursorVertexBuffer = new Uint8Array(new Float32Array(cursorVerts));
+    let cursorVertexBuffer = new DataView(new Float32Array(cursorVerts).buffer);
     let cursorIndexBuffer = new Uint16Array(cursorIndices);
     let cursorAttribs = [
       new PrimitiveAttribute('POSITION', cursorVertexBuffer, 4, GL.FLOAT, 16, 0),

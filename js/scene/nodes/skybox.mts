@@ -145,7 +145,7 @@ export class SkyboxNode extends Node {
       }
     }
 
-    let vertexBuffer = new Uint8Array(new Float32Array(vertices));
+    let vertexBuffer = new DataView(new Float32Array(vertices).buffer);
     let attribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 20, 0),
       new PrimitiveAttribute('TEXCOORD_0', vertexBuffer, 2, GL.FLOAT, 20, 12),

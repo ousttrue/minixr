@@ -45,7 +45,7 @@ export class PrimitiveAttribute {
   constructor(
     public readonly name: string,
     /** may sharing from multi PrimitiveAttributes */
-    public readonly buffer: Uint8Array,
+    public readonly buffer: DataView,
     public readonly componentCount: number = 3,
     public readonly componentType: number = GL.FLOAT,
     public readonly stride: number = 0,

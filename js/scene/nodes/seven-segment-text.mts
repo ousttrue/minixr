@@ -159,7 +159,7 @@ export class SevenSegmentText extends Node {
 
 
     let material = new SevenSegmentMaterial();
-    let vertexBuffer = new Uint8Array(new Float32Array(vertices));
+    let vertexBuffer = new DataView(new Float32Array(vertices).buffer);
     let indexBuffer = new Uint16Array(indices);
 
     let vertexAttribs = [

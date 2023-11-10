@@ -131,7 +131,7 @@ export class VideoNode extends Node {
       0, 3, 2,
     ];
 
-    let vertexBuffer = new Uint8Array(new Float32Array(vertices));
+    let vertexBuffer = new DataView(new Float32Array(vertices).buffer);
     let indexBuffer = new Uint16Array(indices);
     let attribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 20, 0),

@@ -178,7 +178,7 @@ export class PrimitiveStream {
       throw new Error(`Attempted to call finishPrimitive() before creating any geometry.`);
     }
 
-    let vertexBuffer = new Uint8Array(new Float32Array(this._vertices));
+    let vertexBuffer = new DataView(new Float32Array(this._vertices).buffer);
     let attribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 32, 0),
       new PrimitiveAttribute('TEXCOORD_0', vertexBuffer, 2, GL.FLOAT, 32, 12),

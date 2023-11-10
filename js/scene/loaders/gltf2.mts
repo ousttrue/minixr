@@ -267,7 +267,7 @@ export class Gltf2Loader {
             }
             const bufferView = bufferViews[bufferViewId];
             elementCount = accessor.count;
-            const bytes = await bufferView.bufferViewAsync()
+            const bytes = await bufferView.dataViewAsync()
 
             let glAttribute = new PrimitiveAttribute(
               name,
@@ -292,7 +292,7 @@ export class Gltf2Loader {
             let accessor = accessors[primitive.indices];
             if (accessor.bufferView) {
               let bufferView = bufferViews[accessor.bufferView];
-              const indexBytes = await bufferView.bufferViewAsync();
+              const indexBytes = await bufferView.bytesAsync();
               switch (accessor.componentType) {
                 case GL.UNSIGNED_BYTE:
                   indexBuffer = indexBytes.subarray(accessor.byteOffset ?? 0).subarray(0, accessor.count);
@@ -404,7 +404,7 @@ class Gltf2BufferView {
     this.byteStride = json.byteStride || 0;
   }
 
-  dataViewAsync(): Promise<Uint8Array> {
+  bytesAsync(): Promise<Uint8Array> {
     if (!this._viewPromise) {
       this._viewPromise = this.buffer.bytesAsync().then((data) => {
         if (data.byteLength < this.byteLength) {
@@ -416,9 +416,9 @@ class Gltf2BufferView {
     return this._viewPromise;
   }
 
-  async bufferViewAsync(): Promise<Uint8Array> {
-    const data = await this.dataViewAsync();
-    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  async dataViewAsync(): Promise<DataView> {
+    const data = await this.bytesAsync();
+    return new DataView(data.buffer, data.byteOffset, data.byteLength);
   }
 }
 
@@ -468,8 +468,8 @@ class Gltf2Resource {
       } else {
         this._texture.genDataKey();
         let view = bufferViews[this.json.bufferView];
-        const dataView = await view.dataViewAsync();
-        let blob = new Blob([dataView], { type: this.json.mimeType });
+        const bytes = await view.bytesAsync();
+        let blob = new Blob([bytes], { type: this.json.mimeType });
         img.src = window.URL.createObjectURL(blob);
       }
     }

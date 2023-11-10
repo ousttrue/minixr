@@ -8,11 +8,12 @@ class RenderBuffer {
   buffer: WebGLBuffer;
   private _length: number;
   constructor(gl: WebGL2RenderingContext,
-    public readonly target: number, src: Uint8Array,
+    public readonly target: number, src: DataView,
     public readonly usage: number = GL.STATIC_DRAW) {
     this.buffer = gl.createBuffer()!;
     this.bind(gl);
-    gl.bufferData(this.target, src, this.usage);
+    const bytes = new Uint8Array(src.buffer, src.byteOffset, src.byteLength);
+    gl.bufferData(this.target, bytes, this.usage);
     this.unbind(gl);
     this._length = src.byteLength;
   }
@@ -38,7 +39,6 @@ class RenderBuffer {
 
 export class Vao {
   private _vao: WebGLVertexArrayObject;
-  private _attributes: PrimitiveAttribute[] = [];
   private _buffers: RenderBuffer[] = [];
   private _indexBuffer: RenderBuffer | null = null;
   private _indexType: number = 0;
@@ -52,19 +52,10 @@ export class Vao {
     public readonly material: RenderMaterial,
     private _attributeMask: number) {
 
-    // VBO
-    for (let attribute of primitive.attributes) {
-      this._attributes.push(attribute);
-      const buffer = new RenderBuffer(gl, GL.ARRAY_BUFFER,
-        attribute.buffer,
-        primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
-      this._buffers.push(buffer);
-    }
-
     // IBO
     if (primitive.indices) {
       this._indexBuffer = new RenderBuffer(gl, GL.ELEMENT_ARRAY_BUFFER,
-        new Uint8Array(primitive.indices),
+        new DataView(primitive.indices.buffer, primitive.indices.byteOffset, primitive.indices.byteLength),
         primitive.options?.indicesUsage ?? GL.STATIC_DRAW);
       if (primitive.indices instanceof Uint16Array) {
         this._indexType = GL.UNSIGNED_SHORT;
@@ -86,35 +77,39 @@ export class Vao {
     this._mode = primitive.options?.mode ?? GL.TRIANGLES;
 
     // VAO
-    this._vao = gl.createVertexArray()!;
-    gl.bindVertexArray(this._vao);
+    {
+      this._vao = gl.createVertexArray()!;
+      gl.bindVertexArray(this._vao);
 
-    // If the active attributes have changed then update the active set.
-    for (let attrib in ATTRIB) {
-      if (this._attributeMask & ATTRIB_MASK[attrib]) {
-        gl.enableVertexAttribArray(ATTRIB[attrib]);
-      } else {
-        gl.disableVertexAttribArray(ATTRIB[attrib]);
+      // If the active attributes have changed then update the active set.
+      for (let attrib in ATTRIB) {
+        if (this._attributeMask & ATTRIB_MASK[attrib]) {
+          gl.enableVertexAttribArray(ATTRIB[attrib]);
+        } else {
+          gl.disableVertexAttribArray(ATTRIB[attrib]);
+        }
       }
-    }
 
-    // Bind the primitive attributes and indices.
-    for (let attributeBuffer of this._attributeBuffers) {
-      attributeBuffer._buffer.bind(gl);
-      for (let attrib of attributeBuffer._attributes) {
+      // VBO
+      for (let attrib of primitive.attributes) {
+        const buffer = new RenderBuffer(gl, GL.ARRAY_BUFFER,
+          attrib.buffer,
+          primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
+        this._buffers.push(buffer);
+        buffer.bind(gl);
         gl.vertexAttribPointer(
-          attrib._attrib_index, attrib._componentCount, attrib._componentType,
-          attrib._normalized, attrib._stride, attrib._byteOffset);
+          ATTRIB[attrib.name], attrib.componentCount, attrib.componentType,
+          attrib.normalized, attrib.stride, attrib.byteOffset);
       }
-    }
 
-    if (this._indexBuffer) {
-      this._indexBuffer.bind(gl);
-    }
+      if (this._indexBuffer) {
+        this._indexBuffer.bind(gl);
+      }
 
-    gl.bindVertexArray(null);
-    gl.bindBuffer(GL.ARRAY_BUFFER, null);
-    gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+      gl.bindVertexArray(null);
+      gl.bindBuffer(GL.ARRAY_BUFFER, null);
+      gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+    }
   }
 
   draw(gl: WebGL2RenderingContext) {
