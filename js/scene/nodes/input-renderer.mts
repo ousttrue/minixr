@@ -20,7 +20,7 @@
 
 import { Node } from '../node.mjs';
 import { Material, RENDER_ORDER } from '../material.mjs';
-import { Buffer, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { VertexBuffer, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { DataTexture } from '../../render/texture.mjs';
 import { Gltf2Node } from '../nodes/gltf2.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';
@@ -388,8 +388,8 @@ export class InputRenderer extends Node {
       12, 13, 14, 13, 15, 14,
     ];
 
-    let laserVertexBuffer = new Buffer(GL.ARRAY_BUFFER, new Float32Array(laserVerts));
-    let laserIndexBuffer = new Buffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(laserIndices));
+    let laserVertexBuffer = new VertexBuffer(GL.ARRAY_BUFFER, new Float32Array(laserVerts));
+    let laserIndexBuffer = new VertexBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(laserIndices));
 
     let laserIndexCount = laserIndices.length;
 
@@ -452,8 +452,8 @@ export class InputRenderer extends Node {
     cursorIndices.push(idx - 2, idx - 1, indexOffset);
     cursorIndices.push(idx - 1, indexOffset + 1, indexOffset);
 
-    let cursorVertexBuffer = new Buffer(GL.ARRAY_BUFFER, new Float32Array(cursorVerts));
-    let cursorIndexBuffer = new Buffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(cursorIndices));
+    let cursorVertexBuffer = new VertexBuffer(GL.ARRAY_BUFFER, new Float32Array(cursorVerts));
+    let cursorIndexBuffer = new VertexBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(cursorIndices));
 
     let cursorIndexCount = cursorIndices.length;
 

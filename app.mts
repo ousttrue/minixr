@@ -1,7 +1,7 @@
 import { Scene } from './js/scene/scene.mjs';
+import { WebWorkerLoader } from './js/scene/loaders/webworkerloader.js';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { RenderView } from './js/render/renderview.mjs';
-import { Gltf2Node } from './js/scene/nodes/gltf2.mjs';
 import { vec3, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Interaction } from './interaction.mjs';
 import Hand from './hand.mjs';
@@ -18,13 +18,16 @@ export default class App {
   leftHand: Hand;
   rightHand: Hand;
 
-  scene: Scene;
+  loader = new WebWorkerLoader();
+
+  scene = new Scene();
   gl: WebGL2RenderingContext;
   renderer: Renderer;
 
   constructor(session: XRSession) {
-    this.scene = new Scene();
-    this.scene.root.addNode(new Gltf2Node({ url: './assets/gltf/space/space.gltf' }));
+    this.loader.loadasync('./assets/gltf/space/space.gltf').then(node => {
+      this.scene.root.addNode(node);
+    });
 
     session.addEventListener('visibilitychange', e => {
       // remove hand controller while blurred

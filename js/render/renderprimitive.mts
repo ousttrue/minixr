@@ -1,4 +1,4 @@
-import { ATTRIB, ATTRIB_MASK, Buffer, PrimitiveAttribute, Primitive } from '../scene/geometry/primitive.mjs';
+import { ATTRIB, ATTRIB_MASK, VertexBuffer, PrimitiveAttribute, Primitive } from '../scene/geometry/primitive.mjs';
 import { vec3, BoundingBox } from '../math/gl-matrix.mjs';
 import { RenderMaterial } from './rendermaterial.mjs';
 
@@ -138,11 +138,12 @@ export class Vao {
     this.waitForComplete(); // To flip the _complete flag.
   }
 
-  _createRenderBuffer(buffer: Buffer) {
+  _createRenderBuffer(buffer: VertexBuffer) {
     let gl = this._gl;
     let glBuffer = gl.createBuffer();
 
     if (buffer.data instanceof Promise) {
+      throw new Error("invalid promise");
       let renderBuffer = new RenderBuffer(gl, buffer.target, buffer.usage, buffer.data.then((data) => {
         gl.bindBuffer(buffer.target, glBuffer);
         gl.bufferData(buffer.target, data, buffer.usage);
@@ -151,6 +152,7 @@ export class Vao {
       }));
       return renderBuffer;
     } else {
+      console.log(buffer.data);
       gl.bindBuffer(buffer.target, glBuffer);
       gl.bufferData(buffer.target, buffer.data, buffer.usage);
       return new RenderBuffer(gl, buffer.target, buffer.usage, glBuffer, buffer.data.byteLength);

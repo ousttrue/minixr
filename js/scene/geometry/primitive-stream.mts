@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Buffer, Primitive, PrimitiveAttribute } from './primitive.mjs';
+import { VertexBuffer, Primitive, PrimitiveAttribute } from './primitive.mjs';
 import { Material } from '../material.mjs';
 import { mat3, vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
@@ -178,8 +178,8 @@ export class PrimitiveStream {
       throw new Error(`Attempted to call finishPrimitive() before creating any geometry.`);
     }
 
-    let vertexBuffer = new Buffer(GL.ARRAY_BUFFER, new Float32Array(this._vertices));
-    let indexBuffer = new Buffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(this._indices));
+    let vertexBuffer = new VertexBuffer(GL.ARRAY_BUFFER, new Float32Array(this._vertices));
+    let indexBuffer = new VertexBuffer(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(this._indices));
 
     let attribs = [
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 32, 0),

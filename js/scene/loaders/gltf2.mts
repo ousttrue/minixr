@@ -20,7 +20,7 @@
 
 import { PbrMaterial } from '../pbr.mjs';
 import { Node } from '../../scene/node.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { VertexBuffer, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { ImageTexture, ColorTexture } from '../../render/texture.mjs';
 import { Renderer } from '../../render/renderer.mjs';
 import { vec3, quat, mat4, BoundingBox } from '../../math/gl-matrix.mjs';
@@ -67,25 +67,25 @@ function getComponentCount(type: string): number {
  */
 
 export class Gltf2Loader {
-  constructor(public renderer: Renderer) {
+  constructor() {
   }
 
-  async loadFromUrl(url: string) {
+  async loadFromUrl(url: string): Promise<Node> {
     const response = await fetch(url);
     let i = url.lastIndexOf('/');
     let baseUrl = (i !== 0) ? url.substring(0, i + 1) : '';
     if (url.endsWith('.gltf')) {
       const json = await response.json();
-      return this.loadFromJson(json, baseUrl);
+      return await this.loadFromJson(json, baseUrl);
     } else if (url.endsWith('.glb')) {
       const arrayBuffer = await response.arrayBuffer()
-      return this.loadFromBinary(arrayBuffer, baseUrl);
+      return await this.loadFromBinary(arrayBuffer, baseUrl);
     } else {
       throw new Error('Unrecognized file extension');
     }
   }
 
-  loadFromBinary(arrayBuffer: ArrayBuffer, baseUrl: string) {
+  async loadFromBinary(arrayBuffer: ArrayBuffer, baseUrl: string): Promise<Node> {
     let headerView = new DataView(arrayBuffer, 0, 12);
     let magic = headerView.getUint32(0, true);
     let version = headerView.getUint32(4, true);
@@ -99,13 +99,13 @@ export class Gltf2Loader {
       throw new Error('Incompatible version in binary header.');
     }
 
-    let chunks = {};
+    let chunks: { [key: string]: DataView } = {};
     let chunkOffset = 12;
     while (chunkOffset < length) {
       let chunkHeaderView = new DataView(arrayBuffer, chunkOffset, 8);
       let chunkLength = chunkHeaderView.getUint32(0, true);
       let chunkType = chunkHeaderView.getUint32(4, true);
-      chunks[chunkType] = arrayBuffer.slice(chunkOffset + 8, chunkOffset + 8 + chunkLength);
+      chunks[chunkType] = new DataView(arrayBuffer, chunkOffset + 8, chunkOffset + 8 + chunkLength);
       chunkOffset += chunkLength + 8;
     }
 
@@ -116,10 +116,10 @@ export class Gltf2Loader {
     let decoder = new TextDecoder('utf-8');
     let jsonString = decoder.decode(chunks[CHUNK_TYPE.JSON]);
     let json = JSON.parse(jsonString);
-    return this.loadFromJson(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
+    return await this.loadFromJson(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
   }
 
-  loadFromJson(json: GLTF2.GlTf, baseUrl: string, binaryChunk?: ArrayBuffer) {
+  async loadFromJson(json: GLTF2.GlTf, baseUrl: string, binaryChunk?: DataView): Promise<Node> {
     if (!json.asset) {
       throw new Error('Missing asset description.');
     }
@@ -130,8 +130,8 @@ export class Gltf2Loader {
 
     let buffers = [];
     if (binaryChunk) {
-      buffers[0] = new Gltf2Resource({ byteLength: binaryChunk.byteLength },
-        baseUrl, binaryChunk);
+      const gltfBuffer: GLTF2.Buffer = { byteLength: binaryChunk.byteLength };
+      buffers[0] = new Gltf2Resource(gltfBuffer, baseUrl, binaryChunk);
     } else if (json.buffers) {
       for (let buffer of json.buffers) {
         buffers.push(new Gltf2Resource(buffer, baseUrl));
@@ -221,7 +221,7 @@ export class Gltf2Loader {
       }
     }
 
-    let accessors = json.accessors;
+    let accessors: GLTF2.Accessor[] = json.accessors ?? [];
 
     let meshes: Gltf2Mesh[] = [];
     if (json.meshes) {
@@ -247,19 +247,24 @@ export class Gltf2Loader {
           let max = null;
 
           for (let name in primitive.attributes) {
-            let accessor = accessors[primitive.attributes[name]];
-            let bufferView = bufferViews[accessor.bufferView];
+            const accessor = accessors[primitive.attributes[name]];
+            const bufferViewId = accessor.bufferView;
+            if (bufferViewId == null) {
+              continue;
+            }
+            const bufferView = bufferViews[bufferViewId];
             elementCount = accessor.count;
+            const vertexBuffer = await bufferView.bufferViewAsync(GL.ARRAY_BUFFER)
 
             let glAttribute = new PrimitiveAttribute(
               name,
-              bufferView.renderBuffer(this.renderer, GL.ARRAY_BUFFER),
+              vertexBuffer,
               getComponentCount(accessor.type),
               accessor.componentType,
               bufferView.byteStride || 0,
-              accessor.byteOffset || 0
+              accessor.byteOffset || 0,
+              accessor.normalized || false
             );
-            glAttribute.normalized = accessor.normalized || false;
 
             if (name == 'POSITION') {
               min = accessor.min;
@@ -269,14 +274,17 @@ export class Gltf2Loader {
             attributes.push(glAttribute);
           }
 
-          let glPrimitive = new Primitive(material, attributes, elementCount, primitive.mode);
+          let glPrimitive = new Primitive(
+            material, attributes, elementCount, primitive.mode);
 
           if ('indices' in primitive) {
             let accessor = accessors[primitive.indices];
             let bufferView = bufferViews[accessor.bufferView];
+            const indexBuffer = await bufferView.bufferViewAsync(
+              GL.ELEMENT_ARRAY_BUFFER);
 
             glPrimitive.setIndexBuffer(
-              bufferView.renderBuffer(this.renderer, GL.ELEMENT_ARRAY_BUFFER),
+              indexBuffer,
               accessor.byteOffset || 0,
               accessor.componentType
             );
@@ -291,8 +299,7 @@ export class Gltf2Loader {
 
           // After all the attributes have been processed, get a program that is
           // appropriate for both the material and the primitive attributes.
-          glMesh.primitives.push(
-            this.renderer.createRenderPrimitive(glPrimitive));
+          glMesh.primitives.push(glPrimitive);
         }
       }
     }
@@ -318,7 +325,7 @@ export class Gltf2Loader {
     if ('mesh' in node) {
       let mesh = meshes[node.mesh];
       for (let primitive of mesh.primitives) {
-        glNode.addRenderPrimitive(primitive);
+        glNode.primitives.push(primitive);
       }
     }
 
@@ -350,7 +357,7 @@ export class Gltf2Loader {
 }
 
 class Gltf2Mesh {
-  primitives: never[] = [];
+  primitives: Primitive[] = [];
   constructor() {
   }
 }
@@ -358,66 +365,73 @@ class Gltf2Mesh {
 class Gltf2BufferView {
   buffer: Gltf2Resource;
   byteOffset: number;
-  byteLength: number | null;
-  byteStride: number | undefined;
-  private _viewPromise: null;
-  private _renderBuffer: null;
+  byteLength: number;
+  byteStride: number;
+  private _viewPromise: Promise<DataView> | null = null;
   constructor(json: GLTF2.BufferView, buffers: Gltf2Resource[]) {
     this.buffer = buffers[json.buffer];
+    this.byteLength = json.byteLength;
     this.byteOffset = json.byteOffset || 0;
-    this.byteLength = json.byteLength || null;
-    this.byteStride = json.byteStride;
-    this._viewPromise = null;
-    this._renderBuffer = null;
+    this.byteStride = json.byteStride || 0;
   }
 
-  dataView() {
+  dataViewAsync(): Promise<DataView> {
     if (!this._viewPromise) {
-      this._viewPromise = this.buffer.arrayBuffer().then((arrayBuffer) => {
-        return new DataView(arrayBuffer, this.byteOffset, this.byteLength);
+      this._viewPromise = this.buffer.dataViewAsync().then((data) => {
+        if (data.byteLength < this.byteLength) {
+          throw Error("not enugh byteLength");
+        }
+        return new DataView(data.buffer,
+          data.byteOffset + this.byteOffset, this.byteLength);
       });
     }
     return this._viewPromise;
   }
 
-  renderBuffer(renderer, target) {
-    if (!this._renderBuffer) {
-      this._renderBuffer = renderer.createRenderBuffer(target, this.dataView());
-    }
-    return this._renderBuffer;
+  async bufferViewAsync(target: number): Promise<VertexBuffer> {
+    const data = await this.dataViewAsync();
+    const view = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    return new VertexBuffer(target, view);
   }
 }
 
 class Gltf2Resource {
-  private _dataPromise: Promise<ArrayBuffer> | null = null;
+  private _dataPromise: Promise<DataView> | null = null;
   private _texture: ImageTexture | null = null;
-  constructor(public json: GLTF2.Buffer | GLTF2.Image, public baseUrl: string,
-    arrayBuffer?: ArrayBuffer) {
-    if (arrayBuffer) {
-      this._dataPromise = Promise.resolve(arrayBuffer);
+  constructor(public json: GLTF2.Buffer, public baseUrl: string,
+    data?: DataView) {
+    if (data) {
+      this._dataPromise = Promise.resolve(data);
     }
   }
 
-  arrayBuffer(): Promise<ArrayBuffer> {
-    if (!this._dataPromise) {
-      if (isDataUri(this.json.uri)) {
-        let base64String = this.json.uri.replace('data:application/octet-stream;base64,', '');
-        let binaryArray = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
-        this._dataPromise = Promise.resolve(binaryArray.buffer);
-        return this._dataPromise;
-      }
-
-      this._dataPromise = fetch(resolveUri(this.json.uri, this.baseUrl))
-        .then((response) => response.arrayBuffer());
+  async dataViewAsync(): Promise<DataView> {
+    if (this._dataPromise) {
+      return this._dataPromise;
     }
+
+    if (!this.json.uri) {
+      throw Error("no uri");
+    }
+
+    if (isDataUri(this.json.uri)) {
+      // decode base64
+      let base64String = this.json.uri.replace('data:application/octet-stream;base64,', '');
+      let binaryArray = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
+      this._dataPromise = Promise.resolve(new DataView(binaryArray.buffer));
+      return await this._dataPromise;
+    }
+
+    this._dataPromise = fetch(resolveUri(this.json.uri, this.baseUrl))
+      .then((response) => response.arrayBuffer())
+      .then((arrayBuffer) => new DataView(arrayBuffer));
     return this._dataPromise;
   }
 
-  texture(bufferViews: Gltf2BufferView[]): ImageTexture {
+  async textureAsync(bufferViews: Gltf2BufferView[]): Promise<ImageTexture> {
     if (!this._texture) {
       let img = new Image();
       this._texture = new ImageTexture(img);
-
       if (this.json.uri) {
         if (isDataUri(this.json.uri)) {
           img.src = this.json.uri;
@@ -427,10 +441,9 @@ class Gltf2Resource {
       } else {
         this._texture.genDataKey();
         let view = bufferViews[this.json.bufferView];
-        view.dataView().then((dataView) => {
-          let blob = new Blob([dataView], { type: this.json.mimeType });
-          img.src = window.URL.createObjectURL(blob);
-        });
+        const dataView = await view.dataViewAsync();
+        let blob = new Blob([dataView], { type: this.json.mimeType });
+        img.src = window.URL.createObjectURL(blob);
       }
     }
     return this._texture;
