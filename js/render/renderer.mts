@@ -132,10 +132,10 @@ export class Renderer {
   }
 
   _used = new Set();
-  private _getOrCreatePrimtive(primitive: Primitive, vertexUpdated: boolean) {
+  private _getOrCreatePrimtive(primitive: Primitive) {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
-      if (vertexUpdated) {
+      if (primitive.vertexUpdated) {
         this._used.clear();
         for (const attrib of primitive.attributes) {
           const vbo = vao.vboMap.get(attrib.buffer);
@@ -202,10 +202,10 @@ export class Renderer {
   private _drawNode(views: RenderView[], node: Node) {
 
     for (let prim of node.primitives) {
-      const vao = this._getOrCreatePrimtive(prim, node.vertexUpdated);
+      const vao = this._getOrCreatePrimtive(prim);
       this._drawRenderPrimitiveSet(views, vao, node.worldMatrix)
+      prim.vertexUpdated = false;
     }
-    node.vertexUpdated = false;
 
     for (let child of node.children) {
       this._drawNode(views, child);

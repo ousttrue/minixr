@@ -10,7 +10,12 @@ let g_app: App | null = null;
 // will request an exclusive session from that device.
 async function onRequestSession() {
   const session = await navigator.xr!.requestSession(isAR ? 'immersive-ar' : 'immersive-vr',
-    { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] });
+    { optionalFeatures: [
+      'local-floor', 
+      'bounded-floor', 
+      'hand-tracking',
+      'mesh-detection',
+    ] });
 
   // This informs the 'Enter XR' button that the session has started and
   // that it should display 'Exit XR' instead.

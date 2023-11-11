@@ -263,6 +263,8 @@ export class StatsViewer extends Node {
 
     this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
 
-    this._fpsNode.vertexUpdated = true;
+    for (const prim of this._fpsNode.primitives) {
+      prim.vertexUpdated = true;
+    }
   }
 }

@@ -4,7 +4,9 @@ import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { RenderView } from './js/render/renderview.mjs';
 import { vec3, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Interaction } from './interaction.mjs';
-import Hand from './hand.mjs';
+import { Hand } from './hand.mjs';
+import { ArMeshOccusion } from './js/scene/nodes/ar-mesh-occlusion.mjs';
+
 
 // Boxes
 const defaultBoxColor = { r: 0.5, g: 0.5, b: 0.5 };
@@ -24,14 +26,18 @@ export default class App {
   gl: WebGL2RenderingContext;
   renderer: Renderer;
 
-  constructor(session: XRSession) {
-    this.loader.loadGltfAsync('./assets/gltf/space/space.gltf').then(node => {
-      this.scene.root.addNode(node);
-    });
+  occlusion = new ArMeshOccusion();
 
-    this.loader.loadCubeSeaAsync().then(node => {
-      this.scene.root.addNode(node);
-    });
+  constructor(session: XRSession) {
+    // this.loader.loadGltfAsync('./assets/gltf/space/space.gltf').then(node => {
+    //   this.scene.root.addNode(node);
+    // });
+
+    // this.loader.loadCubeSeaAsync().then(node => {
+    //   this.scene.root.addNode(node);
+    // });
+
+    this.scene.root.addNode(this.occlusion);
 
     session.addEventListener('visibilitychange', e => {
       // remove hand controller while blurred
@@ -55,8 +61,8 @@ export default class App {
     this.leftHand = new Hand(this.renderer, leftBoxColor);
     this.rightHand = new Hand(this.renderer, rightBoxColor);
 
-    this.interaction = new Interaction(defaultBoxColor);
-    this.scene.root.addNode(this.interaction.interactionBox);
+    // this.interaction = new Interaction(defaultBoxColor);
+    // this.scene.root.addNode(this.interaction.interactionBox);
 
     // Use the new WebGL context to create a XRWebGLLayer and set it as the
     // sessions baseLayer. This allows any content rendered to the layer to
@@ -75,11 +81,22 @@ export default class App {
       new XRRigidTransform({ x: 0, y: 0, z: 0 }));
   }
 
+
   onXRFrame(time: number, frame: XRFrame) {
     const refSpace = this.xrRefSpace!
     const session = frame.session;
     // Inform the session that we're ready for the next frame.
     session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
+
+    // @ts-ignore
+    const detectedMeshes = frame.detectedMeshes as (XRMeshSet | null);
+    if (detectedMeshes) {
+      // console.log(detectedMeshes);
+      this.occlusion.onMeshDetected(refSpace, frame, detectedMeshes);
+    }
+    else {
+      console.error('"mesh-detection" faeature required');
+    }
 
     // Per-frame scene setup. Nothing WebXR specific here.
     this.scene.startFrame();
@@ -89,21 +106,21 @@ export default class App {
     }
 
     // update box
-    this.interaction.update(time);
+    // this.interaction.update(time);
 
     for (let inputSource of session.inputSources) {
       if (inputSource.targetRaySpace) {
         // udate ray
         this._updateRay(refSpace, frame, inputSource);
       }
-      if (inputSource.hand) {
-        // update hand-tracking
-        switch (inputSource.handedness) {
-          case 'left': this.leftHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
-          case 'right': this.rightHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
-          default: break;
-        }
-      }
+      // if (inputSource.hand) {
+      //   // update hand-tracking
+      //   switch (inputSource.handedness) {
+      //     case 'left': this.leftHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
+      //     case 'right': this.rightHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
+      //     default: break;
+      //   }
+      // }
     }
 
     // Get the XRDevice pose relative to the Frame of Reference we created

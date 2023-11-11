@@ -64,6 +64,7 @@ export function getAttributeMask(attributes: PrimitiveAttribute[]): number {
 
 export class Primitive {
   bb = new BoundingBox();
+  vertexUpdated = false;
   constructor(
     public material: Material,
     public attributes: PrimitiveAttribute[],

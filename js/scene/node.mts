@@ -60,7 +60,6 @@ export class Node {
 
   visible = true;
   selectable = false;
-  vertexUpdated = false;
 
   private _activeFrameId: number = -1;
   _hoverFrameId: number = -1;

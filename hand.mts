@@ -4,7 +4,7 @@ import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 import { addBox } from './interaction.mjs';
 
 
-export default class Hand {
+export class Hand {
   boxes: Node[] = [];
   indexFingerBoxes: Node;
   private _radii = new Float32Array(25);
@@ -46,12 +46,12 @@ export default class Hand {
     }
     // @ts-ignore
     if (!frame.fillJointRadii(inputSource.hand.values(), this._radii)) {
-      console.log("no fillJointRadii");
+      // console.log("no fillJointRadii");
       return;
     }
     // @ts-ignore
     if (!frame.fillPoses(inputSource.hand.values(), refSpace, this._positions)) {
-      console.log("no fillPoses");
+      // console.log("no fillPoses");
       return;
     }
 
