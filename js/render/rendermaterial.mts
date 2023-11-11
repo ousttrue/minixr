@@ -1,5 +1,5 @@
 import { Program } from './program.mjs';
-import { DataTexture, VideoTexture } from './texture.mjs';
+import { DataTexture, VideoTexture } from '../scene/texture.mjs';
 import { ATTRIB, ATTRIB_MASK } from '../scene/geometry/primitive.mjs';
 import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../scene/material.mjs';
 import { isPowerOfTwo } from '../math/gl-matrix.mjs';
@@ -8,7 +8,7 @@ import { isPowerOfTwo } from '../math/gl-matrix.mjs';
 const GL = WebGLRenderingContext; // For enums
 
 
-function setCap(gl, glEnum, cap, prevState, state) {
+function setCap(gl: WebGL2RenderingContext, glEnum: number, cap: any, prevState: any, state: any) {
   let change = (state & cap) - (prevState & cap);
   if (!change) {
     return;

@@ -21,7 +21,7 @@
 import { PbrMaterial } from '../pbr.mjs';
 import { Node } from '../../scene/node.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { ImageTexture, ColorTexture } from '../../render/texture.mjs';
+import { ImageTexture, ColorTexture } from '../texture.mjs';
 import { Renderer } from '../../render/renderer.mjs';
 import { vec3, quat, mat4, BoundingBox } from '../../math/gl-matrix.mjs';
 import * as GLTF2 from './GLTF.js';

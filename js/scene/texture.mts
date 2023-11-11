@@ -23,11 +23,11 @@ const GL = WebGLRenderingContext; // For enums
 let nextDataTextureIndex = 0;
 
 export class TextureSampler {
+  minFilter = null;
+  magFilter = null;
+  wrapS = null;
+  wrapT = null;
   constructor() {
-    this.minFilter = null;
-    this.magFilter = null;
-    this.wrapS = null;
-    this.wrapT = null;
   }
 }
 
@@ -58,33 +58,31 @@ export class Texture {
 }
 
 export class ImageTexture extends Texture {
-  constructor(img) {
+  _imgBitmap: ImageBitmap | null = null;
+  _manualKey: string | null = null;
+  _promise: Promise<ImageTexture>;
+  constructor(private _img: any) {
     super();
 
-    this._img = img;
-    this._imgBitmap = null;
-    this._manualKey = null;
-
-    if (img.src && img.complete) {
-      if (img.naturalWidth) {
+    if (_img.src && _img.complete) {
+      if (_img.naturalWidth) {
         this._promise = this._finishImage();
       } else {
         this._promise = Promise.reject('Image provided had failed to load.');
       }
     } else {
       this._promise = new Promise((resolve, reject) => {
-        img.addEventListener('load', () => resolve(this._finishImage()));
-        img.addEventListener('error', reject);
+        _img.addEventListener('load', () => resolve(this._finishImage()));
+        _img.addEventListener('error', reject);
       });
     }
   }
 
-  _finishImage() {
+  async _finishImage(): Promise<ImageTexture> {
     if (window.createImageBitmap) {
-      return window.createImageBitmap(this._img).then((imgBitmap) => {
-        this._imgBitmap = imgBitmap;
-        return Promise.resolve(this);
-      });
+      const imgBitmap = await window.createImageBitmap(this._img);
+      this._imgBitmap = imgBitmap;
+      return await Promise.resolve(this);
     }
     return Promise.resolve(this);
   }
@@ -121,7 +119,7 @@ export class ImageTexture extends Texture {
 }
 
 export class UrlTexture extends ImageTexture {
-  constructor(url) {
+  constructor(url: string) {
     let img = new Image();
     super(img);
     img.src = url;
@@ -129,7 +127,7 @@ export class UrlTexture extends ImageTexture {
 }
 
 export class BlobTexture extends ImageTexture {
-  constructor(blob) {
+  constructor(blob: Blob) {
     let img = new Image();
     super(img);
     img.src = window.URL.createObjectURL(blob);
@@ -137,7 +135,8 @@ export class BlobTexture extends ImageTexture {
 }
 
 export class VideoTexture extends Texture {
-  constructor(video) {
+  private _video: any;
+  constructor(video: HTMLVideoElement) {
     super();
 
     this._video = video;
@@ -181,14 +180,14 @@ export class VideoTexture extends Texture {
 }
 
 export class DataTexture extends Texture {
-  constructor(data, width, height, format = GL.RGBA, type = GL.UNSIGNED_BYTE) {
+  _key: string;
+  constructor(
+    private _data: any,
+    private _width: number,
+    private _height: number,
+    private _format = GL.RGBA,
+    private _type = GL.UNSIGNED_BYTE) {
     super();
-
-    this._data = data;
-    this._width = width;
-    this._height = height;
-    this._format = format;
-    this._type = type;
     this._key = `DATA_${nextDataTextureIndex}`;
     nextDataTextureIndex++;
   }
@@ -205,13 +204,13 @@ export class DataTexture extends Texture {
     return this._height;
   }
 
-  get textureKey() {
+  get textureKey(): string {
     return this._key;
   }
 }
 
 export class ColorTexture extends DataTexture {
-  constructor(r, g, b, a) {
+  constructor(r: number, g: number, b: number, a: number) {
     let colorData = new Uint8Array([r * 255.0, g * 255.0, b * 255.0, a * 255.0]);
     super(colorData, 1, 1);
 

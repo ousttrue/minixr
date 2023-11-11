@@ -25,7 +25,11 @@ export default class App {
   renderer: Renderer;
 
   constructor(session: XRSession) {
-    this.loader.loadasync('./assets/gltf/space/space.gltf').then(node => {
+    this.loader.loadGltfAsync('./assets/gltf/space/space.gltf').then(node => {
+      this.scene.root.addNode(node);
+    });
+
+    this.loader.loadCubeSeaAsync().then(node => {
       this.scene.root.addNode(node);
     });
 

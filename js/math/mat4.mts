@@ -1,4 +1,4 @@
-// import * as glMatrix from "./common.mjs";
+import * as glMatrix from "./common.mjs";
 import { vec3 } from './vec3.mjs';
 import { quat } from './quat.mjs';
 
@@ -619,55 +619,54 @@ export class mat4 {
   //   out[15] = 1;
   //   return out;
   // }
-  //
-  // /**
-  //  * Creates a matrix from a given angle around a given axis
-  //  * This is equivalent to (but much faster than):
-  //  *
-  //  *     mat4.identity(dest);
-  //  *     mat4.rotate(dest, dest, rad, axis);
-  //  *
-  //  * @param {mat4} out mat4 receiving operation result
-  //  * @param {Number} rad the angle to rotate the matrix by
-  //  * @param {vec3} axis the axis to rotate around
-  //  * @returns {mat4} out
-  //  */
-  // export function fromRotation(out: mat4, rad: number, axis: vec3): mat4 | null {
-  //   let x = axis[0], y = axis[1], z = axis[2];
-  //   let len = Math.sqrt(x * x + y * y + z * z);
-  //   let s, c, t;
-  //
-  //   if (len < glMatrix.EPSILON) { return null; }
-  //
-  //   len = 1 / len;
-  //   x *= len;
-  //   y *= len;
-  //   z *= len;
-  //
-  //   s = Math.sin(rad);
-  //   c = Math.cos(rad);
-  //   t = 1 - c;
-  //
-  //   // Perform rotation-specific matrix multiplication
-  //   out[0] = x * x * t + c;
-  //   out[1] = y * x * t + z * s;
-  //   out[2] = z * x * t - y * s;
-  //   out[3] = 0;
-  //   out[4] = x * y * t - z * s;
-  //   out[5] = y * y * t + c;
-  //   out[6] = z * y * t + x * s;
-  //   out[7] = 0;
-  //   out[8] = x * z * t + y * s;
-  //   out[9] = y * z * t - x * s;
-  //   out[10] = z * z * t + c;
-  //   out[11] = 0;
-  //   out[12] = 0;
-  //   out[13] = 0;
-  //   out[14] = 0;
-  //   out[15] = 1;
-  //   return out;
-  // }
-  //
+
+  /**
+   * Creates a matrix from a given angle around a given axis
+   * This is equivalent to (but much faster than):
+   *
+   *     mat4.identity(dest);
+   *     mat4.rotate(dest, dest, rad, axis);
+   */
+  static fromRotation(rad: number, axis: vec3, option?: { out: mat4 }): mat4 | null {
+    const dst = option?.out ?? new mat4();
+    let x = axis.x;
+    let y = axis.y;
+    let z = axis.z;
+    let len = Math.sqrt(x * x + y * y + z * z);
+    let s, c, t;
+
+    if (len < glMatrix.EPSILON) { return null; }
+
+    len = 1 / len;
+    x *= len;
+    y *= len;
+    z *= len;
+
+    s = Math.sin(rad);
+    c = Math.cos(rad);
+    t = 1 - c;
+
+    // Perform rotation-specific matrix multiplication
+    const out = dst.array;
+    out[0] = x * x * t + c;
+    out[1] = y * x * t + z * s;
+    out[2] = z * x * t - y * s;
+    out[3] = 0;
+    out[4] = x * y * t - z * s;
+    out[5] = y * y * t + c;
+    out[6] = z * y * t + x * s;
+    out[7] = 0;
+    out[8] = x * z * t + y * s;
+    out[9] = y * z * t - x * s;
+    out[10] = z * z * t + c;
+    out[11] = 0;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
+    return dst;
+  }
+
   // /**
   //  * Creates a matrix from the given angle around the X axis
   //  * This is equivalent to (but much faster than):

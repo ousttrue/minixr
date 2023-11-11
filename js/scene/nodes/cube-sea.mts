@@ -18,18 +18,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Material} from '../core/material.mjs';
-import {Node} from '../core/node.mjs';
-import {UrlTexture} from '../core/texture.mjs';
-import {BoxBuilder} from '../geometry/box-builder.mjs';
-import {mat4} from '../math/gl-matrix.mjs';
+import { Material } from '../material.mjs';
+import { Node } from '../node.mjs';
+import { Texture } from '../texture.mjs';
+import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { vec3, mat4 } from '../../math/gl-matrix.mjs';
+
+
+const GL = WebGLRenderingContext; // For enums
+
 
 class CubeSeaMaterial extends Material {
-  constructor(heavy = false) {
+  baseColor: import("../material.mjs").MaterialSampler;
+  constructor(public heavy = false) {
     super();
-
-    this.heavy = heavy;
-
     this.baseColor = this.defineSampler('baseColor');
   }
 
@@ -193,8 +195,23 @@ class CubeSeaMaterial extends Material {
 }
 
 export class CubeSeaNode extends Node {
-  constructor(options = {}) {
-    super();
+  heavyGpu: boolean;
+  cubeCount: any;
+  cubeScale: any;
+  halfOnly: boolean;
+  autoRotate: boolean;
+  private _material: CubeSeaMaterial;
+  heroNode: Node;
+  cubeSeaNode: Node;
+  constructor(options: {
+    heavyGpu: boolean,
+    cubeCount: number,
+    cubeScale: number,
+    halfOnly: boolean,
+    autoRotate: boolean,
+    texture: Texture,
+  }) {
+    super('CubeSeaNode');
 
     // Test variables
     // If true, use a very heavyweight shader to stress the GPU.
@@ -213,94 +230,73 @@ export class CubeSeaNode extends Node {
     // not recommended for viewing in a headset.
     this.autoRotate = !!options.autoRotate;
 
-    this._texture = new UrlTexture(options.imageUrl || 'media/textures/cube-sea.png');
 
     this._material = new CubeSeaMaterial(this.heavyGpu);
-    this._material.baseColor.texture = this._texture;
+    this._material.baseColor.texture = options.texture;
 
-    this._renderPrimitive = null;
-  }
-
-  onRendererChanged(renderer) {
-    this._renderPrimitive = null;
-
-    let boxBuilder = new BoxBuilder();
-
-    // Build the spinning "hero" cubes
-    boxBuilder.pushCube([0, 0.25, -0.8], 0.1);
-    boxBuilder.pushCube([0.8, 0.25, 0], 0.1);
-    boxBuilder.pushCube([0, 0.25, 0.8], 0.1);
-    boxBuilder.pushCube([-0.8, 0.25, 0], 0.1);
-
-    let heroPrimitive = boxBuilder.finishPrimitive(renderer);
-
-    this.heroNode = renderer.createMesh(heroPrimitive, this._material);
-
-    this.rebuildCubes(boxBuilder);
-
-    this.cubeSeaNode = new Node();
-    this.cubeSeaNode.addRenderPrimitive(this._renderPrimitive);
-
-    this.addNode(this.cubeSeaNode);
-    this.addNode(this.heroNode);
-
-    return this.waitForComplete();
-  }
-
-  rebuildCubes(boxBuilder) {
-    if (!this._renderer) {
-      return;
+    {
+      let boxBuilder = new BoxBuilder();
+      // Build the spinning "hero" cubes
+      boxBuilder.pushCube([0, 0.25, -0.8], 0.1);
+      boxBuilder.pushCube([0.8, 0.25, 0], 0.1);
+      boxBuilder.pushCube([0, 0.25, 0.8], 0.1);
+      boxBuilder.pushCube([-0.8, 0.25, 0], 0.1);
+      let heroPrimitive = boxBuilder.finishPrimitive(this._material);
+      this.heroNode = new Node("hero");
+      this.heroNode.primitives.push(heroPrimitive);
+      this.addNode(this.heroNode);
     }
 
-    if (!boxBuilder) {
-      boxBuilder = new BoxBuilder();
-    } else {
-      boxBuilder.clear();
-    }
+    {
+      let boxBuilder = new BoxBuilder();
+      let size = 0.4 * this.cubeScale;
 
-    let size = 0.4 * this.cubeScale;
+      // Build the cube sea
+      let halfGrid = this.cubeCount * 0.5;
+      for (let x = 0; x < this.cubeCount; ++x) {
+        for (let y = 0; y < this.cubeCount; ++y) {
+          for (let z = 0; z < this.cubeCount; ++z) {
+            let pos = [x - halfGrid, y - halfGrid, z - halfGrid];
+            // Only draw cubes on one side. Useful for testing variable render
+            // cost that depends on view direction.
+            if (this.halfOnly && pos[0] < 0) {
+              continue;
+            }
 
-    // Build the cube sea
-    let halfGrid = this.cubeCount * 0.5;
-    for (let x = 0; x < this.cubeCount; ++x) {
-      for (let y = 0; y < this.cubeCount; ++y) {
-        for (let z = 0; z < this.cubeCount; ++z) {
-          let pos = [x - halfGrid, y - halfGrid, z - halfGrid];
-          // Only draw cubes on one side. Useful for testing variable render
-          // cost that depends on view direction.
-          if (this.halfOnly && pos[0] < 0) {
-            continue;
+            // Don't place a cube in the center of the grid.
+            if (pos[0] == 0 && pos[1] == 0 && pos[2] == 0) {
+              continue;
+            }
+
+            boxBuilder.pushCube(pos, size);
           }
-
-          // Don't place a cube in the center of the grid.
-          if (pos[0] == 0 && pos[1] == 0 && pos[2] == 0) {
-            continue;
-          }
-
-          boxBuilder.pushCube(pos, size);
         }
       }
-    }
 
-    if (this.cubeCount > 12) {
-      // Each cube has 6 sides with 2 triangles and 3 indices per triangle, so
-      // the total number of indices needed is cubeCount^3 * 36. This exceeds
-      // the short index range past 12 cubes.
-      boxBuilder.indexType = 5125; // gl.UNSIGNED_INT
-    }
-    let cubeSeaPrimitive = boxBuilder.finishPrimitive(this._renderer, this._material);
-
-    if (!this._renderPrimitive) {
-      this._renderPrimitive = this._renderer.createRenderPrimitive(cubeSeaPrimitive);
-    } else {
-      this._renderPrimitive.setPrimitive(cubeSeaPrimitive);
+      if (this.cubeCount > 12) {
+        // Each cube has 6 sides with 2 triangles and 3 indices per triangle, so
+        // the total number of indices needed is cubeCount^3 * 36. This exceeds
+        // the short index range past 12 cubes.
+        boxBuilder.indexType = GL.UNSIGNED_INT;
+      }
+      let cubeSeaPrimitive = boxBuilder.finishPrimitive(this._material);
+      this.cubeSeaNode = new Node('sea');
+      this.primitives.push(cubeSeaPrimitive);
+      this.addNode(this.cubeSeaNode);
     }
   }
 
-  onUpdate(timestamp, frameDelta) {
+  onUpdate(timestamp: number, _frameDelta: number) {
     if (this.autoRotate) {
-      mat4.fromRotation(this.cubeSeaNode.matrix, timestamp / 500, [0, -1, 0]);
+      const matrix = this.cubeSeaNode.local.matrix;
+      mat4.fromRotation(timestamp / 500, vec3.fromValues(0, -1, 0), { out: matrix });
+      this.cubeSeaNode.local.invalidate();
     }
-    mat4.fromRotation(this.heroNode.matrix, timestamp / 2000, [0, 1, 0]);
+
+    {
+      const matrix = this.heroNode.local.matrix;
+      mat4.fromRotation(timestamp / 2000, vec3.fromValues(0, 1, 0), { out: matrix });
+      this.heroNode.local.invalidate();
+    }
   }
 }
