@@ -2,16 +2,113 @@ import { Scene } from './js/scene/scene.mjs';
 import { WebWorkerLoader } from './js/scene/loaders/webworkerloader.js';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { RenderView } from './js/render/renderview.mjs';
-import { vec3, mat4, Ray } from './js/math/gl-matrix.mjs';
+import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Interaction } from './interaction.mjs';
 import { Hand } from './hand.mjs';
 import { ArMeshOccusion } from './js/scene/nodes/ar-mesh-occlusion.mjs';
+import { StatsViewer } from './js/scene/nodes/stats-viewer.mjs';
+import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
 
 
 // Boxes
 const defaultBoxColor = { r: 0.5, g: 0.5, b: 0.5 };
 const leftBoxColor = { r: 1, g: 0, b: 1 };
 const rightBoxColor = { r: 0, g: 1, b: 1 };
+
+//   this._inputRenderer = null;
+// get inputRenderer() {
+// private _inputRenderer: InputRenderer | null;
+//   if (!this._inputRenderer) {
+//     this._inputRenderer = new InputRenderer();
+//     this.root.addNode(this._inputRenderer);
+//   }
+//   return this._inputRenderer;
+// }
+// // Helper function that automatically adds the appropriate visual elements for
+// // all input sources.
+// updateInputSources(frame: XRFrame, refSpace: XRReferenceSpace) {
+//   let newHoveredNodes = [];
+//   let lastHoverFrame = this._hoverFrame;
+//   this._hoverFrame++;
+//
+//   for (let inputSource of frame.session.inputSources) {
+//     let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
+//
+//     if (!targetRayPose) {
+//       continue;
+//     }
+//
+//     if (inputSource.targetRayMode == 'tracked-pointer') {
+//       // If we have a pointer matrix and the pointer origin is the users
+//       // hand (as opposed to their head or the screen) use it to render
+//       // a ray coming out of the input device to indicate the pointer
+//       // direction.
+//       this.inputRenderer.addLaserPointer(targetRayPose.transform);
+//     }
+//
+//     // If we have a pointer matrix we can also use it to render a cursor
+//     // for both handheld and gaze-based input sources.
+//
+//     // Check and see if the pointer is pointing at any selectable objects.
+//     let hitResult = this.root.hitTest(targetRayPose.transform);
+//     if (hitResult) {
+//       // Render a cursor at the intersection point.
+//       this.inputRenderer.addCursor(hitResult.intersection);
+//
+//       if (hitResult.node._hoverFrameId != lastHoverFrame) {
+//         hitResult.node.onHoverStart();
+//       }
+//       hitResult.node._hoverFrameId = this._hoverFrame;
+//       newHoveredNodes.push(hitResult.node);
+//     } else {
+//       // Statically render the cursor 1 meters down the ray since we didn't
+//       // hit anything selectable.
+//       let targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
+//       const cursorPos = targetRay.advance(1.0)
+//       this.inputRenderer.addCursor(cursorPos);
+//     }
+//
+//     if (inputSource.gripSpace) {
+//       let gripPose = frame.getPose(inputSource.gripSpace, refSpace);
+//
+//       // Any time that we have a grip matrix, we'll render a controller.
+//       if (gripPose) {
+//         this.inputRenderer.addController(gripPose.transform.matrix, inputSource.handedness);
+//       }
+//     }
+//   }
+//
+//   for (let hoverNode of this._hoveredNodes) {
+//     if (hoverNode._hoverFrameId != this._hoverFrame) {
+//       hoverNode.onHoverEnd();
+//     }
+//   }
+//
+//   this._hoveredNodes = newHoveredNodes;
+// }
+//
+// handleSelect(inputSource: XRInputSource, frame: XRFrame, refSpace: XRReferenceSpace) {
+//   let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
+//
+//   if (!targetRayPose) {
+//     return;
+//   }
+//
+//   this.handleSelectPointer(targetRayPose.transform);
+// }
+//
+// handleSelectPointer(rigidTransform: XRRigidTransform) {
+//   if (rigidTransform) {
+//     // Check and see if the pointer is pointing at any selectable objects.
+//     let hitResult = this.root.hitTest(rigidTransform);
+//
+//     if (hitResult) {
+//       // Render a cursor at the intersection point.
+//       hitResult.node.handleSelect();
+//     }
+//   }
+// }
+
 
 export default class App {
   scene = new Scene();
@@ -20,6 +117,8 @@ export default class App {
   renderer: Renderer;
   xrRefSpace: XRReferenceSpace | null = null;
 
+  _stats: StatsViewer | null = null;
+  _prevTime: number = 0;
   leftHand: Hand;
   rightHand: Hand;
 
@@ -35,6 +134,18 @@ export default class App {
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(this.gl);
 
+    // stats
+    this._stats = new StatsViewer();
+    this.scene.root.addNode(this._stats);
+    if (false) {
+      // TODO: head relative
+      this._stats.local.translation = vec3.fromValues(0, 1.4, -0.75);
+    } else {
+      this._stats.local.translation = vec3.fromValues(0, -0.3, -0.5);
+    }
+    this._stats.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
+    this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
+
     // this.loader.loadGltfAsync('./assets/gltf/space/space.gltf').then(node => {
     //   this.scene.root.addNode(node);
     // });
@@ -46,16 +157,16 @@ export default class App {
     const occlusion = new ArMeshOccusion();
     this.scene.root.addNode(occlusion);
 
-    session.addEventListener('visibilitychange', e => {
-      // remove hand controller while blurred
-      if (e.session.visibilityState === 'visible-blurred') {
-        this.leftHand.disable(this.scene.root);
-        this.rightHand.disable(this.scene.root);
-      }
-    });
+    // session.addEventListener('visibilitychange', e => {
+    //   // remove hand controller while blurred
+    //   if (e.session.visibilityState === 'visible-blurred') {
+    //     this.leftHand.disable(this.scene.root);
+    //     this.rightHand.disable(this.scene.root);
+    //   }
+    // });
 
-    this.leftHand = new Hand(leftBoxColor);
-    this.rightHand = new Hand(rightBoxColor);
+    this.leftHand = new Hand("left", leftBoxColor);
+    this.rightHand = new Hand("right", rightBoxColor);
 
     const interaction = new Interaction(defaultBoxColor);
     this.scene.root.addNode(interaction);
@@ -77,7 +188,6 @@ export default class App {
       new XRRigidTransform({ x: 0, y: 0, z: 0 }));
   }
 
-
   onXRFrame(time: number, frame: XRFrame) {
     const refSpace = this.xrRefSpace!
     const session = frame.session;
@@ -85,7 +195,17 @@ export default class App {
     session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
 
     // Per-frame scene setup. Nothing WebXR specific here.
-    this.scene.startFrame(time, refSpace, frame);
+    // this.scene.startFrame(time, refSpace, frame);
+    if (this._stats) {
+      this._stats.begin();
+    }
+
+    let frameDelta = 0;
+    if (this._prevTime >= 0) {
+      frameDelta = time - this._prevTime;
+    }
+    this._prevTime = time;
+    this.scene.root.update(time, frameDelta, refSpace, frame);
 
     if (session.visibilityState === 'visible-blurred') {
       return;
@@ -160,21 +280,29 @@ export default class App {
     }
 
     // Per-frame scene teardown. Nothing WebXR specific here.
-    this.scene.endFrame();
+    // this.scene.endFrame();
+    // endFrame() {
+    // if (this._inputRenderer && this._resetInputEndFrame) {
+    //   this._inputRenderer.reset({});
+    // }
+
+    if (this._stats) {
+      this._stats.end();
+    }
   }
 
   private _updateRay(refSpace: XRReferenceSpace, frame: XRFrame, inputSource: XRInputSource) {
     let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
     if (targetRayPose) {
       if (inputSource.targetRayMode == 'tracked-pointer') {
-        this.scene.inputRenderer.addLaserPointer(targetRayPose.transform);
+        // this.scene.inputRenderer.addLaserPointer(targetRayPose.transform);
       }
 
       const targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
 
       const cursorPos = targetRay.advance(2.0);
 
-      this.scene.inputRenderer.addCursor(cursorPos);
+      // this.scene.inputRenderer.addCursor(cursorPos);
     }
   }
 }
