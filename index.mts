@@ -49,7 +49,7 @@ async function onRequestSession() {
         'bounded-floor',
         'hand-tracking',
         'mesh-detection',
-        'high-fixed-foveation-level',
+        // 'high-fixed-foveation-level',
       ]
     });
 

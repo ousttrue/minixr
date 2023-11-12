@@ -17,6 +17,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+import { Texture } from './texture.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -203,15 +204,15 @@ export class MaterialState {
 }
 
 export class MaterialSampler {
+  private _texture: Texture | null = null;
   constructor(public _uniformName: string) {
-    this._texture = null;
   }
 
-  get texture() {
+  get texture(): Texture | null {
     return this._texture;
   }
 
-  set texture(value) {
+  set texture(value: Texture | null) {
     this._texture = value;
   }
 }
@@ -240,43 +241,28 @@ export class MaterialUniform {
   }
 }
 
-export class Material {
-  state: MaterialState;
-  renderOrder: number;
-  _samplers: MaterialSampler[];
-  private _uniforms: MaterialUniform[];
-  constructor() {
-    this.state = new MaterialState;
-    this.renderOrder = RENDER_ORDER.DEFAULT;
-    this._samplers = [];
-    this._uniforms = [];
-  }
+export abstract class Material {
+  state = new MaterialState();
+  renderOrder = RENDER_ORDER.DEFAULT;
+  protected _samplers: MaterialSampler[] = [];
+  protected _uniforms: MaterialUniform[] = [];
 
-  defineSampler(uniformName: string) {
+  defineSampler(uniformName: string): MaterialSampler {
     let sampler = new MaterialSampler(uniformName);
     this._samplers.push(sampler);
     return sampler;
   }
 
-  defineUniform(uniformName: string, defaultValue = null, length = 0) {
+  defineUniform(uniformName: string, defaultValue = null, length = 0): MaterialUniform {
     let uniform = new MaterialUniform(uniformName, defaultValue, length);
     this._uniforms.push(uniform);
     return uniform;
   }
 
-  get materialName(): string {
-    return '';
-  }
-
-  get vertexSource(): string {
-    return '';
-  }
-
-  get fragmentSource(): string {
-    return '';
-  }
-
-  getProgramDefines(renderPrimitive) {
+  abstract get materialName(): string;
+  abstract get vertexSource(): string;
+  abstract get fragmentSource(): string;
+  getProgramDefines(attributeMask: number): { [key: string]: number } {
     return {};
   }
 }

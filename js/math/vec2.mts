@@ -1,7 +1,40 @@
 // import * as glMatrix from "./common.mjs";
 
-export class vec2
-{
+export class vec2 {
+  constructor(public array = new Float32Array(2)) { }
+  get x() { return this.array[0]; }
+  get y() { return this.array[1]; }
+  set x(n: number) { this.array[0] = n; }
+  set y(n: number) { this.array[1] = n; }
+  equal(rhs: vec2): boolean {
+    return this.x == rhs.x && this.y == rhs.y;
+  }
+
+  /**
+   * Creates a new vec3 initialized with values from an existing vector
+   */
+  copy(option?: { out: vec2 }): vec2 {
+    const dst = option?.out ?? new vec2();
+    dst.array.set(this.array);
+    return dst;
+  }
+
+  /**
+   * Set the components of a vec3 to the given values
+   */
+  set(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+
+  /**
+   * Creates a vec3
+   */
+  static fromValues(x: number, y: number, option?: { out: vec2 }): vec2 {
+    const dst = option?.out ?? new vec2();
+    dst.set(x, y)
+    return dst
+  }
 }
 
 // /**

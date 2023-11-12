@@ -213,16 +213,6 @@ vec4 fragment_main() {
   return vec4(color, baseColor.a);
 }`;
 
-type ProgramDefines = {
-  USE_VERTEX_COLOR: number;
-  USE_BASE_COLOR_MAP: number;
-  USE_NORMAL_MAP: number;
-  USE_METAL_ROUGH_MAP: number;
-  USE_OCCLUSION: number;
-  USE_EMISSIVE_TEXTURE: number;
-  FULLY_ROUGH: number;
-}
-
 export class PbrMaterial extends Material {
   baseColor: MaterialSampler;
   metallicRoughness: MaterialSampler;
