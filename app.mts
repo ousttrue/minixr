@@ -51,9 +51,9 @@ export default class App {
     //   this.scene.root.addNode(node);
     // });
 
-    // this.loader.loadCubeSeaAsync().then(node => {
-    //   this.scene.root.addNode(node);
-    // });
+    this.loader.loadCubeSeaAsync().then(node => {
+      this.scene.root.addNode(node);
+    });
 
     const occlusion = new ArMeshOccusion();
     this.scene.root.addNode(occlusion);

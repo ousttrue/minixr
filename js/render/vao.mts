@@ -1,5 +1,4 @@
 import { ATTRIB, ATTRIB_MASK, Primitive } from '../scene/geometry/primitive.mjs';
-import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 

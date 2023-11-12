@@ -23,8 +23,8 @@ import { RenderCommands } from '../scene/scene.mjs';
 import { Material, MaterialState, CAP } from '../scene/materials/material.mjs';
 import { Primitive, getAttributeMask } from '../scene/geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
-import { Program } from './program.mjs';
-import { MaterialFactory } from './rendermaterial.mjs';
+import { Program, ProgramFactory } from './program.mjs';
+import { TextureFactory } from './texturefactory.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -94,15 +94,17 @@ class Lighting {
 export class Renderer {
   private _cameraPositions = new Float32Array(8);
   private _lighting = new Lighting();
-  private _materialFactory: MaterialFactory;
+  private _textureFactory: TextureFactory;
+  private _programFactory: ProgramFactory;
   private _iboMap: Map<Object, Ibo> = new Map();
   private _vboMap: Map<DataView, Vbo> = new Map();
   private _primVaoMap: Map<Primitive, Vao> = new Map();
 
   constructor(
-    private readonly _gl: WebGL2RenderingContext,
+    private readonly gl: WebGL2RenderingContext,
     private _multiview = false) {
-    this._materialFactory = new MaterialFactory(this._gl, _multiview);
+    this._programFactory = new ProgramFactory(gl, _multiview);
+    this._textureFactory = new TextureFactory(gl);
   }
 
   private _getOrCreateVertexBuffer(buffer: DataView, usage: number) {
@@ -111,7 +113,7 @@ export class Renderer {
       return vbo;
     }
 
-    vbo = new Vbo(this._gl, GL.ARRAY_BUFFER, buffer, usage);
+    vbo = new Vbo(this.gl, GL.ARRAY_BUFFER, buffer, usage);
     this._vboMap.set(buffer, vbo);
     return vbo;
   }
@@ -122,7 +124,7 @@ export class Renderer {
       return ibo;
     }
 
-    const indexBuffer = new Vbo(this._gl, GL.ELEMENT_ARRAY_BUFFER,
+    const indexBuffer = new Vbo(this.gl, GL.ELEMENT_ARRAY_BUFFER,
       new DataView(indices.buffer, indices.byteOffset, indices.byteLength),
       usage);
     let indexType = 0;
@@ -155,7 +157,7 @@ export class Renderer {
           if (vbo) {
             if (!this._used.has(vbo)) {
               this._used.add(vbo);
-              vbo.updateRenderBuffer(this._gl, attrib.buffer);
+              vbo.updateRenderBuffer(this.gl, attrib.buffer);
             }
           }
         }
@@ -164,7 +166,7 @@ export class Renderer {
     }
 
     const attributeMask = getAttributeMask(primitive.attributes);
-    const program = this._materialFactory.getMaterialProgram(primitive.material, attributeMask);
+    const program = this._programFactory.getOrCreateProgram(primitive.material, attributeMask);
 
     // IBO
     let ibo: Ibo | undefined = undefined;
@@ -180,7 +182,7 @@ export class Renderer {
     }
 
     // VAO
-    vao = new Vao(this._gl, primitive, program, vboList, attributeMask, ibo);
+    vao = new Vao(this.gl, primitive, program, vboList, attributeMask, ibo);
     this._primVaoMap.set(primitive, vao);
     return vao;
   }
@@ -192,7 +194,6 @@ export class Renderer {
 
     // Get the positions of the 'camera' for each view matrix.
     for (let i = 0; i < views.length; ++i) {
-      const pos = views[i].transform.position;
       if (i == 0) {
         this._cameraPositions.set(views[i].transform.matrix.subarray(12), 0);
       }
@@ -220,7 +221,7 @@ export class Renderer {
 
   private _drawView(views: readonly XRView[], viewports: readonly XRViewport[], eyeIndex: number,
     cameraPosition: Float32Array, renderList: RenderCommands) {
-    let gl = this._gl;
+    let gl = this.gl;
 
     const view = views[eyeIndex];
     const vp = viewports[eyeIndex];
@@ -238,6 +239,9 @@ export class Renderer {
         const programChanged = program != vao.program
         if (programChanged) {
           program = vao.program;
+          if (!program) {
+            throw new Error("arienai");
+          }
           program.use();
 
           if (program.uniformMap.LIGHT_DIRECTION) {
@@ -258,7 +262,8 @@ export class Renderer {
 
         if (programChanged || material != primitive.material) {
           this._bindMaterialState(primitive.material.state, material?.state);
-          program!.bindMaterial(primitive.material);
+          program!.bindMaterial(primitive.material, 
+            (src) => this._textureFactory.getOrCreateTexture(src));
           material = primitive.material;
         }
 
@@ -283,7 +288,7 @@ export class Renderer {
       return;
     }
 
-    let gl = this._gl;
+    let gl = this.gl;
 
     // Any caps bits changed?
     if (materialState._capsDiff(prevState)) {

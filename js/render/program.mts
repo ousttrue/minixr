@@ -18,6 +18,40 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { Material } from '../scene/materials/material.mjs';
+import { ATTRIB } from '../scene/geometry/primitive.mjs';
+import { Texture } from '../scene/materials/texture.mjs';
+
+
+const PRECISION_REGEX = new RegExp('precision (lowp|mediump|highp) float;');
+
+const VERTEX_SHADER_SINGLE_ENTRY = `
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+
+void main() {
+  gl_Position = vertex_main(PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX);
+}
+`;
+
+const VERTEX_SHADER_MULTI_ENTRY = `
+uniform mat4 LEFT_PROJECTION_MATRIX, LEFT_VIEW_MATRIX, RIGHT_PROJECTION_MATRIX, RIGHT_VIEW_MATRIX, MODEL_MATRIX;
+void main() {
+  gl_Position = vertex_main(LEFT_PROJECTION_MATRIX, LEFT_VIEW_MATRIX, RIGHT_PROJECTION_MATRIX, RIGHT_VIEW_MATRIX, MODEL_MATRIX);
+}
+`;
+
+const FRAGMENT_SHADER_ENTRY = `
+void main() {
+  gl_FragColor = fragment_main();
+}
+`;
+
+const FRAGMENT_SHADER_MULTI_ENTRY = `
+out vec4 color;
+void main() {
+  color = fragment_main();
+}
+`;
+
 
 export class Program {
   program: WebGLProgram;
@@ -108,40 +142,20 @@ export class Program {
     }
   }
 
-  bindMaterial(material: Material) {
-    // First time we do a binding, cache the uniform locations and remove
-    // unused uniforms from the list.
-    // if (this._firstBind) {
-    //   for (let i = 0; i < material._samplers.length;) {
-    //     let sampler = material._samplers[i];
-    //     if (!this.uniform[sampler._uniformName]) {
-    //       material._samplers.splice(i, 1);
-    //       continue;
-    //     }
-    //     ++i;
-    //   }
-    //
-    //   for (let i = 0; i < this._uniforms.length;) {
-    //     let uniform = this._uniforms[i];
-    //     uniform._uniform = this.program.uniform[uniform._uniformName];
-    //     if (!uniform._uniform) {
-    //       this._uniforms.splice(i, 1);
-    //       continue;
-    //     }
-    //     ++i;
-    //   }
-    //   this._firstBind = false;
-    // }
-
+  bindMaterial(material: Material, getTexture: (src: Texture) => WebGLTexture | null) {
     const gl = this.gl;
-    // for (let sampler of material._samplers) {
-    //   gl.activeTexture(gl.TEXTURE0 + sampler._index);
-    //   if (sampler._renderTexture && sampler._renderTexture._complete) {
-    //     gl.bindTexture(gl.TEXTURE_2D, sampler._renderTexture._texture);
-    //   } else {
-    //     gl.bindTexture(gl.TEXTURE_2D, null);
-    //   }
-    // }
+    for (let i = 0; i < material.samplers.length; ++i) {
+      const sampler = material.samplers[i];
+      gl.activeTexture(gl.TEXTURE0 + i);
+
+      if (sampler.texture) {
+        const texture = getTexture(sampler.texture);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+      }
+      else {
+        gl.bindTexture(gl.TEXTURE_2D, null);
+      }
+    }
 
     for (let src of material.uniforms) {
       const dst = this.uniformMap[src.name];
@@ -151,3 +165,82 @@ export class Program {
     }
   }
 }
+
+export class ProgramFactory {
+  private _programCache: { [key: string]: Program } = {};
+  private _defaultFragPrecision: string;
+
+  constructor(
+    private readonly gl: WebGL2RenderingContext,
+    private readonly _multiview: boolean
+  ) {
+    const fragHighPrecision = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+    this._defaultFragPrecision = fragHighPrecision!.precision > 0 ? 'highp' : 'mediump';
+  }
+
+  getOrCreateProgram(material: Material, attributeMask: number): Program {
+    let materialName = material.materialName;
+    // @ts-ignore
+    let vertexSource = (!this._multiview) ? material.vertexSource : material.vertexSourceMultiview;
+    // @ts-ignore
+    let fragmentSource = (!this._multiview) ? material.fragmentSource : material.fragmentSourceMultiview;
+
+    // These should always be defined for every material
+    if (materialName == null) {
+      throw new Error('Material does not have a name');
+    }
+    if (vertexSource == null) {
+      throw new Error(`Material "${materialName}" does not have a vertex source`);
+    }
+    if (fragmentSource == null) {
+      throw new Error(`Material "${materialName}" does not have a fragment source`);
+    }
+
+    let defines = material.getProgramDefines(attributeMask);
+    let key = this._getProgramKey(materialName, defines);
+
+    if (key in this._programCache) {
+      return this._programCache[key];
+    }
+
+    let fullVertexSource = vertexSource;
+    fullVertexSource += this._multiview
+      ? VERTEX_SHADER_MULTI_ENTRY
+      : VERTEX_SHADER_SINGLE_ENTRY;
+
+    let precisionMatch = fragmentSource.match(PRECISION_REGEX);
+    let fragPrecisionHeader = precisionMatch ? '' : `precision ${this._defaultFragPrecision} float;\n`;
+
+    let fullFragmentSource = fragPrecisionHeader + fragmentSource;
+    fullFragmentSource += this._multiview
+      ? FRAGMENT_SHADER_MULTI_ENTRY
+      : FRAGMENT_SHADER_ENTRY
+
+    let program = new Program(this.gl,
+      fullVertexSource, fullFragmentSource, ATTRIB, defines);
+    this._programCache[key] = program;
+
+    program.onNextUse((program: Program) => {
+      // Bind the samplers to the right texture index. This is constant for
+      // the lifetime of the program.
+      for (let i = 0; i < material.samplers.length; ++i) {
+        const sampler = material.samplers[i];
+        let uniform = program.uniformMap[sampler.name];
+        if (uniform) {
+          this.gl.uniform1i(uniform, i);
+        }
+      }
+    });
+
+    return program;
+  }
+
+  private _getProgramKey(name: string, defines: any) {
+    let key = `${name}:`;
+    for (let define in defines) {
+      key += `${define}=${defines[define]},`;
+    }
+    return key;
+  }
+}
+
