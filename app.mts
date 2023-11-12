@@ -1,113 +1,12 @@
 import { Scene } from './js/scene/scene.mjs';
 import { WebWorkerLoader } from './js/scene/loaders/webworkerloader.js';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
-import { RenderView } from './js/render/renderview.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Interaction } from './interaction.mjs';
 import { Hand } from './hand.mjs';
 import { ArMeshOccusion } from './js/scene/nodes/ar-mesh-occlusion.mjs';
 import { StatsViewer } from './js/scene/nodes/stats-viewer.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
-
-
-// Boxes
-const defaultBoxColor = { r: 0.5, g: 0.5, b: 0.5 };
-const leftBoxColor = { r: 1, g: 0, b: 1 };
-const rightBoxColor = { r: 0, g: 1, b: 1 };
-
-//   this._inputRenderer = null;
-// get inputRenderer() {
-// private _inputRenderer: InputRenderer | null;
-//   if (!this._inputRenderer) {
-//     this._inputRenderer = new InputRenderer();
-//     this.root.addNode(this._inputRenderer);
-//   }
-//   return this._inputRenderer;
-// }
-// // Helper function that automatically adds the appropriate visual elements for
-// // all input sources.
-// updateInputSources(frame: XRFrame, refSpace: XRReferenceSpace) {
-//   let newHoveredNodes = [];
-//   let lastHoverFrame = this._hoverFrame;
-//   this._hoverFrame++;
-//
-//   for (let inputSource of frame.session.inputSources) {
-//     let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
-//
-//     if (!targetRayPose) {
-//       continue;
-//     }
-//
-//     if (inputSource.targetRayMode == 'tracked-pointer') {
-//       // If we have a pointer matrix and the pointer origin is the users
-//       // hand (as opposed to their head or the screen) use it to render
-//       // a ray coming out of the input device to indicate the pointer
-//       // direction.
-//       this.inputRenderer.addLaserPointer(targetRayPose.transform);
-//     }
-//
-//     // If we have a pointer matrix we can also use it to render a cursor
-//     // for both handheld and gaze-based input sources.
-//
-//     // Check and see if the pointer is pointing at any selectable objects.
-//     let hitResult = this.root.hitTest(targetRayPose.transform);
-//     if (hitResult) {
-//       // Render a cursor at the intersection point.
-//       this.inputRenderer.addCursor(hitResult.intersection);
-//
-//       if (hitResult.node._hoverFrameId != lastHoverFrame) {
-//         hitResult.node.onHoverStart();
-//       }
-//       hitResult.node._hoverFrameId = this._hoverFrame;
-//       newHoveredNodes.push(hitResult.node);
-//     } else {
-//       // Statically render the cursor 1 meters down the ray since we didn't
-//       // hit anything selectable.
-//       let targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
-//       const cursorPos = targetRay.advance(1.0)
-//       this.inputRenderer.addCursor(cursorPos);
-//     }
-//
-//     if (inputSource.gripSpace) {
-//       let gripPose = frame.getPose(inputSource.gripSpace, refSpace);
-//
-//       // Any time that we have a grip matrix, we'll render a controller.
-//       if (gripPose) {
-//         this.inputRenderer.addController(gripPose.transform.matrix, inputSource.handedness);
-//       }
-//     }
-//   }
-//
-//   for (let hoverNode of this._hoveredNodes) {
-//     if (hoverNode._hoverFrameId != this._hoverFrame) {
-//       hoverNode.onHoverEnd();
-//     }
-//   }
-//
-//   this._hoveredNodes = newHoveredNodes;
-// }
-//
-// handleSelect(inputSource: XRInputSource, frame: XRFrame, refSpace: XRReferenceSpace) {
-//   let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
-//
-//   if (!targetRayPose) {
-//     return;
-//   }
-//
-//   this.handleSelectPointer(targetRayPose.transform);
-// }
-//
-// handleSelectPointer(rigidTransform: XRRigidTransform) {
-//   if (rigidTransform) {
-//     // Check and see if the pointer is pointing at any selectable objects.
-//     let hitResult = this.root.hitTest(rigidTransform);
-//
-//     if (hitResult) {
-//       // Render a cursor at the intersection point.
-//       hitResult.node.handleSelect();
-//     }
-//   }
-// }
 
 
 export default class App {
@@ -119,8 +18,6 @@ export default class App {
 
   _stats: StatsViewer | null = null;
   _prevTime: number = 0;
-  leftHand: Hand;
-  rightHand: Hand;
 
   constructor(session: XRSession) {
     // Create a WebGL context to render with, initialized to be compatible
@@ -134,6 +31,10 @@ export default class App {
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(this.gl);
 
+    this._setupScene();
+  }
+
+  _setupScene() {
     // stats
     this._stats = new StatsViewer();
     this.scene.root.addNode(this._stats);
@@ -165,19 +66,18 @@ export default class App {
     //   }
     // });
 
-    this.leftHand = new Hand("left", leftBoxColor);
-    this.rightHand = new Hand("right", rightBoxColor);
+    this.leftHand = new Hand("left", { r: 1, g: 0, b: 1 });
+    this.rightHand = new Hand("right", { r: 0, g: 1, b: 1 });
 
-    const interaction = new Interaction(defaultBoxColor);
+    const interaction = new Interaction({ r: 0.5, g: 0.5, b: 0.5 });
     this.scene.root.addNode(interaction);
-
-    // Use the new WebGL context to create a XRWebGLLayer and set it as the
-    // sessions baseLayer. This allows any content rendered to the layer to
-    // be displayed on the XRDevice.
-    session.updateRenderState({ baseLayer: new XRWebGLLayer(session, this.gl) });
   }
 
   async initSpace(session: XRSession) {
+    // Use the new WebGL context to create a XRWebGLLayer and set it as the
+    // sessions baseLayer. This allows any content rendered to the layer to
+    // be displayed on the XRDevice.
+    await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, this.gl) });
 
     // Get a frame of reference, which is required for querying poses. In
     // this case an 'local' frame of reference means that all poses will
@@ -189,7 +89,6 @@ export default class App {
   }
 
   onXRFrame(time: number, frame: XRFrame) {
-    const refSpace = this.xrRefSpace!
     const session = frame.session;
     // Inform the session that we're ready for the next frame.
     session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
@@ -200,30 +99,20 @@ export default class App {
       this._stats.begin();
     }
 
+    //
+    // update scene
+    //
     let frameDelta = 0;
     if (this._prevTime >= 0) {
       frameDelta = time - this._prevTime;
     }
     this._prevTime = time;
-    this.scene.root.update(time, frameDelta, refSpace, frame);
+    const refSpace = this.xrRefSpace!
+    const renderList = this.scene.updateAndGetRenderList(time, frameDelta, refSpace, frame);
+
 
     if (session.visibilityState === 'visible-blurred') {
       return;
-    }
-
-    for (let inputSource of session.inputSources) {
-      if (inputSource.targetRaySpace) {
-        // udate ray
-        this._updateRay(refSpace, frame, inputSource);
-      }
-      // if (inputSource.hand) {
-      //   // update hand-tracking
-      //   switch (inputSource.handedness) {
-      //     case 'left': this.leftHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
-      //     case 'right': this.rightHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
-      //     default: break;
-      //   }
-      // }
     }
 
     // Get the XRDevice pose relative to the Frame of Reference we created
@@ -236,9 +125,9 @@ export default class App {
     // framebuffer cleared, so tracking loss means the scene will simply
     // disappear.
     if (pose) {
-      const glLayer = session.renderState.baseLayer!;
-
       const gl = this.gl;
+
+      const glLayer = session.renderState.baseLayer!;
 
       // If we do have a valid pose, bind the WebGL layer's framebuffer,
       // which is where any content to be displayed on the XRDevice must be
@@ -250,21 +139,9 @@ export default class App {
 
       // Loop through each of the views reported by the frame and draw them
       // into the corresponding viewport.
-      for (let view of pose.views) {
-        const viewport = glLayer.getViewport(view)!;
-        gl.viewport(viewport.x, viewport.y,
-          viewport.width, viewport.height);
+      const viewports = pose.views.map(view => glLayer.getViewport(view)!);
+      this.renderer.drawViews(pose.views, viewports, renderList);
 
-        // Draw this view of the scene. What happens in this function really
-        // isn't all that important. What is important is that it renders
-        // into the XRWebGLLayer's framebuffer, using the viewport into that
-        // framebuffer reported by the current view, and using the
-        // projection matrix and view transform from the current view.
-        // We bound the framebuffer and viewport up above, and are passing
-        // in the appropriate matrices here to be used when rendering.
-
-        this.renderer.drawViews([RenderView.fromXRView(view)], this.scene.root);
-      }
     } else {
       // There's several options for handling cases where no pose is given.
       // The simplest, which these samples opt for, is to simply not draw
@@ -279,30 +156,8 @@ export default class App {
       // use.
     }
 
-    // Per-frame scene teardown. Nothing WebXR specific here.
-    // this.scene.endFrame();
-    // endFrame() {
-    // if (this._inputRenderer && this._resetInputEndFrame) {
-    //   this._inputRenderer.reset({});
-    // }
-
     if (this._stats) {
       this._stats.end();
-    }
-  }
-
-  private _updateRay(refSpace: XRReferenceSpace, frame: XRFrame, inputSource: XRInputSource) {
-    let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
-    if (targetRayPose) {
-      if (inputSource.targetRayMode == 'tracked-pointer') {
-        // this.scene.inputRenderer.addLaserPointer(targetRayPose.transform);
-      }
-
-      const targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
-
-      const cursorPos = targetRay.advance(2.0);
-
-      // this.scene.inputRenderer.addCursor(cursorPos);
     }
   }
 }

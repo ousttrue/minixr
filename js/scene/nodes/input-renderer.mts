@@ -475,3 +475,129 @@ export class InputRenderer extends Node {
     return meshNode;
   }
 }
+
+//   this._inputRenderer = null;
+// get inputRenderer() {
+// private _inputRenderer: InputRenderer | null;
+//   if (!this._inputRenderer) {
+//     this._inputRenderer = new InputRenderer();
+//     this.root.addNode(this._inputRenderer);
+//   }
+//   return this._inputRenderer;
+// }
+// // Helper function that automatically adds the appropriate visual elements for
+// // all input sources.
+// updateInputSources(frame: XRFrame, refSpace: XRReferenceSpace) {
+//   let newHoveredNodes = [];
+//   let lastHoverFrame = this._hoverFrame;
+//   this._hoverFrame++;
+//
+//   for (let inputSource of frame.session.inputSources) {
+//     let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
+//
+//     if (!targetRayPose) {
+//       continue;
+//     }
+//
+//     if (inputSource.targetRayMode == 'tracked-pointer') {
+//       // If we have a pointer matrix and the pointer origin is the users
+//       // hand (as opposed to their head or the screen) use it to render
+//       // a ray coming out of the input device to indicate the pointer
+//       // direction.
+//       this.inputRenderer.addLaserPointer(targetRayPose.transform);
+//     }
+//
+//     // If we have a pointer matrix we can also use it to render a cursor
+//     // for both handheld and gaze-based input sources.
+//
+//     // Check and see if the pointer is pointing at any selectable objects.
+//     let hitResult = this.root.hitTest(targetRayPose.transform);
+//     if (hitResult) {
+//       // Render a cursor at the intersection point.
+//       this.inputRenderer.addCursor(hitResult.intersection);
+//
+//       if (hitResult.node._hoverFrameId != lastHoverFrame) {
+//         hitResult.node.onHoverStart();
+//       }
+//       hitResult.node._hoverFrameId = this._hoverFrame;
+//       newHoveredNodes.push(hitResult.node);
+//     } else {
+//       // Statically render the cursor 1 meters down the ray since we didn't
+//       // hit anything selectable.
+//       let targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
+//       const cursorPos = targetRay.advance(1.0)
+//       this.inputRenderer.addCursor(cursorPos);
+//     }
+//
+//     if (inputSource.gripSpace) {
+//       let gripPose = frame.getPose(inputSource.gripSpace, refSpace);
+//
+//       // Any time that we have a grip matrix, we'll render a controller.
+//       if (gripPose) {
+//         this.inputRenderer.addController(gripPose.transform.matrix, inputSource.handedness);
+//       }
+//     }
+//   }
+//
+//   for (let hoverNode of this._hoveredNodes) {
+//     if (hoverNode._hoverFrameId != this._hoverFrame) {
+//       hoverNode.onHoverEnd();
+//     }
+//   }
+//
+//   this._hoveredNodes = newHoveredNodes;
+// }
+//
+// handleSelect(inputSource: XRInputSource, frame: XRFrame, refSpace: XRReferenceSpace) {
+//   let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
+//
+//   if (!targetRayPose) {
+//     return;
+//   }
+//
+//   this.handleSelectPointer(targetRayPose.transform);
+// }
+//
+// handleSelectPointer(rigidTransform: XRRigidTransform) {
+//   if (rigidTransform) {
+//     // Check and see if the pointer is pointing at any selectable objects.
+//     let hitResult = this.root.hitTest(rigidTransform);
+//
+//     if (hitResult) {
+//       // Render a cursor at the intersection point.
+//       hitResult.node.handleSelect();
+//     }
+//   }
+// }
+
+// private _updateRay(refSpace: XRReferenceSpace, frame: XRFrame, inputSource: XRInputSource) {
+//   let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
+//   if (targetRayPose) {
+//     if (inputSource.targetRayMode == 'tracked-pointer') {
+//       // this.scene.inputRenderer.addLaserPointer(targetRayPose.transform);
+//     }
+//
+//     const targetRay = new Ray(new mat4(targetRayPose.transform.matrix));
+//
+//     const cursorPos = targetRay.advance(2.0);
+//
+//     // this.scene.inputRenderer.addCursor(cursorPos);
+//   }
+// }
+
+// for (let inputSource of session.inputSources) {
+//   if (inputSource.targetRaySpace) {
+//     // udate ray
+//     this._updateRay(refSpace, frame, inputSource);
+//   }
+//   if (inputSource.hand) {
+//     // update hand-tracking
+//     switch (inputSource.handedness) {
+//       case 'left': this.leftHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
+//       case 'right': this.rightHand.update(this.scene.root, refSpace, time, frame, inputSource); break;
+//       default: break;
+//     }
+//   }
+// }
+
+
