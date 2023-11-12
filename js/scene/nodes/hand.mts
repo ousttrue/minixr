@@ -4,7 +4,7 @@
 import { Node } from './node.mjs';
 import { vec3, mat4 } from '../../math/gl-matrix.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
-import { PbrMaterial } from '../materials/pbr.mjs';
+import { SimpleMaterial } from '../materials/simple.mjs';
 
 
 /**
@@ -29,8 +29,7 @@ export class Hand extends Node {
     const g = .6 + Math.random() * .4;
     const b = .6 + Math.random() * .4;
 
-    const material = new PbrMaterial();
-    material.baseColorFactor.value = [r, g, b, 1];
+    const material = new SimpleMaterial();
 
     const boxBuilder = new BoxBuilder();
     boxBuilder.pushCube([0, 0, 0], 0.01);

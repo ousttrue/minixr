@@ -1,4 +1,5 @@
 import { ATTRIB, ATTRIB_MASK, Primitive } from '../scene/geometry/primitive.mjs';
+import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -65,6 +66,7 @@ export class Vao {
 
     // VAO
     this._vao = gl.createVertexArray()!;
+    console.log('create', this._vao);
     gl.bindVertexArray(this._vao);
 
     // IBO

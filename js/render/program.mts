@@ -64,6 +64,7 @@ export class Program {
     attribMap: { [key: string]: number },
     defines: { [key: string]: number }) {
     this.program = gl.createProgram()!;
+    console.log('create', this.program);
 
     let definesString = '';
     if (defines) {
@@ -198,9 +199,9 @@ export class ProgramFactory {
 
     let defines = material.getProgramDefines(attributeMask);
     let key = this._getProgramKey(materialName, defines);
-
-    if (key in this._programCache) {
-      return this._programCache[key];
+    let program = this._programCache[key];
+    if(program){
+      return program;
     }
 
     let fullVertexSource = vertexSource;
@@ -216,7 +217,7 @@ export class ProgramFactory {
       ? FRAGMENT_SHADER_MULTI_ENTRY
       : FRAGMENT_SHADER_ENTRY
 
-    let program = new Program(this.gl,
+    program = new Program(this.gl,
       fullVertexSource, fullFragmentSource, ATTRIB, defines);
     this._programCache[key] = program;
 
