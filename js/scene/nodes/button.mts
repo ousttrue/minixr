@@ -18,9 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Material} from '../core/material.mjs';
-import {Node} from '../core/node.mjs';
-import {PrimitiveStream} from '../geometry/primitive-stream.mjs';
+import { Material } from '../material.mjs';
+import { Node } from '../node.mjs';
+import { PrimitiveStream } from '../geometry/primitive-stream.mjs';
 
 const BUTTON_SIZE = 0.1;
 const BUTTON_CORNER_RADIUS = 0.025;
@@ -118,7 +118,7 @@ class ButtonIconMaterial extends Material {
 
 export class ButtonNode extends Node {
   constructor(iconTexture, callback) {
-    super();
+    super("ButtonNode");
 
     // All buttons are selectable by default.
     this.selectable = true;
@@ -181,7 +181,7 @@ export class ButtonNode extends Node {
       stream.pushVertex(x, y, -hd, 0, 0, 0, 0, 1);
 
       if (i > 1) {
-        stream.pushTriangle(0, i-1, i);
+        stream.pushTriangle(0, i - 1, i);
       }
     }
 
@@ -225,7 +225,7 @@ export class ButtonNode extends Node {
     let t = this._hoverT / BUTTON_HOVER_TRANSITION_TIME_MS;
     // Cubic Ease In/Out
     // TODO: Get a better animation system
-    let hoverAmount = t<.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1;
+    let hoverAmount = t < .5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
     this._buttonRenderPrimitive.uniforms.hoverAmount.value = hoverAmount;
     this._iconRenderPrimitive.uniforms.hoverAmount.value = hoverAmount;
   }

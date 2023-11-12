@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import {Material} from '../core/material.mjs';
-import {Node} from '../core/node.mjs';
+import {Material} from '../material.mjs';
+import {Node} from '../node.mjs';
 import {PrimitiveStream} from '../geometry/primitive-stream.mjs';
 
 const GL = WebGLRenderingContext; // For enums

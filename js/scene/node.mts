@@ -66,7 +66,7 @@ export class Node {
 
   primitives: Primitive[] = [];
 
-  private _selectHandler: Function | null = null;
+  // private _selectHandler: Function | null = null;
   constructor(public name: string) {
     this.local.onInvalidated.push(() => {
       this.setMatrixDirty();
@@ -118,94 +118,95 @@ export class Node {
     this.children = [];
   }
 
-  _hitTestSelectableNode(rigidTransform: XRRigidTransform): vec3 | null {
-    let localRay = null;
-    for (let primitive of this._renderPrimitives) {
-      if (primitive._min) {
-        if (!localRay) {
-          mat4.invert(tmpRayMatrix, this.worldMatrix);
-          mat4.multiply(tmpRayMatrix, tmpRayMatrix, rigidTransform.matrix);
-          localRay = new Ray(tmpRayMatrix);
-        }
-        let intersection = localRay.intersectsAABB(primitive._min, primitive._max);
-        if (intersection) {
-          intersection.transformMat4(this.worldMatrix);
-          return intersection;
-        }
-      }
-    }
+  // _hitTestSelectableNode(rigidTransform: XRRigidTransform): vec3 | null {
+  //   let localRay = null;
+  //   for (let primitive of this._renderPrimitives) {
+  //     if (primitive._min) {
+  //       if (!localRay) {
+  //         mat4.invert(tmpRayMatrix, this.worldMatrix);
+  //         mat4.multiply(tmpRayMatrix, tmpRayMatrix, rigidTransform.matrix);
+  //         localRay = new Ray(tmpRayMatrix);
+  //       }
+  //       let intersection = localRay.intersectsAABB(primitive._min, primitive._max);
+  //       if (intersection) {
+  //         intersection.transformMat4(this.worldMatrix);
+  //         return intersection;
+  //       }
+  //     }
+  //   }
+  //   for (let child of this.children) {
+  //     let intersection = child._hitTestSelectableNode(rigidTransform);
+  //     if (intersection) {
+  //       return intersection;
+  //     }
+  //   }
+  //   return null;
+  // }
+  //
+  // hitTest(rigidTransform: XRRigidTransform): NodeIntersection | null {
+  //   if (this.selectable && this.visible) {
+  //     let intersection = this._hitTestSelectableNode(rigidTransform);
+  //
+  //     if (intersection) {
+  //       let ray = new Ray(rigidTransform.matrix);
+  //       let origin = vec3.fromValues(ray.origin.x, ray.origin.y, ray.origin.z);
+  //       return {
+  //         node: this,
+  //         intersection: intersection,
+  //         distance: vec3.distance(origin, intersection),
+  //       };
+  //     }
+  //     return null;
+  //   }
+  //
+  //   let result = null;
+  //   for (let child of this.children) {
+  //     let childResult = child.hitTest(rigidTransform);
+  //     if (childResult) {
+  //       if (!result || result.distance > childResult.distance) {
+  //         result = childResult;
+  //       }
+  //     }
+  //   }
+  //   return result;
+  // }
+  //
+  // onSelect(value: Function) {
+  //   this._selectHandler = value;
+  // }
+  //
+  // get selectHandler() {
+  //   return this._selectHandler;
+  // }
+  //
+  // // Called when a selectable node is selected.
+  // handleSelect() {
+  //   if (this._selectHandler) {
+  //     this._selectHandler();
+  //   }
+  // }
+  //
+  // // Called when a selectable element is pointed at.
+  // onHoverStart() {
+  //
+  // }
+  //
+  // // Called when a selectable element is no longer pointed at.
+  // onHoverEnd() {
+  //
+  // }
+
+  update(timestamp: number, frameDelta: number,
+    refspace: XRReferenceSpace, frame: XRFrame) {
+    this._onUpdate(timestamp, frameDelta, refspace, frame);
     for (let child of this.children) {
-      let intersection = child._hitTestSelectableNode(rigidTransform);
-      if (intersection) {
-        return intersection;
-      }
-    }
-    return null;
-  }
-
-  hitTest(rigidTransform: XRRigidTransform): NodeIntersection | null {
-    if (this.selectable && this.visible) {
-      let intersection = this._hitTestSelectableNode(rigidTransform);
-
-      if (intersection) {
-        let ray = new Ray(rigidTransform.matrix);
-        let origin = vec3.fromValues(ray.origin.x, ray.origin.y, ray.origin.z);
-        return {
-          node: this,
-          intersection: intersection,
-          distance: vec3.distance(origin, intersection),
-        };
-      }
-      return null;
-    }
-
-    let result = null;
-    for (let child of this.children) {
-      let childResult = child.hitTest(rigidTransform);
-      if (childResult) {
-        if (!result || result.distance > childResult.distance) {
-          result = childResult;
-        }
-      }
-    }
-    return result;
-  }
-
-  onSelect(value: Function) {
-    this._selectHandler = value;
-  }
-
-  get selectHandler() {
-    return this._selectHandler;
-  }
-
-  // Called when a selectable node is selected.
-  handleSelect() {
-    if (this._selectHandler) {
-      this._selectHandler();
-    }
-  }
-
-  // Called when a selectable element is pointed at.
-  onHoverStart() {
-
-  }
-
-  // Called when a selectable element is no longer pointed at.
-  onHoverEnd() {
-
-  }
-
-  _update(timestamp: number, frameDelta: number) {
-    this.onUpdate(timestamp, frameDelta);
-
-    for (let child of this.children) {
-      child._update(timestamp, frameDelta);
+      child.update(timestamp, frameDelta, refspace, frame);
     }
   }
 
   // Called every frame so that the nodes can animate themselves
-  protected onUpdate(_timestamp: number, _frameDelta: number) {
+  protected _onUpdate(_timestamp: number, _frameDelta: number,
+    _refsp: XRReferenceSpace, _frame: XRFrame) {
 
   }
 }

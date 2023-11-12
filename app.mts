@@ -22,7 +22,6 @@ export default class App {
 
   leftHand: Hand;
   rightHand: Hand;
-  occlusion = new ArMeshOccusion();
 
   constructor(session: XRSession) {
     // Create a WebGL context to render with, initialized to be compatible
@@ -44,7 +43,8 @@ export default class App {
     //   this.scene.root.addNode(node);
     // });
 
-    this.scene.root.addNode(this.occlusion);
+    const occlusion = new ArMeshOccusion();
+    this.scene.root.addNode(occlusion);
 
     session.addEventListener('visibilitychange', e => {
       // remove hand controller while blurred
@@ -84,18 +84,8 @@ export default class App {
     // Inform the session that we're ready for the next frame.
     session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
 
-    // @ts-ignore
-    const detectedMeshes = frame.detectedMeshes as (XRMeshSet | null);
-    if (detectedMeshes) {
-      // console.log(detectedMeshes);
-      this.occlusion.onMeshDetected(refSpace, frame, detectedMeshes);
-    }
-    else {
-      console.error('"mesh-detection" faeature required');
-    }
-
     // Per-frame scene setup. Nothing WebXR specific here.
-    this.scene.startFrame();
+    this.scene.startFrame(time, refSpace, frame);
 
     if (session.visibilityState === 'visible-blurred') {
       return;

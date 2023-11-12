@@ -21,7 +21,14 @@ export class ArMeshOccusion extends Node {
     this.arOcclusionMaterial.baseColorFactor.value = [0, 0, 0, 0];
   }
 
-  onMeshDetected(referenceSpace: XRReferenceSpace, frame: XRFrame, detectedMeshes: XRMeshSet) {
+  _onUpdate(_time: number, _delta: number, referenceSpace: XRReferenceSpace, frame: XRFrame) {
+    // @ts-ignore
+    const detectedMeshes = frame.detectedMeshes as (XRMeshSet | null);
+    if (!detectedMeshes) {
+      console.error('"mesh-detection" faeature required');
+      return;
+    }
+
     this.newMap.clear();
 
     detectedMeshes.forEach(mesh => {
@@ -35,7 +42,7 @@ export class ArMeshOccusion extends Node {
       if (meshPrimitive) {
         if (mesh.lastChangedTime > meshPrimitive.time) {
           // create new
-          const node = this.createMeshNode(mesh, pose);
+          const node = this._createMeshNode(mesh, pose);
           this.newMap.set(mesh, {
             node,
             time: mesh.lastChangedTime
@@ -53,7 +60,7 @@ export class ArMeshOccusion extends Node {
       }
       else {
         // create new
-        const node = this.createMeshNode(mesh, pose);
+        const node = this._createMeshNode(mesh, pose);
         this.newMap.set(mesh, {
           node,
           time: mesh.lastChangedTime
@@ -72,7 +79,7 @@ export class ArMeshOccusion extends Node {
     this.newMap = tmp;
   }
 
-  createMeshNode(mesh: XRMesh, pose: XRPose): Node {
+  private _createMeshNode(mesh: XRMesh, pose: XRPose): Node {
     // new primitive
     let vertexBuffer = new DataView(mesh.vertices.buffer, mesh.vertices.byteOffset, mesh.vertices.byteLength);
     let attributes = [

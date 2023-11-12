@@ -29,8 +29,6 @@ import { Node } from '../node.mjs';
 import { Material } from '../material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { SevenSegmentText } from './seven-segment-text.mjs';
-import { Renderer } from '../../render/renderer.mjs';
-import { Vbo } from '../../render/vao.mjs';
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
@@ -215,7 +213,7 @@ export class StatsViewer extends Node {
     }
   }
 
-  _updateGraph(valueLow: number, valueHigh: number) {
+  private _updateGraph(valueLow: number, valueHigh: number) {
     let color = fpsToRGB(valueLow);
     // Draw a range from the low to high value. Artificially widen the
     // range a bit to ensure that near-equal values still remain

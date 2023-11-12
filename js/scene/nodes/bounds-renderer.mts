@@ -27,7 +27,7 @@ clockwise-order.
 
 import { Material, RENDER_ORDER } from '../material.mjs';
 import { Node } from '../node.mjs';
-import { Primitive, PrimitiveIndices, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -70,30 +70,31 @@ class BoundsMaterial extends Material {
 }
 
 export class BoundsRenderer extends Node {
-  constructor(boundedRefSpace) {
-    super();
+  private _boundedRefSpace: any;
+  constructor(boundedRefSpace: XRReferenceSpace) {
+    super("BoundsRenderer");
 
     this._boundedRefSpace = boundedRefSpace;
-  }
-
-  onRendererChanged(renderer) {
-    this.boundedRefSpace = this._boundedRefSpace;
   }
 
   get boundedRefSpace() {
     return this._boundedRefSpace;
   }
 
-  set boundedRefSpace(refSpace) {
+  set boundedRefSpace(refSpace: XRReferenceSpace) {
     if (this._boundedRefSpace) {
-      this.clearRenderPrimitives();
+      this.primitives = [];
     }
     this._boundedRefSpace = refSpace;
-    if (!refSpace || refSpace.boundsGeometry.length === 0 || !this._renderer) {
+    if (!refSpace) {
       return;
     }
 
-    let geometry = refSpace.boundsGeometry;
+    // @ts-ignore
+    const geometry = refSpace.boundsGeometry as DOMPointReadOnly[];
+    if (geometry.length === 0) {
+      return;
+    }
 
     let verts = [];
     let indices = [];

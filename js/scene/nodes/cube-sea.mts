@@ -286,7 +286,8 @@ export class CubeSeaNode extends Node {
     }
   }
 
-  onUpdate(timestamp: number, _frameDelta: number) {
+  protected _onUpdate(timestamp: number, _frameDelta: number,
+    _refsp: XRReferenceSpace, _frame: XRFrame) {
     if (this.autoRotate) {
       const matrix = this.cubeSeaNode.local.matrix;
       mat4.fromRotation(timestamp / 500, vec3.fromValues(0, -1, 0), { out: matrix });

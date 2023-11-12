@@ -19,7 +19,6 @@
 // SOFTWARE.
 
 import { Renderer } from '../render/core/renderer.mjs';
-import { RenderView } from '../render/core/renderview.mjs';
 import { InputRenderer } from './nodes/input-renderer.mjs';
 import { StatsViewer } from './nodes/stats-viewer.mjs';
 import { Node } from './node.mjs';
@@ -34,7 +33,6 @@ export class Scene {
   private _stats: StatsViewer | null = null;
   private _inputRenderer: InputRenderer | null;
   private _resetInputEndFrame: boolean = true;
-  private _lastTimestamp: number = 0;
   private _hoverFrame: number = 0;
   private _hoveredNodes: Node[] = [];
   clear: boolean = true;
@@ -217,18 +215,9 @@ export class Scene {
   //   this.drawViewArray(views);
   // }
 
-  // drawViewArray(views: RenderView[]) {
-  //   // Don't draw when we don't have a valid context
-  //   if (!this._renderer) {
-  //     return;
-  //   }
-  //
-  //   this._renderer.drawViews(views, this);
-  // }
-
-  startFrame() {
+  startFrame(time: number, refspace: XRReferenceSpace, frame: XRFrame) {
     let prevTimestamp = this._timestamp;
-    this._timestamp = performance.now();
+    this._timestamp = time;
     if (this._stats) {
       this._stats.begin();
     }
@@ -239,9 +228,7 @@ export class Scene {
       this._frameDelta = 0;
     }
 
-    this.root._update(this._timestamp, this._frameDelta);
-
-    return this._frameDelta;
+    this.root.update(this._timestamp, this._frameDelta, refspace, frame);
   }
 
   endFrame() {

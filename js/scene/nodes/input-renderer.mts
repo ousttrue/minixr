@@ -213,8 +213,16 @@ class CursorHiddenMaterial extends Material {
 }
 
 export class InputRenderer extends Node {
+  private _maxInputElements: number;
+  private _controllers: null;
+  private _lasers: null;
+  private _cursors: null;
+  private _activeControllers: number;
+  private _activeLasers: number;
+  private _activeCursors: number;
+  private _blurred: boolean;
   constructor() {
-    super();
+    super("InputRenderer");
 
     this._maxInputElements = 32;
 

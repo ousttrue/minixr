@@ -1,3 +1,6 @@
+/**
+ * https://immersive-web.github.io/webxr-hand-input/
+ */
 import { Node } from './js/scene/node.mjs';
 import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
@@ -22,21 +25,28 @@ function addBox(
 }
 
 
-export class Hand {
-  boxes: Node[] = [];
-  indexFingerBoxes: Node;
+/**
+ *
+ *     -(20)-(21)-(22)-(23)-(24) (little)
+ *    /-(14)-(16)-(17)-(18)-(19) (ring) 
+ *(00<--(10)-(11)-(12)-(13)-(14) (middle)
+ * h  \-(05)-(06)-(07)-(08)-(09) (index)
+ * a   -(01)-(02)-(03)-(04) (thumb)
+ * n
+ * d 
+ */
+export class Hand extends Node {
   private _radii = new Float32Array(25);
   private _positions = new Float32Array(16 * 25);
 
-  constructor(
+  constructor(hand: 'left' | 'right',
     color: { r: number, g: number, b: number }) {
-    for (let i = 0; i <= 24; i++) {
+    super(hand);
+    for (let i = 0; i < 24; i++) {
       const r = .6 + Math.random() * .4;
       const g = .6 + Math.random() * .4;
       const b = .6 + Math.random() * .4;
-      this.boxes.push(addBox(`f${i}`, r, g, b));
     }
-    this.indexFingerBoxes = addBox('index', color.r, color.g, color.b);
   }
 
   disable(root: Node) {

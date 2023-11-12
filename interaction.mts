@@ -21,7 +21,7 @@ export class Interaction extends Node {
     this.local.scale = vec3.fromValues(0.25, 0.25, 0.25);
   }
 
-  protected onUpdate(_time: number, delta: number) {
+  protected _onUpdate(_time: number, delta: number) {
     // Perform distance check on interactable elements
     // const interactionDistance = interactionBox.scale[0];
     // leftInteractionBox.visible = false;
