@@ -39,9 +39,6 @@ export class Hand extends Node {
       const node = new Node(`${hand}${i}`);
       node.primitives.push(primitive);
       this._joints.push(node);
-      if (i > 3) {
-        node.visible = false;
-      }
       this.addNode(node);
     }
   }

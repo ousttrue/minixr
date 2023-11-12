@@ -47,9 +47,9 @@ export default class App {
     this._stats.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
     this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
 
-    // this.loader.loadGltfAsync('./assets/gltf/space/space.gltf').then(node => {
-    //   this.scene.root.addNode(node);
-    // });
+    this.loader.loadGltfAsync('./assets/gltf/space/space.gltf').then(node => {
+      this.scene.root.addNode(node);
+    });
 
     // this.loader.loadCubeSeaAsync().then(node => {
     //   this.scene.root.addNode(node);
