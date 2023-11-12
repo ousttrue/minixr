@@ -18,9 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Material } from '../material.mjs';
-import { Node } from '../node.mjs';
-import { Texture } from '../texture.mjs';
+import { Node } from './node.mjs';
+import { Material } from '../materials/material.mjs';
+import { Texture } from '../materials/texture.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, mat4 } from '../../math/gl-matrix.mjs';
 

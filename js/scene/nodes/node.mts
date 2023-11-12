@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Primitive } from './geometry/primitive.mjs';
-import { mat4, vec3, quat, Ray, Transform } from '../math/gl-matrix.mjs';
+import { Primitive } from '../geometry/primitive.mjs';
+import { mat4, vec3, quat, Ray, Transform } from '../../math/gl-matrix.mjs';
 
 const tmpRayMatrix = new mat4();
 

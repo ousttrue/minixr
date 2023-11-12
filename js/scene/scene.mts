@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node } from './node.mjs';
+import { Node } from './nodes/node.mjs';
 import { Primitive } from './geometry/primitive.mjs';
 
 

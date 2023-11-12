@@ -1,7 +1,7 @@
 import { Program } from './program.mjs';
-import { DataTexture, VideoTexture } from '../scene/texture.mjs';
+import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../scene/materials/material.mjs';
+import { DataTexture, VideoTexture } from '../scene/materials/texture.mjs';
 import { ATTRIB, ATTRIB_MASK } from '../scene/geometry/primitive.mjs';
-import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../scene/material.mjs';
 import { isPowerOfTwo } from '../math/gl-matrix.mjs';
 
 

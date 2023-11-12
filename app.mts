@@ -79,7 +79,11 @@ export default class App {
     // Use the new WebGL context to create a XRWebGLLayer and set it as the
     // sessions baseLayer. This allows any content rendered to the layer to
     // be displayed on the XRDevice.
-    await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, this.gl) });
+    await session.updateRenderState({
+      baseLayer: new XRWebGLLayer(session, this.gl, {
+        framebufferScaleFactor: 0.1,
+      })
+    });
 
     // Get a frame of reference, which is required for querying poses. In
     // this case an 'local' frame of reference means that all poses will
@@ -110,7 +114,7 @@ export default class App {
     }
     this._prevTime = time;
     const refSpace = this.xrRefSpace!
-    const renderList = this.scene.updateAndGetRenderList(time, frameDelta, refSpace, frame ,session.inputSources);
+    const renderList = this.scene.updateAndGetRenderList(time, frameDelta, refSpace, frame, session.inputSources);
 
 
     if (session.visibilityState === 'visible-blurred') {

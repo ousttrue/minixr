@@ -18,11 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { PbrMaterial } from '../pbr.mjs';
-import { Node } from '../../scene/node.mjs';
+import { Node } from '../nodes/node.mjs';
+import { PbrMaterial } from '../materials/pbr.mjs';
+import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { ImageTexture, ColorTexture } from '../texture.mjs';
-import { Renderer } from '../../render/renderer.mjs';
 import { vec3, quat, mat4, BoundingBox } from '../../math/gl-matrix.mjs';
 import * as GLTF2 from './GLTF.js';
 

@@ -1,7 +1,7 @@
-import { Node } from '../node.mjs';
+import { Node } from '../nodes/node.mjs';
 import { CubeSeaNode } from '../nodes/cube-sea.mjs';
 import { Gltf2Loader } from './gltf2.mjs';
-import { UrlTexture } from '../texture.mjs';
+import { UrlTexture } from '../materials/texture.mjs';
 
 export class WebWorkerLoader {
 

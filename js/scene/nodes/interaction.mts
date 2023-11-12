@@ -1,5 +1,5 @@
-import { Node } from '../node.mjs';
-import { PbrMaterial } from '../pbr.mjs';
+import { Node } from './node.mjs';
+import { PbrMaterial } from '../materials/pbr.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, mat4 } from '../../math/gl-matrix.mjs';
 

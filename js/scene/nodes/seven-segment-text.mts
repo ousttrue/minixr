@@ -23,8 +23,8 @@ Renders simple text using a seven-segment LED style pattern. Only really good
 for numbers and a limited number of other characters.
 */
 
-import { Node } from '../node.mjs';
-import { Material } from '../material.mjs';
+import { Node } from './node.mjs';
+import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { vec3 } from '../../math/gl-matrix.mjs';
 

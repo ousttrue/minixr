@@ -1,6 +1,6 @@
-import { Node } from '../node.mjs';
+import { Node } from './node.mjs';
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
-import { PbrMaterial } from '../pbr.mjs';
+import { PbrMaterial } from '../materials/pbr.mjs';
 import { mat4 } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums

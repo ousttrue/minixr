@@ -25,8 +25,8 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
-import { Node } from '../node.mjs';
-import { Material } from '../material.mjs';
+import { Node } from './node.mjs';
+import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { SevenSegmentText } from './seven-segment-text.mjs';
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
@@ -203,6 +203,9 @@ export class StatsViewer extends Node {
       // Draw both average and minimum FPS for this period
       // so that dropped frames are more clearly visible.
       this._updateGraph(this._fpsMin, this._fpsAverage);
+
+      this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
+
       if (this._performanceMonitoring) {
         console.log(`Average FPS: ${this._fpsAverage} Min FPS: ${this._fpsMin}`);
       }
@@ -258,8 +261,6 @@ export class StatsViewer extends Node {
     }
 
     this._lastSegment = (this._lastSegment + 1) % SEGMENTS;
-
-    this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
 
     for (const prim of this._fpsNode.primitives) {
       prim.vertexUpdated = true;
