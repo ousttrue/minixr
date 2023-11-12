@@ -73,11 +73,13 @@ export function stateToBlendFunc(state, mask, shift) {
 }
 
 export class MaterialState {
+  private _state = CAP.CULL_FACE |
+    CAP.DEPTH_TEST |
+    CAP.COLOR_MASK |
+    CAP.DEPTH_MASK;
+  get state(): number { return this._state; }
+
   constructor() {
-    this._state = CAP.CULL_FACE |
-      CAP.DEPTH_TEST |
-      CAP.COLOR_MASK |
-      CAP.DEPTH_MASK;
 
     // Use a fairly commonly desired blend func as the default.
     this.blendFuncSrc = GL.SRC_ALPHA;
@@ -201,6 +203,25 @@ export class MaterialState {
     this._state &= ~MAT_STATE.BLEND_DST_RANGE;
     this._state |= (value << MAT_STATE.BLEND_DST_SHIFT);
   }
+
+  // Only really for use from the renderer
+  _capsDiff(otherState: number) {
+    return (otherState & MAT_STATE.CAPS_RANGE) ^ (this._state & MAT_STATE.CAPS_RANGE);
+  }
+
+  _blendDiff(otherState: number) {
+    if (!(this._state & CAP.BLEND)) {
+      return 0;
+    }
+    return (otherState & MAT_STATE.BLEND_FUNC_RANGE) ^ (this._state & MAT_STATE.BLEND_FUNC_RANGE);
+  }
+
+  _depthFuncDiff(otherState: number) {
+    if (!(this._state & CAP.DEPTH_TEST)) {
+      return 0;
+    }
+    return (otherState & MAT_STATE.DEPTH_FUNC_RANGE) ^ (this._state & MAT_STATE.DEPTH_FUNC_RANGE);
+  }
 }
 
 export class MaterialSampler {
@@ -244,8 +265,8 @@ export class MaterialUniform {
 export abstract class Material {
   state = new MaterialState();
   renderOrder = RENDER_ORDER.DEFAULT;
-  protected _samplers: MaterialSampler[] = [];
-  protected _uniforms: MaterialUniform[] = [];
+  _samplers: MaterialSampler[] = [];
+  _uniforms: MaterialUniform[] = [];
 
   defineSampler(uniformName: string): MaterialSampler {
     let sampler = new MaterialSampler(uniformName);

@@ -213,7 +213,7 @@ export class Renderer {
     gl.viewport(vp.x, vp.y, vp.width, vp.height);
 
     let program: Program | null = null;
-    let material: RenderMaterial | undefined = undefined;
+    let material: Material | undefined = undefined;
     renderList.forEach((nodes, primitive) => {
       const vao = this._getOrCreatePrimtive(primitive);
       for (const node of nodes) {
@@ -242,10 +242,10 @@ export class Renderer {
           gl.uniform1i(program.uniform.EYE_INDEX, eyeIndex);
         }
 
-        if (programChanged || material != vao.material) {
-          this._materialFactory.bindMaterialState(vao.material, material);
+        if (programChanged || material != primitive.material) {
+          this._materialFactory.bindMaterialState(primitive.material.state, material?.state);
           vao.material.bind(gl);
-          material = vao.material;
+          material = primitive.material;
         }
 
         // @ts-ignore

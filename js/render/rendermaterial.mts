@@ -1,5 +1,6 @@
 import { Program } from './program.mjs';
-import { Material, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../scene/materials/material.mjs';
+import { Material, MaterialState, CAP, MAT_STATE, RENDER_ORDER, stateToBlendFunc } from '../scene/materials/material.mjs';
+import { Texture } from '../scene/materials/texture.mjs';
 import { DataTexture, VideoTexture } from '../scene/materials/texture.mjs';
 import { ATTRIB, ATTRIB_MASK } from '../scene/geometry/primitive.mjs';
 import { isPowerOfTwo } from '../math/gl-matrix.mjs';
@@ -22,27 +23,11 @@ function setCap(gl: WebGL2RenderingContext, glEnum: number, cap: any, prevState:
 }
 
 
-export class RenderTexture {
-  constructor(texture) {
-    this._texture = texture;
-    this._complete = false;
-    this._activeFrameId = 0;
-    this._activeCallback = null;
-  }
-
-  markActive(frameId) {
-    if (this._activeCallback && this._activeFrameId != frameId) {
-      this._activeFrameId = frameId;
-      this._activeCallback(this);
-    }
-  }
-}
-
 
 class RenderMaterialSampler {
   constructor(
     public readonly _uniformName: string,
-    public readonly _renderTexture: RenderTexture,
+    public readonly _renderTexture: WebGLTexture,
     public readonly _index: number) {
   }
 
@@ -80,7 +65,6 @@ class RenderMaterialUniform {
 // this._index = index;
 
 export class RenderMaterial {
-  private _state: any;
   private _activeFrameId: number;
   private _completeForActiveFrame: boolean;
   _samplers: RenderMaterialSampler[] = []
@@ -91,7 +75,6 @@ export class RenderMaterial {
   private _renderOrder: any;
 
   constructor(material: Material, public program: Program) {
-    this._state = material.state._state;
     this._activeFrameId = 0;
     this._completeForActiveFrame = false;
 
@@ -107,7 +90,7 @@ export class RenderMaterial {
 
     this._renderOrder = material.renderOrder;
     if (this._renderOrder == RENDER_ORDER.DEFAULT) {
-      if (this._state & CAP.BLEND) {
+      if (material.state.state & CAP.BLEND) {
         this._renderOrder = RENDER_ORDER.TRANSPARENT;
       } else {
         this._renderOrder = RENDER_ORDER.OPAQUE;
@@ -176,59 +159,7 @@ export class RenderMaterial {
     }
     return this._completeForActiveFrame;
   }
-
-  // Material State fetchers
-  get cullFace() {
-    return !!(this._state & CAP.CULL_FACE);
-  }
-  get blend() {
-    return !!(this._state & CAP.BLEND);
-  }
-  get depthTest() {
-    return !!(this._state & CAP.DEPTH_TEST);
-  }
-  get stencilTest() {
-    return !!(this._state & CAP.STENCIL_TEST);
-  }
-  get colorMask() {
-    return !!(this._state & CAP.COLOR_MASK);
-  }
-  get depthMask() {
-    return !!(this._state & CAP.DEPTH_MASK);
-  }
-  get stencilMask() {
-    return !!(this._state & CAP.STENCIL_MASK);
-  }
-  get depthFunc() {
-    return ((this._state & MAT_STATE.DEPTH_FUNC_RANGE) >> MAT_STATE.DEPTH_FUNC_SHIFT) + GL.NEVER;
-  }
-  get blendFuncSrc() {
-    return stateToBlendFunc(this._state, MAT_STATE.BLEND_SRC_RANGE, MAT_STATE.BLEND_SRC_SHIFT);
-  }
-  get blendFuncDst() {
-    return stateToBlendFunc(this._state, MAT_STATE.BLEND_DST_RANGE, MAT_STATE.BLEND_DST_SHIFT);
-  }
-
-  // Only really for use from the renderer
-  _capsDiff(otherState) {
-    return (otherState & MAT_STATE.CAPS_RANGE) ^ (this._state & MAT_STATE.CAPS_RANGE);
-  }
-
-  _blendDiff(otherState) {
-    if (!(this._state & CAP.BLEND)) {
-      return 0;
-    }
-    return (otherState & MAT_STATE.BLEND_FUNC_RANGE) ^ (this._state & MAT_STATE.BLEND_FUNC_RANGE);
-  }
-
-  _depthFuncDiff(otherState) {
-    if (!(this._state & CAP.DEPTH_TEST)) {
-      return 0;
-    }
-    return (otherState & MAT_STATE.DEPTH_FUNC_RANGE) ^ (this._state & MAT_STATE.DEPTH_FUNC_RANGE);
-  }
 }
-
 
 
 const PRECISION_REGEX = new RegExp('precision (lowp|mediump|highp) float;');
@@ -264,7 +195,7 @@ void main() {
 export class MaterialFactory {
   private _programCache: { [key: string]: Program } = {};
   private _defaultFragPrecision: string;
-  private _textureCache = {};
+  private _textureCache: { [key: string]: WebGLTexture } = {};
 
   constructor(
     private _gl: WebGL2RenderingContext,
@@ -336,19 +267,22 @@ export class MaterialFactory {
     return program;
   }
 
-  bindMaterialState(material: RenderMaterial, prevMaterial?: RenderMaterial) {
-    let gl = this._gl;
+  _colorMaskNeedsReset = false;
+  _depthMaskNeedsReset = false;
+  bindMaterialState(materialState: MaterialState, prevMaterialState?: MaterialState) {
 
-    let state = material._state;
-    let prevState = prevMaterial ? prevMaterial._state : ~state;
+    let state = materialState.state;
+    let prevState: number = prevMaterialState ? prevMaterialState.state : ~state;
 
     // Return early if both materials use identical state
     if (state == prevState) {
       return;
     }
 
+    let gl = this._gl;
+
     // Any caps bits changed?
-    if (material._capsDiff(prevState)) {
+    if (materialState._capsDiff(prevState)) {
       setCap(gl, gl.CULL_FACE, CAP.CULL_FACE, prevState, state);
       setCap(gl, gl.BLEND, CAP.BLEND, prevState, state);
       setCap(gl, gl.DEPTH_TEST, CAP.DEPTH_TEST, prevState, state);
@@ -374,17 +308,17 @@ export class MaterialFactory {
     }
 
     // Blending enabled and blend func changed?
-    if (material._blendDiff(prevState)) {
-      gl.blendFunc(material.blendFuncSrc, material.blendFuncDst);
+    if (materialState._blendDiff(prevState)) {
+      gl.blendFunc(materialState.blendFuncSrc, materialState.blendFuncDst);
     }
 
     // Depth testing enabled and depth func changed?
-    if (material._depthFuncDiff(prevState)) {
-      gl.depthFunc(material.depthFunc);
+    if (materialState._depthFuncDiff(prevState)) {
+      gl.depthFunc(materialState.depthFunc);
     }
   }
 
-  _getRenderTexture(texture) {
+  _getRenderTexture(texture?: Texture) {
     if (!texture) {
       return null;
     }
@@ -400,7 +334,7 @@ export class MaterialFactory {
       let gl = this._gl;
       let textureHandle = gl.createTexture();
 
-      let renderTexture = new RenderTexture(textureHandle);
+      let renderTexture = textureHandle;
       this._textureCache[key] = renderTexture;
 
       if (texture instanceof DataTexture) {
@@ -461,7 +395,7 @@ export class MaterialFactory {
     for (let i = 0; i < material._samplers.length; ++i) {
       const sampler = material._samplers[i]
       const renderSampler = new RenderMaterialSampler(sampler._uniformName,
-        this._getRenderTexture(sampler._texture), i);
+        this._getRenderTexture(sampler.texture)!, i);
       renderMaterial._samplers.push(renderSampler);
       renderMaterial._samplerDictionary[renderSampler._uniformName] = renderSampler;
     }
