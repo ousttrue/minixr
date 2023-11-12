@@ -33,19 +33,24 @@ export class Scene {
   }
 
   updateAndGetRenderList(time: number, frameDelta: number,
-    refSpace: XRReferenceSpace, frame: XRFrame): RenderCommands {
+    refSpace: XRReferenceSpace, frame: XRFrame,
+    inputSources: XRInputSourceArray): RenderCommands {
 
     this._renderCommands.clear();
 
-    this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, this.root);
+    this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, inputSources, this.root);
 
     return this._renderCommands;
   }
 
   private _pushRenderCommandRecursive(time: number, frameDelta: number,
-    refSpace: XRReferenceSpace, frame: XRFrame, node: Node) {
+    refSpace: XRReferenceSpace, frame: XRFrame, inputSources: XRInputSourceArray, node: Node) {
 
-    node.update(time, frameDelta, refSpace, frame);
+    if (!node.visible) {
+      return;
+    }
+
+    node.update(time, frameDelta, refSpace, frame, inputSources);
 
     for (const prim of node.primitives) {
       const nodes = this._renderCommands.get(prim);
@@ -58,7 +63,7 @@ export class Scene {
     }
 
     for (const child of node.children) {
-      this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, child);
+      this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, inputSources, child);
     }
   }
 

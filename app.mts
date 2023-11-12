@@ -66,8 +66,10 @@ export default class App {
     //   }
     // });
 
-    this.leftHand = new Hand("left", { r: 1, g: 0, b: 1 });
-    this.rightHand = new Hand("right", { r: 0, g: 1, b: 1 });
+    const leftHand = new Hand("left");
+    this.scene.root.addNode(leftHand);
+    const rightHand = new Hand("right");
+    this.scene.root.addNode(rightHand);
 
     const interaction = new Interaction({ r: 0.5, g: 0.5, b: 0.5 });
     this.scene.root.addNode(interaction);
@@ -108,7 +110,7 @@ export default class App {
     }
     this._prevTime = time;
     const refSpace = this.xrRefSpace!
-    const renderList = this.scene.updateAndGetRenderList(time, frameDelta, refSpace, frame);
+    const renderList = this.scene.updateAndGetRenderList(time, frameDelta, refSpace, frame ,session.inputSources);
 
 
     if (session.visibilityState === 'visible-blurred') {

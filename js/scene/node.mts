@@ -197,16 +197,17 @@ export class Node {
   // }
 
   update(timestamp: number, frameDelta: number,
-    refspace: XRReferenceSpace, frame: XRFrame) {
-    this._onUpdate(timestamp, frameDelta, refspace, frame);
+    refspace: XRReferenceSpace, frame: XRFrame,
+    inputSources: XRInputSourceArray) {
+    this._onUpdate(timestamp, frameDelta, refspace, frame, inputSources);
     for (let child of this.children) {
-      child.update(timestamp, frameDelta, refspace, frame);
+      child.update(timestamp, frameDelta, refspace, frame, inputSources);
     }
   }
 
   // Called every frame so that the nodes can animate themselves
   protected _onUpdate(_timestamp: number, _frameDelta: number,
-    _refsp: XRReferenceSpace, _frame: XRFrame) {
+    _refsp: XRReferenceSpace, _frame: XRFrame, _inputSources: XRInputSourceArray) {
 
   }
 }

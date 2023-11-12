@@ -5,24 +5,7 @@ import { Node } from './js/scene/node.mjs';
 import { vec3, mat4 } from './js/math/gl-matrix.mjs';
 import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
 import { PbrMaterial } from './js/scene/pbr.mjs';
-
-
-function addBox(
-  name: string,
-  r: number, g: number, b: number): Node {
-
-  const boxBuilder = new BoxBuilder();
-  boxBuilder.pushCube([0, 0, 0], 1);
-  const boxMaterial = new PbrMaterial();
-  boxMaterial.baseColorFactor.value = [r, g, b, 1];
-  const boxRenderPrimitive = boxBuilder.finishPrimitive(boxMaterial);
-
-  const boxNode = new Node(name);
-  boxNode.primitives.push(boxRenderPrimitive);
-  // Marks the node as one that needs to be checked when hit testing.
-  boxNode.selectable = true;
-  return boxNode;
-}
+import { Material } from './js/scene/material.mjs';
 
 
 /**
@@ -36,36 +19,52 @@ function addBox(
  * d 
  */
 export class Hand extends Node {
+  private _joints: Node[] = [];
   private _radii = new Float32Array(25);
   private _positions = new Float32Array(16 * 25);
 
-  constructor(hand: 'left' | 'right',
-    color: { r: number, g: number, b: number }) {
+  constructor(public readonly hand: 'left' | 'right') {
     super(hand);
+
+    const r = .6 + Math.random() * .4;
+    const g = .6 + Math.random() * .4;
+    const b = .6 + Math.random() * .4;
+
+    const material = new PbrMaterial();
+    material.baseColorFactor.value = [r, g, b, 1];
+
+    const boxBuilder = new BoxBuilder();
+    boxBuilder.pushCube([0, 0, 0], 0.01);
+    const primitive = boxBuilder.finishPrimitive(material);
+
     for (let i = 0; i < 24; i++) {
-      const r = .6 + Math.random() * .4;
-      const g = .6 + Math.random() * .4;
-      const b = .6 + Math.random() * .4;
+      const node = new Node(`${hand}${i}`);
+      node.primitives.push(primitive);
+      this._joints.push(node);
+      if (i > 3) {
+        node.visible = false;
+      }
+      this.addNode(node);
     }
   }
 
-  disable(root: Node) {
-    for (const box of this.boxes) {
-      root.removeNode(box);
+  _onUpdate(time: number, delta: number, refSpace: XRReferenceSpace, frame: XRFrame,
+    inputSources: XRInputSourceArray) {
+
+    for (const inputSource of inputSources) {
+      this._updateInput(refSpace, frame, inputSource);
     }
-    root.removeNode(this.indexFingerBoxes);
   }
 
-  update(root: Node, refSpace: XRReferenceSpace, time: number, frame: XRFrame, inputSource: XRInputSource) {
-    if (!inputSource.hand) {
+  _updateInput(refSpace: XRReferenceSpace, frame: XRFrame, inputSource: XRInputSource) {
+    const hand = inputSource.hand;
+    if (!hand) {
       return;
     }
 
-    // clear
-    for (const box of this.boxes) {
-      root.removeNode(box);
+    if (inputSource.handedness != this.hand) {
+      return;
     }
-    root.removeNode(this.indexFingerBoxes);
 
     // frame pose
     let pose = frame.getPose(inputSource.targetRaySpace, refSpace);
@@ -73,38 +72,21 @@ export class Hand extends Node {
       console.log("no pose");
     }
     // @ts-ignore
-    if (!frame.fillJointRadii(inputSource.hand.values(), this._radii)) {
+    if (!frame.fillJointRadii(hand.values(), this._radii)) {
       // console.log("no fillJointRadii");
       return;
     }
     // @ts-ignore
-    if (!frame.fillPoses(inputSource.hand.values(), refSpace, this._positions)) {
+    if (!frame.fillPoses(hand.values(), refSpace, this._positions)) {
       // console.log("no fillPoses");
       return;
     }
 
     let offset = 0;
-    for (const box of this.boxes) {
-      root.addNode(box);
-      let matrix = new mat4(this._positions.slice(offset * 16, (offset + 1) * 16));
-      let jointRadius = this._radii[offset];
-      offset++;
-      box.local.translation = matrix.getTranslation();
-      box.local.rotation = matrix.getRotation();
-      box.local.scale = vec3.fromValues(jointRadius, jointRadius, jointRadius);
-    }
-
-    // Render a special box for each index finger on each hand	
-    root.addNode(this.indexFingerBoxes);
-    // @ts-ignore
-    let joint = inputSource.hand.get('index-finger-tip');
-    // @ts-ignore
-    let jointPose = frame.getJointPose(joint, refSpace);
-    if (jointPose) {
-      let matrix = new mat4(jointPose.transform.matrix);
-      this.indexFingerBoxes.local.translation = matrix.getTranslation();
-      this.indexFingerBoxes.local.rotation = matrix.getRotation();
-      this.indexFingerBoxes.local.scale = vec3.fromValues(0.02, 0.02, 0.02);
+    for (const box of this._joints) {
+      let matrix = new mat4(this._positions.slice(offset, offset + 16));
+      box.local.matrix = matrix;
+      offset += 16;
     }
   }
 }

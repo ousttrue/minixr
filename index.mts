@@ -1,21 +1,56 @@
+// import WebXRPolyfill from './js/third-party/webxr-polyfill/build/webxr-polyfill.module.mjs'
 import { WebXRButton } from './js/util/webxr-button.mjs';
 import App from './app.mjs';
 
 // @ts-ignore
 let xrButton: WebXRButton = null;
-let isAR = false;
+let isAR = true;
 let g_app: App | null = null;
+
+// let webxrPolyfill = null;
+//
+// function getXR(usePolyfill: 'if-needed' | 'yes' | 'no'): XRSystem {
+//   let tempXR;
+//
+//   switch (usePolyfill) {
+//     case "if-needed":
+//       tempXR = navigator.xr;
+//       if (!tempXR) {
+//         webxrPolyfill = new WebXRPolyfill();
+//         tempXR = webxrPolyfill;
+//         isAR = false;
+//       }
+//       break;
+//     case "yes":
+//       webxrPolyfill = new WebXRPolyfill();
+//       tempXR = webxrPolyfill;
+//       isAR = false;
+//       break;
+//     case "no":
+//     default:
+//       tempXR = navigator.xr;
+//       break;
+//   }
+//
+//   // @ts-ignore
+//   return tempXR;
+// }
+// const xr = getXR('no');
+const xr = navigator.xr;
+
 
 // Called when the user selects a device to present to. In response we
 // will request an exclusive session from that device.
 async function onRequestSession() {
-  const session = await navigator.xr!.requestSession(isAR ? 'immersive-ar' : 'immersive-vr',
-    { optionalFeatures: [
-      'local-floor', 
-      'bounded-floor', 
-      'hand-tracking',
-      'mesh-detection',
-    ] });
+  const session = await xr!.requestSession(isAR ? 'immersive-ar' : 'immersive-vr',
+    {
+      optionalFeatures: [
+        'local-floor',
+        'bounded-floor',
+        'hand-tracking',
+        'mesh-detection',
+      ]
+    });
 
   // This informs the 'Enter XR' button that the session has started and
   // that it should display 'Exit XR' instead.
@@ -67,11 +102,10 @@ function initXR() {
   document.querySelector('header')!.appendChild(xrButton.domElement);
 
   // Is WebXR available on this UA?
-  if (navigator.xr) {
+  if (xr) {
     // If the device allows creation of exclusive sessions set it as the
     // target of the 'Enter XR' button.
-    navigator.xr!.isSessionSupported('immersive-ar').then((supported) => {
-      isAR = true;
+    xr!.isSessionSupported(isAR ? 'immersive-ar' : 'immersive-vr').then((supported) => {
       xrButton.enabled = supported;
     });
   }
