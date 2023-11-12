@@ -1,5 +1,4 @@
 import { ATTRIB, ATTRIB_MASK, Primitive } from '../scene/geometry/primitive.mjs';
-import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -57,7 +56,6 @@ export class Vao {
   constructor(
     gl: WebGL2RenderingContext,
     primitive: Primitive,
-    public readonly program: Program,
     vboList: Vbo[],
     attributeMask: number,
     ibo?: Ibo) {
@@ -113,9 +111,5 @@ export class Vao {
     } else {
       gl.drawArrays(this._mode, 0, this._drawCount);
     }
-
-    gl.getError();
-
-    gl.bindVertexArray(null);
   }
 }

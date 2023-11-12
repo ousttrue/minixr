@@ -147,10 +147,11 @@ export class Renderer {
   }
 
   _used = new Set();
-  private _getOrCreatePrimtive(primitive: Primitive) {
+  private _getOrCreatePrimtive(primitive: Primitive, attributeMask: number) {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
       if (primitive.vertexUpdated) {
+        primitive.vertexUpdated = false;
         this._used.clear();
         for (const attrib of primitive.attributes) {
           const vbo = vao.vboMap.get(attrib.buffer);
@@ -165,8 +166,7 @@ export class Renderer {
       return vao;
     }
 
-    const attributeMask = getAttributeMask(primitive.attributes);
-    const program = this._programFactory.getOrCreateProgram(primitive.material, attributeMask);
+    this.gl.bindVertexArray(null);
 
     // IBO
     let ibo: Ibo | undefined = undefined;
@@ -182,7 +182,7 @@ export class Renderer {
     }
 
     // VAO
-    vao = new Vao(this.gl, primitive, program, vboList, attributeMask, ibo);
+    vao = new Vao(this.gl, primitive, vboList, attributeMask, ibo);
     this._primVaoMap.set(primitive, vao);
     return vao;
   }
@@ -227,48 +227,51 @@ export class Renderer {
     const vp = viewports[eyeIndex];
     gl.viewport(vp.x, vp.y, vp.width, vp.height);
 
-    let program: Program | null = null;
-    let material: Material | undefined = undefined;
+    let prevProgram: Program | null = null;
+    let prevMaterial: Material | undefined = undefined;
     renderList.forEach((nodes, primitive) => {
-      const vao = this._getOrCreatePrimtive(primitive);
+      const attributeMask = getAttributeMask(primitive.attributes);
+      const vao = this._getOrCreatePrimtive(primitive, attributeMask);
+
+      const program = this._programFactory.getOrCreateProgram(primitive.material, attributeMask);
       for (const node of nodes) {
         // Loop through every primitive known to the renderer.
         // Bind the primitive material's program if it's different than the one we
         // were using for the previous primitive.
         // TODO: The ording of this could be more efficient.
-        const programChanged = program != vao.program
+        const programChanged = prevProgram != program
         if (programChanged) {
-          program = vao.program;
-          if (!program) {
+          prevProgram = program;
+          if (!prevProgram) {
             throw new Error("arienai");
           }
-          program.use();
+          prevProgram.use();
 
-          if (program.uniformMap.LIGHT_DIRECTION) {
-            gl.uniform3fv(program.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
+          if (prevProgram.uniformMap.LIGHT_DIRECTION) {
+            gl.uniform3fv(prevProgram.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
           }
 
-          if (program.uniformMap.LIGHT_COLOR) {
-            gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
+          if (prevProgram.uniformMap.LIGHT_COLOR) {
+            gl.uniform3fv(prevProgram.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
           }
 
-          gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
+          gl.uniformMatrix4fv(prevProgram.uniformMap.PROJECTION_MATRIX, false,
             view.projectionMatrix);
-          gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
+          gl.uniformMatrix4fv(prevProgram.uniformMap.VIEW_MATRIX, false,
             view.transform.inverse.matrix);
-          gl.uniform3fv(program.uniformMap.CAMERA_POSITION, cameraPosition);
-          gl.uniform1i(program.uniformMap.EYE_INDEX, eyeIndex);
+          gl.uniform3fv(prevProgram.uniformMap.CAMERA_POSITION, cameraPosition);
+          gl.uniform1i(prevProgram.uniformMap.EYE_INDEX, eyeIndex);
         }
 
-        if (programChanged || material != primitive.material) {
-          this._bindMaterialState(primitive.material.state, material?.state);
-          program!.bindMaterial(primitive.material, 
+        if (programChanged || prevMaterial != primitive.material) {
+          this._bindMaterialState(primitive.material.state, prevMaterial?.state);
+          prevProgram!.bindMaterial(primitive.material,
             (src) => this._textureFactory.getOrCreateTexture(src));
-          material = primitive.material;
+          prevMaterial = primitive.material;
         }
 
         // @ts-ignore
-        gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false,
+        gl.uniformMatrix4fv(prevProgram.uniformMap.MODEL_MATRIX, false,
           node.worldMatrix.array);
 
         vao.draw(gl);
