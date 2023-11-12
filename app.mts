@@ -14,21 +14,28 @@ const leftBoxColor = { r: 1, g: 0, b: 1 };
 const rightBoxColor = { r: 0, g: 1, b: 1 };
 
 export default class App {
-  xrRefSpace: XRReferenceSpace | null = null;
-
-  interaction: Interaction;
-  leftHand: Hand;
-  rightHand: Hand;
-
-  loader = new WebWorkerLoader();
-
   scene = new Scene();
+  loader = new WebWorkerLoader();
   gl: WebGL2RenderingContext;
   renderer: Renderer;
+  xrRefSpace: XRReferenceSpace | null = null;
 
+  leftHand: Hand;
+  rightHand: Hand;
   occlusion = new ArMeshOccusion();
 
   constructor(session: XRSession) {
+    // Create a WebGL context to render with, initialized to be compatible
+    // with the XRDisplay we're presenting to.
+    this.gl = createWebGLContext({
+      webgl2: true,
+      xrCompatible: true,
+    }) as WebGL2RenderingContext;
+
+    // Create a renderer with that GL context (this is just for the samples
+    // framework and has nothing to do with WebXR specifically.)
+    this.renderer = new Renderer(this.gl);
+
     // this.loader.loadGltfAsync('./assets/gltf/space/space.gltf').then(node => {
     //   this.scene.root.addNode(node);
     // });
@@ -47,22 +54,11 @@ export default class App {
       }
     });
 
-    // Create a WebGL context to render with, initialized to be compatible
-    // with the XRDisplay we're presenting to.
-    this.gl = createWebGLContext({
-      webgl2: true,
-      xrCompatible: true,
-    }) as WebGL2RenderingContext;
+    this.leftHand = new Hand(leftBoxColor);
+    this.rightHand = new Hand(rightBoxColor);
 
-    // Create a renderer with that GL context (this is just for the samples
-    // framework and has nothing to do with WebXR specifically.)
-    this.renderer = new Renderer(this.gl);
-
-    this.leftHand = new Hand(this.renderer, leftBoxColor);
-    this.rightHand = new Hand(this.renderer, rightBoxColor);
-
-    // this.interaction = new Interaction(defaultBoxColor);
-    // this.scene.root.addNode(this.interaction.interactionBox);
+    const interaction = new Interaction(defaultBoxColor);
+    this.scene.root.addNode(interaction);
 
     // Use the new WebGL context to create a XRWebGLLayer and set it as the
     // sessions baseLayer. This allows any content rendered to the layer to
@@ -104,9 +100,6 @@ export default class App {
     if (session.visibilityState === 'visible-blurred') {
       return;
     }
-
-    // update box
-    // this.interaction.update(time);
 
     for (let inputSource of session.inputSources) {
       if (inputSource.targetRaySpace) {

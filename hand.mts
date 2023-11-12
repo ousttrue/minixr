@@ -1,7 +1,25 @@
-import { Node } from './js/render/core/node.mjs';
-import { Renderer } from './js/render/core/renderer.mjs';
+import { Node } from './js/scene/node.mjs';
 import { vec3, mat4 } from './js/math/gl-matrix.mjs';
-import { addBox } from './interaction.mjs';
+import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
+import { PbrMaterial } from './js/scene/pbr.mjs';
+
+
+function addBox(
+  name: string,
+  r: number, g: number, b: number): Node {
+
+  const boxBuilder = new BoxBuilder();
+  boxBuilder.pushCube([0, 0, 0], 1);
+  const boxMaterial = new PbrMaterial();
+  boxMaterial.baseColorFactor.value = [r, g, b, 1];
+  const boxRenderPrimitive = boxBuilder.finishPrimitive(boxMaterial);
+
+  const boxNode = new Node(name);
+  boxNode.primitives.push(boxRenderPrimitive);
+  // Marks the node as one that needs to be checked when hit testing.
+  boxNode.selectable = true;
+  return boxNode;
+}
 
 
 export class Hand {
@@ -10,15 +28,15 @@ export class Hand {
   private _radii = new Float32Array(25);
   private _positions = new Float32Array(16 * 25);
 
-  constructor(renderer: Renderer,
+  constructor(
     color: { r: number, g: number, b: number }) {
     for (let i = 0; i <= 24; i++) {
       const r = .6 + Math.random() * .4;
       const g = .6 + Math.random() * .4;
       const b = .6 + Math.random() * .4;
-      this.boxes.push(addBox(`f${i}`, renderer, r, g, b));
+      this.boxes.push(addBox(`f${i}`, r, g, b));
     }
-    this.indexFingerBoxes = addBox('index', renderer, color.r, color.g, color.b);
+    this.indexFingerBoxes = addBox('index', color.r, color.g, color.b);
   }
 
   disable(root: Node) {

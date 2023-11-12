@@ -205,7 +205,7 @@ export class Node {
   }
 
   // Called every frame so that the nodes can animate themselves
-  onUpdate(timestamp: number, frameDelta: number) {
+  protected onUpdate(_timestamp: number, _frameDelta: number) {
 
   }
 }
