@@ -9,159 +9,6 @@ import { isPowerOfTwo } from '../math/gl-matrix.mjs';
 const GL = WebGLRenderingContext; // For enums
 
 
-function setCap(gl: WebGL2RenderingContext, glEnum: number, cap: any, prevState: any, state: any) {
-  let change = (state & cap) - (prevState & cap);
-  if (!change) {
-    return;
-  }
-
-  if (change > 0) {
-    gl.enable(glEnum);
-  } else {
-    gl.disable(glEnum);
-  }
-}
-
-
-
-class RenderMaterialSampler {
-  constructor(
-    public readonly _uniformName: string,
-    public readonly _renderTexture: WebGLTexture,
-    public readonly _index: number) {
-  }
-
-  // set texture(value) {
-  //   this._renderTexture = this._renderer._getRenderTexture(value);
-  // }
-}
-
-
-class RenderMaterialUniform {
-  constructor(materialUniform) {
-    this._uniformName = materialUniform._uniformName;
-    this._uniform = null;
-    this._length = materialUniform._length;
-    if (materialUniform._value instanceof Array) {
-      this._value = new Float32Array(materialUniform._value);
-    } else {
-      this._value = new Float32Array([materialUniform._value]);
-    }
-  }
-
-  set value(value) {
-    if (this._value.length == 1) {
-      this._value[0] = value;
-    } else {
-      for (let i = 0; i < this._value.length; ++i) {
-        this._value[i] = value[i];
-      }
-    }
-  }
-}
-
-// this._uniformName = materialSampler._uniformName;
-// this._renderTexture = renderer._getRenderTexture(materialSampler._texture);
-// this._index = index;
-
-export class RenderMaterial {
-  private _activeFrameId: number;
-  private _completeForActiveFrame: boolean;
-  _samplers: RenderMaterialSampler[] = []
-  _samplerDictionary: { [key: string]: RenderMaterialSampler } = {}
-  private _uniform_dictionary: {};
-  private _uniforms: never[];
-  private _firstBind: boolean;
-  private _renderOrder: any;
-
-  constructor(material: Material, public program: Program) {
-    this._activeFrameId = 0;
-    this._completeForActiveFrame = false;
-
-    this._uniform_dictionary = {};
-    this._uniforms = [];
-    for (let uniform of material._uniforms) {
-      let renderUniform = new RenderMaterialUniform(uniform);
-      this._uniforms.push(renderUniform);
-      this._uniform_dictionary[renderUniform._uniformName] = renderUniform;
-    }
-
-    this._firstBind = true;
-
-    this._renderOrder = material.renderOrder;
-    if (this._renderOrder == RENDER_ORDER.DEFAULT) {
-      if (material.state.state & CAP.BLEND) {
-        this._renderOrder = RENDER_ORDER.TRANSPARENT;
-      } else {
-        this._renderOrder = RENDER_ORDER.OPAQUE;
-      }
-    }
-  }
-
-  bind(gl: WebGL2RenderingContext) {
-    // First time we do a binding, cache the uniform locations and remove
-    // unused uniforms from the list.
-    if (this._firstBind) {
-      for (let i = 0; i < this._samplers.length;) {
-        let sampler = this._samplers[i];
-        if (!this.program.uniform[sampler._uniformName]) {
-          this._samplers.splice(i, 1);
-          continue;
-        }
-        ++i;
-      }
-
-      for (let i = 0; i < this._uniforms.length;) {
-        let uniform = this._uniforms[i];
-        uniform._uniform = this.program.uniform[uniform._uniformName];
-        if (!uniform._uniform) {
-          this._uniforms.splice(i, 1);
-          continue;
-        }
-        ++i;
-      }
-      this._firstBind = false;
-    }
-
-    for (let sampler of this._samplers) {
-      gl.activeTexture(gl.TEXTURE0 + sampler._index);
-      if (sampler._renderTexture && sampler._renderTexture._complete) {
-        gl.bindTexture(gl.TEXTURE_2D, sampler._renderTexture._texture);
-      } else {
-        gl.bindTexture(gl.TEXTURE_2D, null);
-      }
-    }
-
-    for (let uniform of this._uniforms) {
-      switch (uniform._length) {
-        case 1: gl.uniform1fv(uniform._uniform, uniform._value); break;
-        case 2: gl.uniform2fv(uniform._uniform, uniform._value); break;
-        case 3: gl.uniform3fv(uniform._uniform, uniform._value); break;
-        case 4: gl.uniform4fv(uniform._uniform, uniform._value); break;
-      }
-    }
-  }
-
-  markActive(frameId: number) {
-    if (this._activeFrameId != frameId) {
-      this._activeFrameId = frameId;
-      this._completeForActiveFrame = true;
-      for (let i = 0; i < this._samplers.length; ++i) {
-        let sampler = this._samplers[i];
-        if (sampler._renderTexture) {
-          if (!sampler._renderTexture._complete) {
-            this._completeForActiveFrame = false;
-            break;
-          }
-          sampler._renderTexture.markActive(frameId);
-        }
-      }
-    }
-    return this._completeForActiveFrame;
-  }
-}
-
-
 const PRECISION_REGEX = new RegExp('precision (lowp|mediump|highp) float;');
 
 const VERTEX_SHADER_SINGLE_ENTRY = `
@@ -216,7 +63,9 @@ export class MaterialFactory {
 
   getMaterialProgram(material: Material, attributeMask: number): Program {
     let materialName = material.materialName;
+    // @ts-ignore
     let vertexSource = (!this._multiview) ? material.vertexSource : material.vertexSourceMultiview;
+    // @ts-ignore
     let fragmentSource = (!this._multiview) ? material.fragmentSource : material.fragmentSourceMultiview;
 
     // These should always be defined for every material
@@ -238,15 +87,17 @@ export class MaterialFactory {
     }
 
     let fullVertexSource = vertexSource;
-    fullVertexSource += this._multiview ? VERTEX_SHADER_MULTI_ENTRY :
-      VERTEX_SHADER_SINGLE_ENTRY;
+    fullVertexSource += this._multiview
+      ? VERTEX_SHADER_MULTI_ENTRY
+      : VERTEX_SHADER_SINGLE_ENTRY;
 
     let precisionMatch = fragmentSource.match(PRECISION_REGEX);
     let fragPrecisionHeader = precisionMatch ? '' : `precision ${this._defaultFragPrecision} float;\n`;
 
     let fullFragmentSource = fragPrecisionHeader + fragmentSource;
-    fullFragmentSource += this._multiview ? FRAGMENT_SHADER_MULTI_ENTRY :
-      FRAGMENT_SHADER_ENTRY
+    fullFragmentSource += this._multiview
+      ? FRAGMENT_SHADER_MULTI_ENTRY
+      : FRAGMENT_SHADER_ENTRY
 
     let program = new Program(this._gl,
       fullVertexSource, fullFragmentSource, ATTRIB, defines);
@@ -255,9 +106,9 @@ export class MaterialFactory {
     program.onNextUse((program: Program) => {
       // Bind the samplers to the right texture index. This is constant for
       // the lifetime of the program.
-      for (let i = 0; i < material._samplers.length; ++i) {
-        let sampler = material._samplers[i];
-        let uniform = program.uniform[sampler._uniformName];
+      for (let i = 0; i < material.samplers.length; ++i) {
+        const sampler = material.samplers[i];
+        let uniform = program.uniformMap[sampler.name];
         if (uniform) {
           this._gl.uniform1i(uniform, i);
         }
@@ -265,57 +116,6 @@ export class MaterialFactory {
     });
 
     return program;
-  }
-
-  _colorMaskNeedsReset = false;
-  _depthMaskNeedsReset = false;
-  bindMaterialState(materialState: MaterialState, prevMaterialState?: MaterialState) {
-
-    let state = materialState.state;
-    let prevState: number = prevMaterialState ? prevMaterialState.state : ~state;
-
-    // Return early if both materials use identical state
-    if (state == prevState) {
-      return;
-    }
-
-    let gl = this._gl;
-
-    // Any caps bits changed?
-    if (materialState._capsDiff(prevState)) {
-      setCap(gl, gl.CULL_FACE, CAP.CULL_FACE, prevState, state);
-      setCap(gl, gl.BLEND, CAP.BLEND, prevState, state);
-      setCap(gl, gl.DEPTH_TEST, CAP.DEPTH_TEST, prevState, state);
-      setCap(gl, gl.STENCIL_TEST, CAP.STENCIL_TEST, prevState, state);
-
-      let colorMaskChange = (state & CAP.COLOR_MASK) - (prevState & CAP.COLOR_MASK);
-      if (colorMaskChange) {
-        let mask = colorMaskChange > 1;
-        this._colorMaskNeedsReset = !mask;
-        gl.colorMask(mask, mask, mask, mask);
-      }
-
-      let depthMaskChange = (state & CAP.DEPTH_MASK) - (prevState & CAP.DEPTH_MASK);
-      if (depthMaskChange) {
-        this._depthMaskNeedsReset = !(depthMaskChange > 1);
-        gl.depthMask(depthMaskChange > 1);
-      }
-
-      let stencilMaskChange = (state & CAP.STENCIL_MASK) - (prevState & CAP.STENCIL_MASK);
-      if (stencilMaskChange) {
-        gl.stencilMask(stencilMaskChange > 1 ? 0xff : 0x00);
-      }
-    }
-
-    // Blending enabled and blend func changed?
-    if (materialState._blendDiff(prevState)) {
-      gl.blendFunc(materialState.blendFuncSrc, materialState.blendFuncDst);
-    }
-
-    // Depth testing enabled and depth func changed?
-    if (materialState._depthFuncDiff(prevState)) {
-      gl.depthFunc(materialState.depthFunc);
-    }
   }
 
   _getRenderTexture(texture?: Texture) {
@@ -387,19 +187,5 @@ export class MaterialFactory {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
-  }
-
-  createMaterial(material: Material, program: Program): RenderMaterial {
-    const renderMaterial = new RenderMaterial(material, program);
-
-    for (let i = 0; i < material._samplers.length; ++i) {
-      const sampler = material._samplers[i]
-      const renderSampler = new RenderMaterialSampler(sampler._uniformName,
-        this._getRenderTexture(sampler.texture)!, i);
-      renderMaterial._samplers.push(renderSampler);
-      renderMaterial._samplerDictionary[renderSampler._uniformName] = renderSampler;
-    }
-
-    return renderMaterial;
   }
 }

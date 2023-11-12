@@ -19,17 +19,32 @@
 // SOFTWARE.
 
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
-import { Node } from '../scene/node.mjs';
 import { RenderCommands } from '../scene/scene.mjs';
+import { Material, MaterialState, CAP } from '../scene/materials/material.mjs';
 import { Primitive, getAttributeMask } from '../scene/geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program } from './program.mjs';
-import { RenderMaterial, MaterialFactory } from './rendermaterial.mjs';
+import { MaterialFactory } from './rendermaterial.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
 const DEF_LIGHT_DIR = vec3.fromValues(-0.1, -1.0, -0.2);
 const DEF_LIGHT_COLOR = vec3.fromValues(3.0, 3.0, 3.0);
+
+
+function setCap(gl: WebGL2RenderingContext, glEnum: number, cap: any, prevState: any, state: any) {
+  let change = (state & cap) - (prevState & cap);
+  if (!change) {
+    return;
+  }
+
+  if (change > 0) {
+    gl.enable(glEnum);
+  } else {
+    gl.disable(glEnum);
+  }
+}
+
 
 /**
  * Creates a WebGL context and initializes it with some common default state.
@@ -150,7 +165,6 @@ export class Renderer {
 
     const attributeMask = getAttributeMask(primitive.attributes);
     const program = this._materialFactory.getMaterialProgram(primitive.material, attributeMask);
-    const renderMaterial = this._materialFactory.createMaterial(primitive.material, program);
 
     // IBO
     let ibo: Ibo | undefined = undefined;
@@ -166,7 +180,7 @@ export class Renderer {
     }
 
     // VAO
-    vao = new Vao(this._gl, primitive, renderMaterial, vboList, attributeMask, ibo);
+    vao = new Vao(this._gl, primitive, program, vboList, attributeMask, ibo);
     this._primVaoMap.set(primitive, vao);
     return vao;
   }
@@ -221,39 +235,91 @@ export class Renderer {
         // Bind the primitive material's program if it's different than the one we
         // were using for the previous primitive.
         // TODO: The ording of this could be more efficient.
-        const programChanged = program != vao.material.program
+        const programChanged = program != vao.program
         if (programChanged) {
-          program = vao.material.program;
+          program = vao.program;
           program.use();
 
-          if (program.uniform.LIGHT_DIRECTION) {
-            gl.uniform3fv(program.uniform.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
+          if (program.uniformMap.LIGHT_DIRECTION) {
+            gl.uniform3fv(program.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
           }
 
-          if (program.uniform.LIGHT_COLOR) {
-            gl.uniform3fv(program.uniform.LIGHT_COLOR, this._lighting.globalLightColor.array);
+          if (program.uniformMap.LIGHT_COLOR) {
+            gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
           }
 
-          gl.uniformMatrix4fv(program.uniform.PROJECTION_MATRIX, false,
+          gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
             view.projectionMatrix);
-          gl.uniformMatrix4fv(program.uniform.VIEW_MATRIX, false,
+          gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
             view.transform.inverse.matrix);
-          gl.uniform3fv(program.uniform.CAMERA_POSITION, cameraPosition);
-          gl.uniform1i(program.uniform.EYE_INDEX, eyeIndex);
+          gl.uniform3fv(program.uniformMap.CAMERA_POSITION, cameraPosition);
+          gl.uniform1i(program.uniformMap.EYE_INDEX, eyeIndex);
         }
 
         if (programChanged || material != primitive.material) {
-          this._materialFactory.bindMaterialState(primitive.material.state, material?.state);
-          vao.material.bind(gl);
+          this._bindMaterialState(primitive.material.state, material?.state);
+          program!.bindMaterial(primitive.material);
           material = primitive.material;
         }
 
         // @ts-ignore
-        gl.uniformMatrix4fv(program.uniform.MODEL_MATRIX, false,
+        gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false,
           node.worldMatrix.array);
 
         vao.draw(gl);
       }
     });
+  }
+
+  _colorMaskNeedsReset = false;
+  _depthMaskNeedsReset = false;
+  private _bindMaterialState(materialState: MaterialState, prevMaterialState?: MaterialState) {
+
+    let state = materialState.state;
+    let prevState: number = prevMaterialState ? prevMaterialState.state : ~state;
+
+    // Return early if both materials use identical state
+    if (state == prevState) {
+      return;
+    }
+
+    let gl = this._gl;
+
+    // Any caps bits changed?
+    if (materialState._capsDiff(prevState)) {
+
+      setCap(gl, gl.CULL_FACE, CAP.CULL_FACE, prevState, state);
+      setCap(gl, gl.BLEND, CAP.BLEND, prevState, state);
+      setCap(gl, gl.DEPTH_TEST, CAP.DEPTH_TEST, prevState, state);
+      setCap(gl, gl.STENCIL_TEST, CAP.STENCIL_TEST, prevState, state);
+
+      let colorMaskChange = (state & CAP.COLOR_MASK) - (prevState & CAP.COLOR_MASK);
+      if (colorMaskChange) {
+        let mask = colorMaskChange > 1;
+        this._colorMaskNeedsReset = !mask;
+        gl.colorMask(mask, mask, mask, mask);
+      }
+
+      let depthMaskChange = (state & CAP.DEPTH_MASK) - (prevState & CAP.DEPTH_MASK);
+      if (depthMaskChange) {
+        this._depthMaskNeedsReset = !(depthMaskChange > 1);
+        gl.depthMask(depthMaskChange > 1);
+      }
+
+      let stencilMaskChange = (state & CAP.STENCIL_MASK) - (prevState & CAP.STENCIL_MASK);
+      if (stencilMaskChange) {
+        gl.stencilMask(stencilMaskChange > 1 ? 0xff : 0x00);
+      }
+    }
+
+    // Blending enabled and blend func changed?
+    if (materialState._blendDiff(prevState)) {
+      gl.blendFunc(materialState.blendFuncSrc, materialState.blendFuncDst);
+    }
+
+    // Depth testing enabled and depth func changed?
+    if (materialState._depthFuncDiff(prevState)) {
+      gl.depthFunc(materialState.depthFunc);
+    }
   }
 }

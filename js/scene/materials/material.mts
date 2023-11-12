@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { Texture } from './texture.mjs';
+import { vec2, vec3, vec4 } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -61,7 +62,7 @@ export const RENDER_ORDER = {
   DEFAULT: 4,
 };
 
-export function stateToBlendFunc(state, mask, shift) {
+export function stateToBlendFunc(state: number, mask: number, shift: number) {
   let value = (state & mask) >> shift;
   switch (value) {
     case 0:
@@ -226,7 +227,7 @@ export class MaterialState {
 
 export class MaterialSampler {
   private _texture: Texture | null = null;
-  constructor(public _uniformName: string) {
+  constructor(public name: string) {
   }
 
   get texture(): Texture | null {
@@ -238,18 +239,32 @@ export class MaterialSampler {
   }
 }
 
+export type UnifromVariableType = number | vec2 | vec3 | vec4;
+
 export class MaterialUniform {
   private _value: any;
-  private _length: any;
-  constructor(public _uniformName: string, defaultValue: any, length: number) {
-    this._value = defaultValue;
-    this._length = length;
-    if (!this._length) {
-      if (defaultValue instanceof Array) {
-        this._length = defaultValue.length;
-      } else {
-        this._length = 1;
-      }
+  readonly length: number;
+  constructor(
+    public name: string,
+    defaultValue: UnifromVariableType) {
+    if (typeof (defaultValue) == "number") {
+      this.length = 1;
+      this._value = defaultValue;
+    }
+    else if (defaultValue instanceof vec2) {
+      this.length = 2;
+      this._value = defaultValue.array;
+    }
+    else if (defaultValue instanceof vec3) {
+      this.length = 3;
+      this._value = defaultValue.array;
+    }
+    else if (defaultValue instanceof vec4) {
+      this.length = 4;
+      this._value = defaultValue.array;
+    }
+    else {
+      throw new Error(`invalid type: ${defaultValue}`);
     }
   }
 
@@ -260,23 +275,32 @@ export class MaterialUniform {
   set value(value) {
     this._value = value;
   }
+
+  setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation) {
+    switch (this.length) {
+      case 1: gl.uniform1fv(dst, this.value); break;
+      case 2: gl.uniform2fv(dst, this.value); break;
+      case 3: gl.uniform3fv(dst, this.value); break;
+      case 4: gl.uniform4fv(dst, this.value); break;
+    }
+  }
 }
 
 export abstract class Material {
   state = new MaterialState();
   renderOrder = RENDER_ORDER.DEFAULT;
-  _samplers: MaterialSampler[] = [];
-  _uniforms: MaterialUniform[] = [];
 
+  samplers: MaterialSampler[] = [];
   defineSampler(uniformName: string): MaterialSampler {
     let sampler = new MaterialSampler(uniformName);
-    this._samplers.push(sampler);
+    this.samplers.push(sampler);
     return sampler;
   }
 
-  defineUniform(uniformName: string, defaultValue = null, length = 0): MaterialUniform {
-    let uniform = new MaterialUniform(uniformName, defaultValue, length);
-    this._uniforms.push(uniform);
+  uniforms: MaterialUniform[] = [];
+  defineUniform(uniformName: string, defaultValue: UnifromVariableType): MaterialUniform {
+    let uniform = new MaterialUniform(uniformName, defaultValue);
+    this.uniforms.push(uniform);
     return uniform;
   }
 

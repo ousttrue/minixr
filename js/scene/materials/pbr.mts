@@ -18,8 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Material, MaterialSampler, MaterialUniform } from './material.mjs';
+import { Material, MaterialSampler, MaterialUniform, ProgramDefines } from './material.mjs';
 import { ATTRIB_MASK } from '../geometry/primitive.mjs';
+import { vec2, vec3, vec4 } from '../../math/gl-matrix.mjs';
 
 const VERTEX_SOURCE = `
 attribute vec3 POSITION, NORMAL;
@@ -232,10 +233,10 @@ export class PbrMaterial extends Material {
     this.occlusion = this.defineSampler('occlusionTex');
     this.emissive = this.defineSampler('emissiveTex');
 
-    this.baseColorFactor = this.defineUniform('baseColorFactor', [1.0, 1.0, 1.0, 1.0]);
-    this.metallicRoughnessFactor = this.defineUniform('metallicRoughnessFactor', [1.0, 1.0]);
+    this.baseColorFactor = this.defineUniform('baseColorFactor', vec4.fromValues(1.0, 1.0, 1.0, 1.0));
+    this.metallicRoughnessFactor = this.defineUniform('metallicRoughnessFactor', vec2.fromValues(1.0, 1.0));
     this.occlusionStrength = this.defineUniform('occlusionStrength', 1.0);
-    this.emissiveFactor = this.defineUniform('emissiveFactor', [0, 0, 0]);
+    this.emissiveFactor = this.defineUniform('emissiveFactor', vec3.fromValues(0, 0, 0));
   }
 
   get materialName() {
@@ -251,7 +252,7 @@ export class PbrMaterial extends Material {
   }
 
   getProgramDefines(attributeMask: number): ProgramDefines {
-    let programDefines = {};
+    let programDefines: ProgramDefines = {};
 
     if (attributeMask & ATTRIB_MASK.COLOR_0) {
       programDefines['USE_VERTEX_COLOR'] = 1;

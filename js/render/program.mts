@@ -17,11 +17,12 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+import { Material } from '../scene/materials/material.mjs';
 
 export class Program {
   program: WebGLProgram;
   attrib: { [key: string]: number } = {};
-  uniform: { [key: string]: WebGLUniformLocation } = {};
+  uniformMap: { [key: string]: WebGLUniformLocation } = {};
   defines: { [key: string]: number } = {};
   private _nextUseCallbacks: Function[] = [];
   constructor(public readonly gl: WebGL2RenderingContext,
@@ -86,7 +87,7 @@ export class Program {
         const uniformName = uniformInfo.name.replace('[0]', '');
         const location = gl.getUniformLocation(this.program, uniformName);
         if (location) {
-          this.uniform[uniformName] = location;
+          this.uniformMap[uniformName] = location;
         }
       }
     }
@@ -104,6 +105,49 @@ export class Program {
         callback(this);
       }
       this._nextUseCallbacks = [];
+    }
+  }
+
+  bindMaterial(material: Material) {
+    // First time we do a binding, cache the uniform locations and remove
+    // unused uniforms from the list.
+    // if (this._firstBind) {
+    //   for (let i = 0; i < material._samplers.length;) {
+    //     let sampler = material._samplers[i];
+    //     if (!this.uniform[sampler._uniformName]) {
+    //       material._samplers.splice(i, 1);
+    //       continue;
+    //     }
+    //     ++i;
+    //   }
+    //
+    //   for (let i = 0; i < this._uniforms.length;) {
+    //     let uniform = this._uniforms[i];
+    //     uniform._uniform = this.program.uniform[uniform._uniformName];
+    //     if (!uniform._uniform) {
+    //       this._uniforms.splice(i, 1);
+    //       continue;
+    //     }
+    //     ++i;
+    //   }
+    //   this._firstBind = false;
+    // }
+
+    const gl = this.gl;
+    // for (let sampler of material._samplers) {
+    //   gl.activeTexture(gl.TEXTURE0 + sampler._index);
+    //   if (sampler._renderTexture && sampler._renderTexture._complete) {
+    //     gl.bindTexture(gl.TEXTURE_2D, sampler._renderTexture._texture);
+    //   } else {
+    //     gl.bindTexture(gl.TEXTURE_2D, null);
+    //   }
+    // }
+
+    for (let src of material.uniforms) {
+      const dst = this.uniformMap[src.name];
+      if (dst) {
+        src.setTo(gl, dst);
+      }
     }
   }
 }

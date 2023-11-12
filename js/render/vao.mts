@@ -1,5 +1,5 @@
 import { ATTRIB, ATTRIB_MASK, Primitive } from '../scene/geometry/primitive.mjs';
-import { RenderMaterial } from './rendermaterial.mjs';
+import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -57,7 +57,7 @@ export class Vao {
   constructor(
     gl: WebGL2RenderingContext,
     primitive: Primitive,
-    public readonly material: RenderMaterial,
+    public readonly program: Program,
     vboList: Vbo[],
     attributeMask: number,
     ibo?: Ibo) {
