@@ -1,11 +1,10 @@
 /**
  * https://immersive-web.github.io/webxr-hand-input/
  */
-import { Node } from './js/scene/node.mjs';
-import { vec3, mat4 } from './js/math/gl-matrix.mjs';
-import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
-import { PbrMaterial } from './js/scene/pbr.mjs';
-import { Material } from './js/scene/material.mjs';
+import { Node } from '../node.mjs';
+import { vec3, mat4 } from '../../math/gl-matrix.mjs';
+import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { PbrMaterial } from '../pbr.mjs';
 
 
 /**

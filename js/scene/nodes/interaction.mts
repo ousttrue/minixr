@@ -1,8 +1,7 @@
-import { Node } from './js/scene/node.mjs';
-import { PbrMaterial } from './js/scene/pbr.mjs';
-import { Primitive } from './js/scene/geometry/primitive.mjs';
-import { BoxBuilder } from './js/scene/geometry/box-builder.mjs';
-import { vec3, mat4 } from './js/math/gl-matrix.mjs';
+import { Node } from '../node.mjs';
+import { PbrMaterial } from '../pbr.mjs';
+import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { vec3, mat4 } from '../../math/gl-matrix.mjs';
 
 
 export class Interaction extends Node {
