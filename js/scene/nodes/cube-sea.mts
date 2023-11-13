@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { Node } from './node.mjs';
-import { Material } from '../materials/material.mjs';
+import { Material, MaterialSampler } from '../materials/material.mjs';
 import { Texture } from '../materials/texture.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, mat4 } from '../../math/gl-matrix.mjs';
@@ -29,7 +29,7 @@ const GL = WebGLRenderingContext; // For enums
 
 
 class CubeSeaMaterial extends Material {
-  baseColor: import("../material.mjs").MaterialSampler;
+  baseColor: MaterialSampler;
   constructor(public heavy = false) {
     super();
     this.baseColor = this.defineSampler('baseColor');

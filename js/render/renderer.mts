@@ -265,7 +265,7 @@ export class Renderer {
 
         if (programChanged || prevMaterial != primitive.material) {
           this._bindMaterialState(primitive.material.state, prevMaterial?.state);
-          prevProgram!.bindMaterial(primitive.material,
+          program.bindMaterial(primitive.material,
             (src) => this._textureFactory.getOrCreateTexture(src));
           prevMaterial = primitive.material;
         }

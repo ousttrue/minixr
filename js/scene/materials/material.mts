@@ -310,4 +310,8 @@ export abstract class Material {
   getProgramDefines(attributeMask: number): { [key: string]: number } {
     return {};
   }
+
+  bind(gl: WebGL2RenderingContext,
+    uniformMap: { [key: string]: WebGLUniformLocation }) {
+  }
 }

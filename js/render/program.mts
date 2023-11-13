@@ -164,6 +164,8 @@ export class Program {
         src.setTo(gl, dst);
       }
     }
+
+    material.bind(gl, this.uniformMap);
   }
 }
 
@@ -200,7 +202,7 @@ export class ProgramFactory {
     let defines = material.getProgramDefines(attributeMask);
     let key = this._getProgramKey(materialName, defines);
     let program = this._programCache[key];
-    if(program){
+    if (program) {
       return program;
     }
 
