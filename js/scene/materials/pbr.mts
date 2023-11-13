@@ -23,32 +23,35 @@ import { ATTRIB_MASK } from '../geometry/primitive.mjs';
 import { vec2, vec3, vec4 } from '../../math/gl-matrix.mjs';
 
 const VERTEX_SOURCE = `
-attribute vec3 POSITION, NORMAL;
-attribute vec2 TEXCOORD_0, TEXCOORD_1;
+
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+
+in vec3 POSITION, NORMAL;
+in vec2 TEXCOORD_0, TEXCOORD_1;
 
 uniform vec3 CAMERA_POSITION;
 uniform vec3 LIGHT_DIRECTION;
 
-varying vec3 vLight; // Vector from vertex to light.
-varying vec3 vView; // Vector from vertex to camera.
-varying vec2 vTex;
+out vec3 vLight; // Vector from vertex to light.
+out vec3 vView; // Vector from vertex to camera.
+out vec2 vTex;
 
 #ifdef USE_NORMAL_MAP
-attribute vec4 TANGENT;
-varying mat3 vTBN;
+in vec4 TANGENT;
+out mat3 vTBN;
 #else
-varying vec3 vNorm;
+out vec3 vNorm;
 #endif
 
 #ifdef USE_VERTEX_COLOR
-attribute vec4 COLOR_0;
-varying vec4 vCol;
+in vec4 COLOR_0;
+out vec4 vCol;
 #endif
 
-vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
-  vec3 n = normalize(vec3(model * vec4(NORMAL, 0.0)));
+void main() {
+  vec3 n = normalize(vec3(MODEL_MATRIX * vec4(NORMAL, 0.0)));
 #ifdef USE_NORMAL_MAP
-  vec3 t = normalize(vec3(model * vec4(TANGENT.xyz, 0.0)));
+  vec3 t = normalize(vec3(MODEL_MATRIX * vec4(TANGENT.xyz, 0.0)));
   vec3 b = cross(n, t) * TANGENT.w;
   vTBN = mat3(t, b, n);
 #else
@@ -60,10 +63,10 @@ vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
 #endif
 
   vTex = TEXCOORD_0;
-  vec4 mPos = model * vec4(POSITION, 1.0);
+  vec4 mPos = MODEL_MATRIX * vec4(POSITION, 1.0);
   vLight = -LIGHT_DIRECTION;
   vView = CAMERA_POSITION - mPos.xyz;
-  return proj * view * mPos;
+  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * mPos;
 }`;
 
 // These equations are borrowed with love from this docs from Epic because I
@@ -94,26 +97,28 @@ vec3 specF(float vDotH, vec3 F0) {
 }`;
 
 const FRAGMENT_SOURCE = `
+precision mediump float;
 #define M_PI 3.14159265
+out vec4 _Color;
 
 uniform vec4 baseColorFactor;
 #ifdef USE_BASE_COLOR_MAP
 uniform sampler2D baseColorTex;
 #endif
 
-varying vec3 vLight;
-varying vec3 vView;
-varying vec2 vTex;
+in vec3 vLight;
+in vec3 vView;
+in vec2 vTex;
 
 #ifdef USE_VERTEX_COLOR
-varying vec4 vCol;
+in vec4 vCol;
 #endif
 
 #ifdef USE_NORMAL_MAP
 uniform sampler2D normalTex;
-varying mat3 vTBN;
+in mat3 vTBN;
 #else
-varying vec3 vNorm;
+in vec3 vNorm;
 #endif
 
 #ifdef USE_METAL_ROUGH_MAP
@@ -138,7 +143,7 @@ const vec3 black = vec3(0.0);
 
 ${EPIC_PBR_FUNCTIONS}
 
-vec4 fragment_main() {
+void main() {
 #ifdef USE_BASE_COLOR_MAP
   vec4 baseColor = texture2D(baseColorTex, vTex) * baseColorFactor;
 #else
@@ -211,7 +216,7 @@ vec4 fragment_main() {
   // gamma correction
   //color = pow(color, vec3(1.0/2.2));
 
-  return vec4(color, baseColor.a);
+  _Color = vec4(color, baseColor.a);
 }`;
 
 export class PbrMaterial extends Material {

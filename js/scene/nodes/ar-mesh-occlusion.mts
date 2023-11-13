@@ -21,19 +21,21 @@ export class ArOcclusionMaterial extends Material {
 
   get vertexSource() {
     return `
-    attribute vec3 POSITION;
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+    in vec3 POSITION;
 
-    vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
-      return proj * view * model * vec4(POSITION, 1.0);
+    void main() {
+      gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
     }`;
   }
 
   get fragmentSource() {
     return `
       precision mediump float;
+      out vec4 _Color;
 
-      vec4 fragment_main() {
-        return vec4(0, 0, 0, 0);
+      void main() {
+        _Color = vec4(0, 0, 0, 0);
       }`;
   }
 }

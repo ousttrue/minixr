@@ -22,6 +22,8 @@ import { vec2, vec3, vec4 } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
+export const VS_UNIFORMS='uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;'
+
 export const CAP = {
   // Enable caps
   CULL_FACE: 0x001,

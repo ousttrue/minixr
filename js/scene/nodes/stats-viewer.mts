@@ -43,23 +43,25 @@ class StatsMaterial extends Material {
 
   get vertexSource() {
     return `
-    attribute vec3 POSITION;
-    attribute vec3 COLOR_0;
-    varying vec4 vColor;
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+    in vec3 POSITION;
+    in vec3 COLOR_0;
+    out vec4 vColor;
 
-    vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
+    void main() {
       vColor = vec4(COLOR_0, 1.0);
-      return proj * view * model * vec4(POSITION, 1.0);
+      gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
     }`;
   }
 
   get fragmentSource() {
     return `
     precision mediump float;
-    varying vec4 vColor;
+    in vec4 vColor;
+    out vec4 _Color;
 
-    vec4 fragment_main() {
-      return vColor;
+    void main() {
+      _Color = vColor;
     }`;
   }
 }

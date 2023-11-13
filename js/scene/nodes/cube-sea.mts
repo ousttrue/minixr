@@ -41,32 +41,9 @@ class CubeSeaMaterial extends Material {
 
   get vertexSource() {
     return `
-    attribute vec3 POSITION;
-    attribute vec2 TEXCOORD_0;
-    attribute vec3 NORMAL;
+precision mediump float;
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 
-    varying vec2 vTexCoord;
-    varying vec3 vLight;
-
-    const vec3 lightDir = vec3(0.75, 0.5, 1.0);
-    const vec3 ambientColor = vec3(0.5, 0.5, 0.5);
-    const vec3 lightColor = vec3(0.75, 0.75, 0.75);
-
-    vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
-      vec3 normalRotated = vec3(model * vec4(NORMAL, 0.0));
-      float lightFactor = max(dot(normalize(lightDir), normalRotated), 0.0);
-      vLight = ambientColor + (lightColor * lightFactor);
-      vTexCoord = TEXCOORD_0;
-      return proj * view * model * vec4(POSITION, 1.0);
-    }`;
-  }
-
-  get vertexSourceMultiview() {
-    return `#version 300 es
-    #extension GL_OVR_multiview2 : require
-    #define NUM_VIEWS 2
-    layout(num_views=NUM_VIEWS) in;
-    #define VIEW_ID gl_ViewID_OVR
     in vec3 POSITION;
     in vec2 TEXCOORD_0;
     in vec3 NORMAL;
@@ -78,119 +55,26 @@ class CubeSeaMaterial extends Material {
     const vec3 ambientColor = vec3(0.5, 0.5, 0.5);
     const vec3 lightColor = vec3(0.75, 0.75, 0.75);
 
-    vec4 vertex_main(mat4 left_proj, mat4 left_view, mat4 right_proj, mat4 right_view, mat4 model) {
-      vec3 normalRotated = vec3(model * vec4(NORMAL, 0.0));
+    void main() {
+      vec3 normalRotated = vec3(MODEL_MATRIX * vec4(NORMAL, 0.0));
       float lightFactor = max(dot(normalize(lightDir), normalRotated), 0.0);
       vLight = ambientColor + (lightColor * lightFactor);
       vTexCoord = TEXCOORD_0;
-      return (VIEW_ID == 0u) ? left_proj * left_view * model * vec4(POSITION, 1.0) :
-                               right_proj * right_view * model * vec4(POSITION, 1.0);
+      gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
     }`;
   }
 
-  get fragmentSourceMultiview() {
-    if (!this.heavy) {
-      return `#version 300 es
+  get fragmentSource() {
+    return `
       precision mediump float;
       uniform sampler2D baseColor;
       in vec2 vTexCoord;
       in vec3 vLight;
+      out vec4 _Color;
 
-      vec4 fragment_main() {
-        return vec4(vLight, 1.0) * texture(baseColor, vTexCoord);
+      void main() {
+        _Color = vec4(vLight, 1.0) * texture(baseColor, vTexCoord);
       }`;
-    } else {
-      // NOT IMPLEMENTED
-      console.log("Multiview HEAVY case is not implemented");
-    }
-  }
-  get fragmentSource() {
-    if (!this.heavy) {
-      return `
-      precision mediump float;
-      uniform sampler2D baseColor;
-      varying vec2 vTexCoord;
-      varying vec3 vLight;
-
-      vec4 fragment_main() {
-        return vec4(vLight, 1.0) * texture2D(baseColor, vTexCoord);
-      }`;
-    } else {
-      // Used when we want to stress the GPU a bit more.
-      // Stolen with love from https://www.clicktorelease.com/code/codevember-2016/4/
-      return `
-      precision mediump float;
-
-      uniform sampler2D diffuse;
-      varying vec2 vTexCoord;
-      varying vec3 vLight;
-
-      vec2 dimensions = vec2(64, 64);
-      float seed = 0.42;
-
-      vec2 hash( vec2 p ) {
-        p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3)));
-        return fract(sin(p)*18.5453);
-      }
-
-      vec3 hash3( vec2 p ) {
-          vec3 q = vec3( dot(p,vec2(127.1,311.7)),
-                 dot(p,vec2(269.5,183.3)),
-                 dot(p,vec2(419.2,371.9)) );
-        return fract(sin(q)*43758.5453);
-      }
-
-      float iqnoise( in vec2 x, float u, float v ) {
-        vec2 p = floor(x);
-        vec2 f = fract(x);
-        float k = 1.0+63.0*pow(1.0-v,4.0);
-        float va = 0.0;
-        float wt = 0.0;
-        for( int j=-2; j<=2; j++ )
-          for( int i=-2; i<=2; i++ ) {
-            vec2 g = vec2( float(i),float(j) );
-            vec3 o = hash3( p + g )*vec3(u,u,1.0);
-            vec2 r = g - f + o.xy;
-            float d = dot(r,r);
-            float ww = pow( 1.0-smoothstep(0.0,1.414,sqrt(d)), k );
-            va += o.z*ww;
-            wt += ww;
-          }
-        return va/wt;
-      }
-
-      // return distance, and cell id
-      vec2 voronoi( in vec2 x ) {
-        vec2 n = floor( x );
-        vec2 f = fract( x );
-        vec3 m = vec3( 8.0 );
-        for( int j=-1; j<=1; j++ )
-          for( int i=-1; i<=1; i++ ) {
-            vec2  g = vec2( float(i), float(j) );
-            vec2  o = hash( n + g );
-            vec2  r = g - f + (0.5+0.5*sin(seed+6.2831*o));
-            float d = dot( r, r );
-            if( d<m.x )
-              m = vec3( d, o );
-          }
-        return vec2( sqrt(m.x), m.y+m.z );
-      }
-
-      vec4 fragment_main() {
-        vec2 uv = ( vTexCoord );
-        uv *= vec2( 10., 10. );
-        uv += seed;
-        vec2 p = 0.5 - 0.5*sin( 0.*vec2(1.01,1.71) );
-
-        vec2 c = voronoi( uv );
-        vec3 col = vec3( c.y / 2. );
-
-        float f = iqnoise( 1. * uv + c.y, p.x, p.y );
-        col *= 1.0 + .25 * vec3( f );
-
-        return vec4(vLight, 1.0) * texture2D(diffuse, vTexCoord) * vec4( col, 1. );
-      }`;
-    }
   }
 }
 
