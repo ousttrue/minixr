@@ -1,7 +1,7 @@
 import { Node } from './node.mjs';
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
-import { PbrMaterial } from '../materials/pbr.mjs';
 import { mat4 } from '../../math/gl-matrix.mjs';
+import { Material } from '../materials/material.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -10,18 +10,47 @@ type MeshPrimitive = {
   time: number,
 }
 
+export class ArOcclusionMaterial extends Material {
+  constructor() {
+    super();
+  }
+
+  get materialName() {
+    return 'ArOcclusion';
+  }
+
+  get vertexSource() {
+    return `
+    attribute vec3 POSITION;
+
+    vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
+      return proj * view * model * vec4(POSITION, 1.0);
+    }`;
+  }
+
+  get fragmentSource() {
+    return `
+      precision mediump float;
+
+      vec4 fragment_main() {
+        return vec4(0, 0, 0, 0);
+      }`;
+  }
+}
 export class ArMeshOccusion extends Node {
 
   lastMap: Map<XRMesh, MeshPrimitive> = new Map();
   newMap: Map<XRMesh, MeshPrimitive> = new Map();
-  arOcclusionMaterial = new PbrMaterial();
+  arOcclusionMaterial = new ArOcclusionMaterial();
 
   constructor() {
     super("ArMeshOccusion");
-    this.arOcclusionMaterial.baseColorFactor.value = [0, 0, 0, 0];
+    // this.arOcclusionMaterial.baseColorFactor.value = [0, 0, 0, 0];
   }
 
-  _onUpdate(_time: number, _delta: number, referenceSpace: XRReferenceSpace, frame: XRFrame) {
+  protected _onUpdate(_timestamp: number, _frameDelta: number,
+    refsp: XRReferenceSpace, frame: XRFrame, _inputSources: XRInputSourceArray) {
+
     // @ts-ignore
     const detectedMeshes = frame.detectedMeshes as (XRMeshSet | null);
     if (!detectedMeshes) {
@@ -33,7 +62,7 @@ export class ArMeshOccusion extends Node {
 
     detectedMeshes.forEach(mesh => {
 
-      const pose = frame.getPose(mesh.meshSpace, referenceSpace);
+      const pose = frame.getPose(mesh.meshSpace, refsp);
       if (!pose) {
         return;
       }
@@ -90,7 +119,7 @@ export class ArMeshOccusion extends Node {
     const indices = mesh.indices as Uint32Array;
     const primitive = new Primitive(this.arOcclusionMaterial, attributes, mesh.vertices.length / 3, indices);
 
-    const node = new Node(mesh.semanticLabel ?? "meshDetection");
+    const node = new Node(`meshDetection: ${mesh.semanticLabel}`);
     node.primitives.push(primitive);
 
     node.local.matrix = new mat4(pose.transform.matrix);

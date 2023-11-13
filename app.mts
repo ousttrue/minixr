@@ -51,9 +51,9 @@ export default class App {
       this.scene.root.addNode(node);
     });
 
-    // this.loader.loadCubeSeaAsync().then(node => {
-    //   this.scene.root.addNode(node);
-    // });
+    this.loader.loadCubeSeaAsync().then(node => {
+      this.scene.root.addNode(node);
+    });
 
     const occlusion = new ArMeshOccusion();
     this.scene.root.addNode(occlusion);
@@ -81,7 +81,7 @@ export default class App {
     // be displayed on the XRDevice.
     await session.updateRenderState({
       baseLayer: new XRWebGLLayer(session, this.gl, {
-        framebufferScaleFactor: 0.1,
+        // framebufferScaleFactor: 0.1,
       })
     });
 

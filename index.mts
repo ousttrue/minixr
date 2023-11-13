@@ -44,11 +44,13 @@ const xr = navigator.xr;
 async function onRequestSession() {
   const session = await xr!.requestSession(isAR ? 'immersive-ar' : 'immersive-vr',
     {
-      optionalFeatures: [
-        'local-floor',
-        'bounded-floor',
+      requiredFeatures: [
         'hand-tracking',
         'mesh-detection',
+      ],
+      optionalFeatures: [
+        // 'local-floor',
+        // 'bounded-floor',
         // 'high-fixed-foveation-level',
       ]
     });
