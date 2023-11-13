@@ -1,4 +1,4 @@
-import { Node } from './node.mjs';
+import { Node, HoverStartEvent, HoverEndEvent } from './node.mjs';
 import { Material } from '../materials/material.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, vec4 } from '../../math/gl-matrix.mjs';
@@ -9,7 +9,7 @@ class MaterialUniformFloat4 {
     public readonly value: vec4) { }
 }
 
-class HoverMaterial extends Material {
+export class HoverMaterial extends Material {
   color = new MaterialUniformFloat4('uColor', vec4.fromValues(1, 1, 1, 1));
   constructor() {
     super();
@@ -73,6 +73,14 @@ export class Interaction extends Node {
     this.primitives.push(primitive);
     this.local.translation = vec3.fromValues(0, 0, -0.65);
     this.local.scale = vec3.fromValues(0.25, 0.25, 0.25);
+
+    this.addEventListener('hover-start', event => {
+      this.onHoverStart((event as HoverStartEvent).active);
+    });
+
+    this.addEventListener('hover-end', event => {
+      this.onHoverEnd((event as HoverEndEvent).active);
+    });
   }
 
   protected _onUpdate(_time: number, delta: number) {

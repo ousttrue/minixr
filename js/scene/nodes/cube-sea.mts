@@ -23,6 +23,7 @@ import { Material, MaterialSampler } from '../materials/material.mjs';
 import { Texture } from '../materials/texture.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, mat4 } from '../../math/gl-matrix.mjs';
+import { HoverMaterial } from './interaction.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
@@ -84,8 +85,7 @@ export class CubeSeaNode extends Node {
   cubeScale: any;
   halfOnly: boolean;
   autoRotate: boolean;
-  private _material: CubeSeaMaterial;
-  heroNode: Node;
+  heroNodes: Node[] = [];
   constructor(options: {
     heavyGpu: boolean,
     cubeCount: number,
@@ -113,29 +113,31 @@ export class CubeSeaNode extends Node {
     // not recommended for viewing in a headset.
     this.autoRotate = !!options.autoRotate;
 
-
-    this._material = new CubeSeaMaterial(this.heavyGpu);
-    this._material.baseColor.texture = options.texture;
-
-    {
+    for (const pos of [
+      [0, 0.25, -0.8],
+      [0.8, 0.25, 0],
+      [0, 0.25, 0.8],
+      [-0.8, 0.25, 0],
+    ]) {
       let boxBuilder = new BoxBuilder();
       // Build the spinning "hero" cubes
-      boxBuilder.pushCube([0, 0.25, -0.8], 0.1);
-      boxBuilder.pushCube([0.8, 0.25, 0], 0.1);
-      boxBuilder.pushCube([0, 0.25, 0.8], 0.1);
-      boxBuilder.pushCube([-0.8, 0.25, 0], 0.1);
-      let heroPrimitive = boxBuilder.finishPrimitive(this._material);
-      this.heroNode = new Node("hero");
-      this.heroNode.primitives.push(heroPrimitive);
-      this.addNode(this.heroNode);
+      boxBuilder.pushCube(pos, 0.1);
+      const material = new HoverMaterial();
+      let heroPrimitive = boxBuilder.finishPrimitive(material);
+      const heroNode = new Node("hero");
+      heroNode.action = 'passive';
+      heroNode.primitives.push(heroPrimitive);
+      this.addNode(heroNode);
+      heroNode.addEventListener('hover-start', event => {
+        material.color.value.set(1, 0, 0, 1);;
+      });
+      heroNode.addEventListener('hover-end', event => {
+        material.color.value.set(1, 1, 1, 1);;
+      });
+      this.heroNodes.push(heroNode);
     }
 
     {
-      let boxBuilder = new BoxBuilder();
-      let size = 0.4 * this.cubeScale;
-      boxBuilder.pushCube([0, 0, 0], size);
-      let cubeSeaPrimitive = boxBuilder.finishPrimitive(this._material);
-
       // Build the cube sea
       let halfGrid = this.cubeCount * 0.5;
       for (let x = 0; x < this.cubeCount; ++x) {
@@ -153,9 +155,24 @@ export class CubeSeaNode extends Node {
               continue;
             }
 
+            let boxBuilder = new BoxBuilder();
+            let size = 0.4 * this.cubeScale;
+            boxBuilder.pushCube([0, 0, 0], size);
+            const material = new HoverMaterial();
+            let cubeSeaPrimitive = boxBuilder.finishPrimitive(material);
+
             const cubeSeaNode = new Node('sea');
+            cubeSeaNode.action = 'passive';
             cubeSeaNode.primitives.push(cubeSeaPrimitive);
             cubeSeaNode.local.translation = vec3.fromValues(pos[0], pos[1], pos[2]);
+
+            cubeSeaNode.addEventListener('hover-start', event => {
+              material.color.value.set(1, 0, 0, 1);;
+            });
+
+            cubeSeaNode.addEventListener('hover-end', event => {
+              material.color.value.set(1, 1, 1, 1);;
+            });
 
             this.addNode(cubeSeaNode);
           }
@@ -172,10 +189,10 @@ export class CubeSeaNode extends Node {
     //   this.cubeSeaNode.local.invalidate();
     // }
 
-    {
-      const matrix = this.heroNode.local.matrix;
+    for (const heroNode of this.heroNodes) {
+      const matrix = heroNode.local.matrix;
       mat4.fromRotation(timestamp / 2000, vec3.fromValues(0, 1, 0), { out: matrix });
-      this.heroNode.local.invalidate();
+      heroNode.local.invalidate();
     }
   }
 }

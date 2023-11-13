@@ -23,7 +23,7 @@ import { mat4, vec3, quat, Ray, Transform } from '../../math/gl-matrix.mjs';
 
 export type ActionType = 'active' | 'passive';
 
-export class Node {
+export class Node extends EventTarget {
   visible = true;
   action: ActionType | null = null;
 
@@ -63,6 +63,8 @@ export class Node {
   primitives: Primitive[] = [];
 
   constructor(public name: string) {
+    super();
+
     this.local.onInvalidated.push(() => {
       this.setMatrixDirty();
     });
@@ -124,14 +126,12 @@ export class Node {
     _refsp: XRReferenceSpace, _frame: XRFrame, _inputSources: XRInputSourceArray) {
 
   }
-
-  // Called when a selectable element is pointed at.
-  onHoverStart(action: Node) {
-
-  }
-
-  // Called when a selectable element is no longer pointed at.
-  onHoverEnd(active: Node) {
-
-  }
 }
+
+export class HoverStartEvent extends Event {
+  constructor(public readonly active: Node) { super('hover-start'); }
+}
+export class HoverEndEvent extends Event {
+  constructor(public readonly active: Node) { super('hover-end'); }
+}
+

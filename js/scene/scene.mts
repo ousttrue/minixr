@@ -18,11 +18,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node } from './nodes/node.mjs';
+import { Node, HoverStartEvent, HoverEndEvent } from './nodes/node.mjs';
 import { Primitive } from './geometry/primitive.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
 
 export type RenderCommands = Map<Primitive, Node[]>;
+
+interface HoverStartEvent extends Event {
+  active: Node;
+  passive: Node,
+}
+interface HoverEndEvent extends Event {
+  active: Node;
+  passive: Node,
+}
 
 class HoverStatus {
   _last: Set<Node> = new Set();
@@ -35,14 +44,14 @@ class HoverStatus {
       }
       else {
         // enter
-        hit.onHoverStart(active);
+        hit.dispatchEvent(new HoverStartEvent(active));
       }
       this._current.add(hit);
     }
 
     // not hit. hover end
     this._last.forEach(x => {
-      x.onHoverEnd(active);
+      x.dispatchEvent(new HoverEndEvent(active));
     });
 
     // swap
