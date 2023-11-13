@@ -102,9 +102,11 @@ export class Vao {
     gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
   }
 
-  draw(gl: WebGL2RenderingContext) {
+  bind(gl: WebGL2RenderingContext) {
     gl.bindVertexArray(this._vao);
+  }
 
+  draw(gl: WebGL2RenderingContext) {
     if (this._indexBuffer) {
       gl.drawElements(this._mode, this._drawCount,
         this._indexType, this._indexOffset);

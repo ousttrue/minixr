@@ -228,7 +228,8 @@ export class Renderer {
     gl.viewport(vp.x, vp.y, vp.width, vp.height);
 
     let prevProgram: Program | null = null;
-    let prevMaterial: Material | undefined = undefined;
+    let prevMaterial: Material | null = null;
+    let prevVao: Vao | null = null;
     renderList.forEach((nodes, primitive) => {
       const attributeMask = getAttributeMask(primitive.attributes);
       const vao = this._getOrCreatePrimtive(primitive, attributeMask);
@@ -274,6 +275,10 @@ export class Renderer {
         gl.uniformMatrix4fv(prevProgram.uniformMap.MODEL_MATRIX, false,
           node.worldMatrix.array);
 
+        if (vao != prevVao) {
+          vao.bind(gl);
+          prevVao = vao;
+        }
         vao.draw(gl);
       }
     });
