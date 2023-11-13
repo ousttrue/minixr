@@ -9,6 +9,8 @@ export class Interaction extends Node {
   constructor(color: { r: number, g: number, b: number }) {
     super("Interaction");
 
+    this.action = 'passive';
+
     let boxBuilder = new BoxBuilder();
     boxBuilder.pushCube([0, 0, 0], 1);
     let boxMaterial = new PbrMaterial();
@@ -35,5 +37,13 @@ export class Interaction extends Node {
     this.local.matrix.rotateX(delta / 1000);
     this.local.matrix.rotateY(delta / 1500);
     this.local.invalidate();
+  }
+
+  onHoverStart(action: Node) {
+    console.log('onHoverStart', action);
+  }
+
+  onHoverEnd(action: Node) {
+    console.log('onHoverEnd', action);
   }
 }

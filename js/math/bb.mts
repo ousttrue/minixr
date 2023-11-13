@@ -6,13 +6,37 @@ export class BoundingBox {
     public max = vec3.fromValues(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY)) {
   }
 
-  expand(x: number, y: number, z: number) {
-    this.min.x = Math.min(this.min.x, x);
-    this.min.y = Math.min(this.min.y, y);
-    this.min.z = Math.min(this.min.z, z);
-    this.max.x = Math.max(this.max.x, x);
-    this.max.y = Math.max(this.max.y, y);
-    this.max.z = Math.max(this.max.z, z);
+  toString(): string {
+    return `[${this.min}, ${this.max}]`;
+  }
+
+  isFinite(): boolean {
+    if (!isFinite(this.min.x)) return false;
+    if (!isFinite(this.min.y)) return false;
+    if (!isFinite(this.min.z)) return false;
+    if (!isFinite(this.max.x)) return false;
+    if (!isFinite(this.max.y)) return false;
+    if (!isFinite(this.max.z)) return false;
+    return true;
+  }
+
+  expand(p: vec3) {
+    if (!isFinite(p.x)) {
+      throw new Error("not isFinite !");
+    }
+    if (!isFinite(p.y)) {
+      throw new Error("not isFinite !");
+    }
+    if (!isFinite(p.z)) {
+      throw new Error("not isFinite !");
+    }
+
+    this.min.x = Math.min(this.min.x, p.x);
+    this.min.y = Math.min(this.min.y, p.y);
+    this.min.z = Math.min(this.min.z, p.z);
+    this.max.x = Math.max(this.max.x, p.x);
+    this.max.y = Math.max(this.max.y, p.y);
+    this.max.z = Math.max(this.max.z, p.z);
   }
 
   copy(): BoundingBox {
@@ -20,6 +44,16 @@ export class BoundingBox {
     this.min.copy({ out: bb.min })
     this.max.copy({ out: bb.max })
     return bb;
+  }
+
+  contains(p: vec3): boolean {
+    if (p.x < this.min.x) return false;
+    if (p.y < this.min.y) return false;
+    if (p.z < this.min.z) return false;
+    if (p.x > this.max.x) return false;
+    if (p.y > this.max.y) return false;
+    if (p.z > this.max.z) return false;
+    return true;
   }
 
   // setBounds(min: vec3, max: vec3) {

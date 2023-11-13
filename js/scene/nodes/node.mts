@@ -21,15 +21,12 @@
 import { Primitive } from '../geometry/primitive.mjs';
 import { mat4, vec3, quat, Ray, Transform } from '../../math/gl-matrix.mjs';
 
-const tmpRayMatrix = new mat4();
-
-type NodeIntersection = {
-  node: Node,
-  intersection: vec3,
-  distance: number,
-};
+export type ActionType = 'active' | 'passive';
 
 export class Node {
+  visible = true;
+  action: ActionType | null = null;
+
   children: Node[] = [];
   parent: Node | null = null;
   local: Transform = new Transform();
@@ -43,6 +40,11 @@ export class Node {
       }
     }
   }
+
+  toString(): string {
+    return `[node: ${this.name}]`;
+  }
+
   get worldMatrix(): mat4 {
     if (this._dirtyWorldMatrix) {
       this._dirtyWorldMatrix = false;
@@ -58,15 +60,8 @@ export class Node {
     return this._worldMatrix;
   }
 
-  visible = true;
-  selectable = false;
-
-  private _activeFrameId: number = -1;
-  _hoverFrameId: number = -1;
-
   primitives: Primitive[] = [];
 
-  // private _selectHandler: Function | null = null;
   constructor(public name: string) {
     this.local.onInvalidated.push(() => {
       this.setMatrixDirty();
@@ -80,13 +75,10 @@ export class Node {
     const cloneNode = new Node(this.name);
     cloneNode.visible = this.visible;
     cloneNode.local = this.local.clone();
-
-    // TODO: primitives
-
+    cloneNode.primitives = this.primitives.map(x => x);
     for (let child of this.children) {
       cloneNode.addNode(child.clone());
     }
-
     return cloneNode;
   }
 
@@ -118,84 +110,6 @@ export class Node {
     this.children = [];
   }
 
-  // _hitTestSelectableNode(rigidTransform: XRRigidTransform): vec3 | null {
-  //   let localRay = null;
-  //   for (let primitive of this._renderPrimitives) {
-  //     if (primitive._min) {
-  //       if (!localRay) {
-  //         mat4.invert(tmpRayMatrix, this.worldMatrix);
-  //         mat4.multiply(tmpRayMatrix, tmpRayMatrix, rigidTransform.matrix);
-  //         localRay = new Ray(tmpRayMatrix);
-  //       }
-  //       let intersection = localRay.intersectsAABB(primitive._min, primitive._max);
-  //       if (intersection) {
-  //         intersection.transformMat4(this.worldMatrix);
-  //         return intersection;
-  //       }
-  //     }
-  //   }
-  //   for (let child of this.children) {
-  //     let intersection = child._hitTestSelectableNode(rigidTransform);
-  //     if (intersection) {
-  //       return intersection;
-  //     }
-  //   }
-  //   return null;
-  // }
-  //
-  // hitTest(rigidTransform: XRRigidTransform): NodeIntersection | null {
-  //   if (this.selectable && this.visible) {
-  //     let intersection = this._hitTestSelectableNode(rigidTransform);
-  //
-  //     if (intersection) {
-  //       let ray = new Ray(rigidTransform.matrix);
-  //       let origin = vec3.fromValues(ray.origin.x, ray.origin.y, ray.origin.z);
-  //       return {
-  //         node: this,
-  //         intersection: intersection,
-  //         distance: vec3.distance(origin, intersection),
-  //       };
-  //     }
-  //     return null;
-  //   }
-  //
-  //   let result = null;
-  //   for (let child of this.children) {
-  //     let childResult = child.hitTest(rigidTransform);
-  //     if (childResult) {
-  //       if (!result || result.distance > childResult.distance) {
-  //         result = childResult;
-  //       }
-  //     }
-  //   }
-  //   return result;
-  // }
-  //
-  // onSelect(value: Function) {
-  //   this._selectHandler = value;
-  // }
-  //
-  // get selectHandler() {
-  //   return this._selectHandler;
-  // }
-  //
-  // // Called when a selectable node is selected.
-  // handleSelect() {
-  //   if (this._selectHandler) {
-  //     this._selectHandler();
-  //   }
-  // }
-  //
-  // // Called when a selectable element is pointed at.
-  // onHoverStart() {
-  //
-  // }
-  //
-  // // Called when a selectable element is no longer pointed at.
-  // onHoverEnd() {
-  //
-  // }
-
   update(timestamp: number, frameDelta: number,
     refspace: XRReferenceSpace, frame: XRFrame,
     inputSources: XRInputSourceArray) {
@@ -208,6 +122,16 @@ export class Node {
   // Called every frame so that the nodes can animate themselves
   protected _onUpdate(_timestamp: number, _frameDelta: number,
     _refsp: XRReferenceSpace, _frame: XRFrame, _inputSources: XRInputSourceArray) {
+
+  }
+
+  // Called when a selectable element is pointed at.
+  onHoverStart(action: Node) {
+
+  }
+
+  // Called when a selectable element is no longer pointed at.
+  onHoverEnd(active: Node) {
 
   }
 }

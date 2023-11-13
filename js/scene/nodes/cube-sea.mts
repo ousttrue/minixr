@@ -202,7 +202,6 @@ export class CubeSeaNode extends Node {
   autoRotate: boolean;
   private _material: CubeSeaMaterial;
   heroNode: Node;
-  cubeSeaNode: Node;
   constructor(options: {
     heavyGpu: boolean,
     cubeCount: number,
@@ -250,6 +249,8 @@ export class CubeSeaNode extends Node {
     {
       let boxBuilder = new BoxBuilder();
       let size = 0.4 * this.cubeScale;
+      boxBuilder.pushCube([0, 0, 0], size);
+      let cubeSeaPrimitive = boxBuilder.finishPrimitive(this._material);
 
       // Build the cube sea
       let halfGrid = this.cubeCount * 0.5;
@@ -259,7 +260,7 @@ export class CubeSeaNode extends Node {
             let pos = [x - halfGrid, y - halfGrid, z - halfGrid];
             // Only draw cubes on one side. Useful for testing variable render
             // cost that depends on view direction.
-            if (this.halfOnly && pos[0] < 0) {
+            if (pos[2] > 0) {
               continue;
             }
 
@@ -268,31 +269,24 @@ export class CubeSeaNode extends Node {
               continue;
             }
 
-            boxBuilder.pushCube(pos, size);
+            const cubeSeaNode = new Node('sea');
+            cubeSeaNode.primitives.push(cubeSeaPrimitive);
+            cubeSeaNode.local.translation = vec3.fromValues(pos[0], pos[1], pos[2]);
+
+            this.addNode(cubeSeaNode);
           }
         }
       }
-
-      if (this.cubeCount > 12) {
-        // Each cube has 6 sides with 2 triangles and 3 indices per triangle, so
-        // the total number of indices needed is cubeCount^3 * 36. This exceeds
-        // the short index range past 12 cubes.
-        boxBuilder.indexType = GL.UNSIGNED_INT;
-      }
-      let cubeSeaPrimitive = boxBuilder.finishPrimitive(this._material);
-      this.cubeSeaNode = new Node('sea');
-      this.primitives.push(cubeSeaPrimitive);
-      this.addNode(this.cubeSeaNode);
     }
   }
 
   protected _onUpdate(timestamp: number, _frameDelta: number,
     _refsp: XRReferenceSpace, _frame: XRFrame) {
-    if (this.autoRotate) {
-      const matrix = this.cubeSeaNode.local.matrix;
-      mat4.fromRotation(timestamp / 500, vec3.fromValues(0, -1, 0), { out: matrix });
-      this.cubeSeaNode.local.invalidate();
-    }
+    // if (this.autoRotate) {
+    //   const matrix = this.cubeSeaNode.local.matrix;
+    //   mat4.fromRotation(timestamp / 500, vec3.fromValues(0, -1, 0), { out: matrix });
+    //   this.cubeSeaNode.local.invalidate();
+    // }
 
     {
       const matrix = this.heroNode.local.matrix;

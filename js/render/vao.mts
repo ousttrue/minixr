@@ -71,7 +71,7 @@ export class Vao {
     if (ibo) {
       ibo.indexBuffer.bind(gl);
       this._indexBuffer = ibo.indexBuffer;
-      this._indexType = ibo?.indexType;
+      this._indexType = ibo.indexType;
       this._drawCount = ibo.indexCount;
     }
     else {

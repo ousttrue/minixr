@@ -16,6 +16,8 @@ import { SimpleMaterial } from '../materials/simple.mjs';
  * a   -(01)-(02)-(03)-(04) (thumb)
  * n
  * d 
+ *
+ * 09, 14, 19, 24 has hittest:active to hittest:passive
  */
 export class Hand extends Node {
   private _joints: Node[] = [];
@@ -25,9 +27,9 @@ export class Hand extends Node {
   constructor(public readonly hand: 'left' | 'right') {
     super(hand);
 
-    const r = .6 + Math.random() * .4;
-    const g = .6 + Math.random() * .4;
-    const b = .6 + Math.random() * .4;
+    // const r = .6 + Math.random() * .4;
+    // const g = .6 + Math.random() * .4;
+    // const b = .6 + Math.random() * .4;
 
     const material = new SimpleMaterial();
 
@@ -36,9 +38,17 @@ export class Hand extends Node {
     const primitive = boxBuilder.finishPrimitive(material);
 
     for (let i = 0; i < 24; i++) {
-      const node = new Node(`${hand}${i}`);
+      const node = new Node(`${hand}hand:${i}`);
       node.primitives.push(primitive);
       this._joints.push(node);
+      switch (i) {
+        case 9: // index
+          // case 14: // middle
+          // case 19: // ring
+          // case 24: // little
+          node.action = 'active';
+          break;
+      }
       this.addNode(node);
     }
   }

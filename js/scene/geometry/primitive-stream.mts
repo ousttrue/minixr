@@ -135,7 +135,7 @@ export class PrimitiveStream {
 
     this._vertices.push(x, y, z, u, v, nx, ny, nz);
 
-    this._bb.expand(x, y, z);
+    this._bb.expand(vec3.fromValues(x, y, z));
 
     return this._vertexIndex++;
   }

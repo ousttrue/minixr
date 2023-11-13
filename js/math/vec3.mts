@@ -16,6 +16,10 @@ export class vec3 {
     return this.x == rhs.x && this.y == rhs.y && this.z == rhs.z;
   }
 
+  toString(): string {
+    return `[${this.x}, ${this.y}, ${this.y}]`;
+  }
+
   /**
    * Creates a new vec3 initialized with values from an existing vector
    */
@@ -388,16 +392,18 @@ export class vec3 {
    * Transforms the vec3 with a mat4.
    * 4th vector component is implicitly '1'
    */
-  transformMat4(_m: mat4) {
+  transformMat4(_m: mat4, option?: { out: vec3 }): vec3 {
+    const dst = option?.out ?? new vec3();
     const m = _m.array;
     const x = this.array[0];
     const y = this.array[1];
     const z = this.array[2];
     let w = m[3] * x + m[7] * y + m[11] * z + m[15];
     w = w || 1.0;
-    this.array[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
-    this.array[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
-    this.array[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+    dst.array[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+    dst.array[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+    dst.array[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+    return dst;
   }
 
   /**
