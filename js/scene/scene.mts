@@ -18,20 +18,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node, HoverStartEvent, HoverEndEvent } from './nodes/node.mjs';
+import {
+  Node,
+  HoverPassiveStartEvent, HoverPassiveEndEvent,
+  HoverActiveStartEvent, HoverActiveEndEvent,
+} from './nodes/node.mjs';
 import { Primitive } from './geometry/primitive.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
 
 export type RenderCommands = Map<Primitive, Node[]>;
-
-interface HoverStartEvent extends Event {
-  active: Node;
-  passive: Node,
-}
-interface HoverEndEvent extends Event {
-  active: Node;
-  passive: Node,
-}
 
 class HoverStatus {
   _last: Set<Node> = new Set();
@@ -39,19 +34,21 @@ class HoverStatus {
 
   update(active: Node, hitList: readonly Node[]) {
     this._current.clear();
-    for (const hit of hitList) {
-      if (this._last.delete(hit)) {
+    for (const passive of hitList) {
+      if (this._last.delete(passive)) {
       }
       else {
         // enter
-        hit.dispatchEvent(new HoverStartEvent(active));
+        passive.dispatchEvent(new HoverPassiveStartEvent(active));
+        active.dispatchEvent(new HoverActiveStartEvent(passive));
       }
-      this._current.add(hit);
+      this._current.add(passive);
     }
 
     // not hit. hover end
-    this._last.forEach(x => {
-      x.dispatchEvent(new HoverEndEvent(active));
+    this._last.forEach(passive => {
+      passive.dispatchEvent(new HoverPassiveEndEvent(active));
+      active.dispatchEvent(new HoverActiveEndEvent(passive));
     });
 
     // swap

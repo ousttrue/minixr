@@ -53,6 +53,7 @@ export default class App {
 
     const leftHand = new Hand("left");
     this.scene.root.addNode(leftHand);
+
     const rightHand = new Hand("right");
     this.scene.root.addNode(rightHand);
 

@@ -52,7 +52,7 @@ export class Node extends EventTarget {
       if (this.parent) {
         // TODO: Some optimizations that could be done here if the node matrix
         // is an identity matrix.
-        mat4.mul(this._worldMatrix, this.parent.worldMatrix, local);
+        this.parent.worldMatrix.mul(local, { out: this._worldMatrix });
       } else {
         local.copy({ out: this._worldMatrix });
       }
@@ -128,10 +128,16 @@ export class Node extends EventTarget {
   }
 }
 
-export class HoverStartEvent extends Event {
-  constructor(public readonly active: Node) { super('hover-start'); }
+export class HoverPassiveStartEvent extends Event {
+  constructor(public readonly active: Node) { super('hover-passive-start'); }
 }
-export class HoverEndEvent extends Event {
-  constructor(public readonly active: Node) { super('hover-end'); }
+export class HoverPassiveEndEvent extends Event {
+  constructor(public readonly active: Node) { super('hover-passive-end'); }
+}
+export class HoverActiveStartEvent extends Event {
+  constructor(public readonly passive: Node) { super('hover-active-start'); }
+}
+export class HoverActiveEndEvent extends Event {
+  constructor(public readonly passive: Node) { super('hover-active-end'); }
 }
 

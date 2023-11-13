@@ -1,4 +1,4 @@
-import { Node, HoverStartEvent, HoverEndEvent } from './node.mjs';
+import { Node, HoverPassiveStartEvent, HoverPassiveEndEvent } from './node.mjs';
 import { Material } from '../materials/material.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, vec4 } from '../../math/gl-matrix.mjs';
@@ -74,12 +74,12 @@ export class Interaction extends Node {
     this.local.translation = vec3.fromValues(0, 0, -0.65);
     this.local.scale = vec3.fromValues(0.25, 0.25, 0.25);
 
-    this.addEventListener('hover-start', event => {
-      this.onHoverStart((event as HoverStartEvent).active);
+    this.addEventListener('hover-passive-start', event => {
+      this.onHoverStart((event as HoverPassiveStartEvent).active);
     });
 
-    this.addEventListener('hover-end', event => {
-      this.onHoverEnd((event as HoverEndEvent).active);
+    this.addEventListener('hover-passive-end', event => {
+      this.onHoverEnd((event as HoverPassiveEndEvent).active);
     });
   }
 

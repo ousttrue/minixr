@@ -295,15 +295,12 @@ export class mat4 {
 
   /**
    * Multiplies two mat4s
-   *
-   * @param {mat4} out the receiving matrix
-   * @param {mat4} a the first operand
-   * @param {mat4} b the second operand
-   * @returns {mat4} out
    */
-  static mul(_out: mat4, _a: mat4, _b: mat4): mat4 {
-    const out = _out.array;
-    const a = _a.array;
+  mul(_b: mat4, option?: { out: mat4 }): mat4 {
+    const dst = option?.out ?? new mat4();
+    const out = dst.array;
+
+    const a = this.array;
     const b = _b.array;
     let a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
     let a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
@@ -334,7 +331,7 @@ export class mat4 {
     out[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
     out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
     out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
-    return _out;
+    return dst;
   }
 
   // /**

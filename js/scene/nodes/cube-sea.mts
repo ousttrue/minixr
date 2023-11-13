@@ -128,10 +128,10 @@ export class CubeSeaNode extends Node {
       heroNode.action = 'passive';
       heroNode.primitives.push(heroPrimitive);
       this.addNode(heroNode);
-      heroNode.addEventListener('hover-start', event => {
+      heroNode.addEventListener('hover-passive-start', event => {
         material.color.value.set(1, 0, 0, 1);;
       });
-      heroNode.addEventListener('hover-end', event => {
+      heroNode.addEventListener('hover-passive-end', event => {
         material.color.value.set(1, 1, 1, 1);;
       });
       this.heroNodes.push(heroNode);
@@ -166,11 +166,11 @@ export class CubeSeaNode extends Node {
             cubeSeaNode.primitives.push(cubeSeaPrimitive);
             cubeSeaNode.local.translation = vec3.fromValues(pos[0], pos[1], pos[2]);
 
-            cubeSeaNode.addEventListener('hover-start', event => {
+            cubeSeaNode.addEventListener('hover-passive-start', event => {
               material.color.value.set(1, 0, 0, 1);;
             });
 
-            cubeSeaNode.addEventListener('hover-end', event => {
+            cubeSeaNode.addEventListener('hover-passive-end', event => {
               material.color.value.set(1, 1, 1, 1);;
             });
 
