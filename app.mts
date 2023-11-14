@@ -10,6 +10,7 @@ import { Gltf2Loader } from './js/scene/loaders/gltf2.mjs';
 import { UrlTexture } from './js/scene/materials/texture.mjs';
 import { CubeSeaNode } from './js/scene/nodes/cube-sea.mjs';
 
+import { XRTerm } from './js/xterm/xrterm.mjs';
 
 export default class App {
   scene = new Scene();
@@ -20,6 +21,10 @@ export default class App {
   _stats: StatsViewer | null = null;
   _prevTime: number = 0;
 
+  term: XRTerm;
+  xrGLFactory: XRWebGLBinding;
+  quadLayer: XRQuadLayer;
+
   constructor(session: XRSession) {
     // Create a WebGL context to render with, initialized to be compatible
     // with the XRDisplay we're presenting to.
@@ -28,11 +33,21 @@ export default class App {
       xrCompatible: true,
     }) as WebGL2RenderingContext;
 
+    const gl = this.gl;
+    function onResize() {
+      gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
+      gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+
     // Create a renderer with that GL context (this is just for the samples
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(this.gl);
 
     this._setupScene();
+
+    this.term = new XRTerm(this.gl);
   }
 
   _setupScene() {
@@ -100,7 +115,7 @@ export default class App {
     // Use the new WebGL context to create a XRWebGLLayer and set it as the
     // sessions baseLayer. This allows any content rendered to the layer to
     // be displayed on the XRDevice.
-    await session.updateRenderState({
+    session.updateRenderState({
       baseLayer: new XRWebGLLayer(session, this.gl, {
         // framebufferScaleFactor: 0.1,
       })
@@ -113,6 +128,7 @@ export default class App {
 
     this.xrRefSpace = refSpace.getOffsetReferenceSpace(
       new XRRigidTransform({ x: 0, y: 0, z: 0 }));
+
   }
 
   onXRFrame(time: number, frame: XRFrame) {
@@ -137,7 +153,11 @@ export default class App {
     const refSpace = this.xrRefSpace!
     const renderList = this.scene.updateAndGetRenderList(time, frameDelta, refSpace, frame, session.inputSources);
 
+    this.term.getTermTexture();
 
+    //
+    // render scene
+    //
     if (session.visibilityState === 'visible-blurred') {
       return;
     }

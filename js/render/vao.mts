@@ -64,7 +64,7 @@ export class Vao {
 
     // VAO
     this._vao = gl.createVertexArray()!;
-    console.log('create', this._vao);
+    // console.log('create', this._vao);
     gl.bindVertexArray(this._vao);
 
     // IBO

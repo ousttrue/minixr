@@ -1,0 +1,3 @@
+[submodule "xterm.mjs"]
+	path = xterm.mjs
+	url = https://github.com/ousttrue/xterm.mjs.git

@@ -22,7 +22,7 @@ export class TextureFactory {
 
     const gl = this.gl;
     const textureHandle = gl.createTexture()!;
-    console.log('create', textureHandle);
+    // console.log('create', textureHandle);
     this._textureMap.set(texture, textureHandle);
 
     gl.bindTexture(gl.TEXTURE_2D, textureHandle);

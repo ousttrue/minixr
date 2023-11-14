@@ -37,7 +37,7 @@ export class Program {
     attribMap: { [key: string]: number },
     defines: { [key: string]: number }) {
     this.program = gl.createProgram()!;
-    console.log('create', this.program);
+    // console.log('create', this.program);
 
     let definesString = '#version 300 es\n';
     if (defines) {
