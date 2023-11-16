@@ -1,4 +1,3 @@
-// @ts-check
 export class Component extends EventTarget {
 
   update(timestamp: number, frameDelta: number,
@@ -7,4 +6,3 @@ export class Component extends EventTarget {
   }
 
 }
-

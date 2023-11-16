@@ -1,7 +1,6 @@
 import { Scene } from './js/scene/scene.mjs';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
-import { Interaction } from './js/scene/nodes/interaction.mjs';
 import { Hand } from './js/scene/nodes/hand.mjs';
 import { ArMeshOccusion } from './js/scene/nodes/ar-mesh-occlusion.mjs';
 import { StatsViewer } from './js/scene/nodes/stats-viewer.mjs';
@@ -9,7 +8,8 @@ import { StatsGraph } from './js/scene/nodes/stats-graph.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
 import { Gltf2Loader } from './js/scene/loaders/gltf2.mjs';
 import { UrlTexture } from './js/scene/materials/texture.mjs';
-import { cubeSeaFactory } from './js/scene/cube-sea.mjs';
+import { cubeSeaFactory } from './js/scene/factory/cube-sea.mjs';
+import { interactionFactory } from './js/scene/factory/interaction.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';
 
 
@@ -79,8 +79,11 @@ export default class App {
     const rightHand = new Hand("right");
     this.scene.root.addNode(rightHand);
 
-    const interaction = new Interaction();
-    this.scene.root.addNode(interaction);
+    {
+      const { nodes, components } = await interactionFactory();
+      this.scene.addNodes(nodes);
+      this.scene.addComponents(components);
+    }
 
     this._loadGltfAsync();
 

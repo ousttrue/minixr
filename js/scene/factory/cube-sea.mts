@@ -18,10 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node } from './nodes/node.mjs';
-import { BoxBuilder } from './geometry/box-builder.mjs';
-import { vec3 } from '../math/gl-matrix.mjs';
-import { HoverMaterial } from './materials/hover.mts';
+import { Node } from '../nodes/node.mjs';
+import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { vec3 } from '../../math/gl-matrix.mjs';
+import { HoverMaterial } from '../materials/hover.mts';
 import { Rotater } from '../component/rotater.mts';
 import { Component } from '../component/component.mts';
 
