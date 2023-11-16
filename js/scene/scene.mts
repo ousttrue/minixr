@@ -25,6 +25,7 @@ import {
 } from './nodes/node.mjs';
 import { Primitive } from './geometry/primitive.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
+import { Component } from '../component/component.mjs';
 
 export type RenderCommands = Map<Primitive, Node[]>;
 
@@ -64,8 +65,21 @@ export class Scene {
   _renderCommands: RenderCommands = new Map();
   _actives: Node[] = [];
   _hoverMap: Map<Node, HoverStatus> = new Map();
+  _components: Component[] = [];
 
   constructor() {
+  }
+
+  addComponents(components: Component[]) {
+    for (const component of components) {
+      this._components.push(component);
+    }
+  }
+
+  addNodes(nodes: Node[]) {
+    for (const node of nodes) {
+      this.root.addNode(node);
+    }
   }
 
   updateAndGetRenderList(time: number, frameDelta: number,
@@ -74,6 +88,10 @@ export class Scene {
 
     this._renderCommands.clear();
     this._actives = [];
+
+    for (const component of this._components) {
+      component.update(time, frameDelta, refSpace, frame, inputSources);
+    }
 
     this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, inputSources, this.root);
 

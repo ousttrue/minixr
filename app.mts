@@ -9,9 +9,9 @@ import { StatsGraph } from './js/scene/nodes/stats-graph.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
 import { Gltf2Loader } from './js/scene/loaders/gltf2.mjs';
 import { UrlTexture } from './js/scene/materials/texture.mjs';
-import { CubeSeaNode } from './js/scene/nodes/cube-sea.mjs';
-
+import { cubeSeaFactory } from './js/scene/cube-sea.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';
+
 
 export default class App {
   scene = new Scene();
@@ -51,7 +51,7 @@ export default class App {
     this.term = new XRTerm(this.gl);
   }
 
-  _setupScene() {
+  async _setupScene() {
     // stats
     this._stats = new StatsViewer();
 
@@ -84,38 +84,17 @@ export default class App {
 
     this._loadGltfAsync();
 
-    this._loadCubeSeaAsync();
+    {
+      const { nodes, components } = await cubeSeaFactory(6, 0.5);
+      this.scene.addNodes(nodes);
+      this.scene.addComponents(components);
+    }
   }
 
   private async _loadGltfAsync(): Promise<void> {
     const loader = new Gltf2Loader();
     const node = await loader.loadFromUrl('./assets/gltf/space/space.gltf');
     this.scene.root.addNode(node);
-  }
-
-  private async _loadCubeSeaAsync(): Promise<void> {
-    const texture = new UrlTexture('./assets/textures/cube-sea.png');
-    await texture._promise;
-    const cubeSea = new CubeSeaNode({
-      texture: texture,
-
-      // Number and size of the static cubes. Use the larger
-      // cube count from heavyGpu to avoid inconsistent defaults.
-      cubeCount: 6,
-      cubeScale: 0.5,
-
-      // If true, use a very heavyweight shader to stress the GPU.
-      heavyGpu: false,
-
-      // Draw only half the world cubes. Helps test variable render cost
-      // when combined with heavyGpu.
-      halfOnly: true,
-
-      // Automatically spin the world cubes. Intended for automated testing,
-      // not recommended for viewing in a headset.
-      autoRotate: true,
-    });
-    this.scene.root.addNode(cubeSea);
   }
 
   async initSpace(session: XRSession) {
