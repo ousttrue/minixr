@@ -75,7 +75,7 @@ export class Vao {
   vao: WebGLVertexArrayObject;
   constructor(gl: WebGL2RenderingContext,
     attributes: VertexAttribute[], ibo: Ibo,
-    instance: VertexAttribute) {
+    instanceAttributes: VertexAttribute[]) {
     this.vao = gl.createVertexArray()!;
     gl.bindVertexArray(this.vao);
 
@@ -92,18 +92,18 @@ export class Vao {
       );
     }
 
-    {
-      gl.bindBuffer(gl.ARRAY_BUFFER, instance.vbo.buffer);
-      gl.enableVertexAttribArray(instance.location);
+    for (const attribute of instanceAttributes) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, attribute.vbo.buffer);
+      gl.enableVertexAttribArray(attribute.location);
       gl.vertexAttribPointer(
-        instance.location,
-        instance.size,
-        instance.type,
+        attribute.location,
+        attribute.size,
+        attribute.type,
         false,
-        instance.vbo.stride,
-        instance.offset,
+        attribute.vbo.stride,
+        attribute.offset,
       );
-      gl.vertexAttribDivisor(instance.location, 1)
+      gl.vertexAttribDivisor(attribute.location, 1)
     }
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo.buffer);

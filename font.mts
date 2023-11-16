@@ -5,17 +5,18 @@ const VS = `#version 300 es
 precision mediump float;
 in vec2 a_Position;
 in vec2 a_Uv;
-// x, y, unicode copdepoint
-in vec4 a_Instance;
+// x, y, w, h
+in vec4 i_Cell;
+in vec4 i_Unicode_FgBg;
 out vec2 f_Uv;
+out vec4 f_Fg;
+out vec4 f_Bg;
 
 // cozette font. left, top, cell_width, cell_height
-const vec2 ATLAS_LEFTTOP = vec2(94, 13);
+const vec2 ATLAS_LEFTTOP = vec2(95, 14);
 const vec2 ATLAS_CELL_SIZE = vec2(14, 13);
 const vec2 ATLAS_SIZE = vec2(364, 4864);
 const vec2 ATLAS_OFFSET = vec2(0.5/364.0, 0.5/4864.0);
-
-const vec2 RENDER_SIZE = vec2(24, 52);
 
 uniform mat4 projection;
 
@@ -25,25 +26,31 @@ vec2 glyph(vec2 base, int unicode)
   float col = float(unicode % 16);
   float row = float(unicode / 16);
   return ATLAS_LEFTTOP
-    + vec2(col, row) * ATLAS_CELL_SIZE
-    + base * ATLAS_CELL_SIZE;
+    + (vec2(col, row)+base) * ATLAS_CELL_SIZE
+    ;
 }
 
 void main() {
-  vec2 pos = a_Instance.xy + a_Position * RENDER_SIZE;
+  vec2 pos = i_Cell.xy + i_Cell.zw * a_Position;
   gl_Position = projection * vec4(pos, 0, 1);
-  f_Uv = ATLAS_OFFSET + glyph(a_Uv, int(a_Instance.z)) / ATLAS_SIZE;
+  f_Uv = ATLAS_OFFSET + glyph(a_Uv, int(i_Unicode_FgBg.x)) / ATLAS_SIZE;
+  f_Fg = vec4(1,1,1,1);
+  f_Bg = vec4(0,0,0,1);
 }
 `;
 
 const FS = `#version 300 es
 precision mediump float;
 in vec2 f_Uv;
+in vec4 f_Fg;
+in vec4 f_Bg;
 out vec4 o_FragColor;
 uniform sampler2D color;
 void main() {
   vec4 texcel= texture(color, f_Uv);
-  o_FragColor = texcel;
+  
+  // o_FragColor = texcel;
+  o_FragColor = texcel.x<0.5 ? f_Fg : f_Bg;
 }
 `;
 
@@ -76,17 +83,26 @@ class Rect {
     }]
 
     this.instances = new Float32Array(65535);
-    this.instanceVbo = new Vbo(gl, this.instances, 16);
-    const instance = {
+    this.instanceVbo = new Vbo(gl, this.instances, 32);
+    const instanceAttributes = [{
       location: 2,
       vbo: this.instanceVbo,
       offset: 0,
-      size: 3,
+      size: 4,
       type: gl.FLOAT,
-    };
+    },
+    {
+      location: 3,
+      vbo: this.instanceVbo,
+      offset: 16,
+      size: 4,
+      type: gl.FLOAT,
+    }
+    ];
+
     this.indices = new Uint16Array([0, 1, 2, /**/ 2, 3, 0]);
     const ibo = new Ibo(gl, this.indices);
-    this.vao = new Vao(gl, attributes, ibo, instance);
+    this.vao = new Vao(gl, attributes, ibo, instanceAttributes);
   }
 
   draw(gl: WebGL2RenderingContext, count: number) {
@@ -96,14 +112,19 @@ class Rect {
 
 class TextGrid {
   length = 0;
-  constructor(private array: Float32Array) { }
+  constructor(private array: Float32Array,
+    public cell_width: number = 24,
+    public cell_height: number = 32) { }
 
   puts(x: number, y: number, line: string) {
-    let offset = 0;
+    let offset = this.length * 8;
     for (const c of line) {
-      this.array.set([x, y, c.codePointAt(0)!], offset);
-      offset += 4;
-      x += 50;
+      this.array.set([
+        x, y, this.cell_width, this.cell_height,
+        c.codePointAt(0)!
+      ], offset);
+      offset += 8;
+      x += this.cell_width;
       this.length += 1;
     }
   }
@@ -134,21 +155,26 @@ async function main(url: string) {
 
   // text
   const grid = new TextGrid(rect.instances);
-  grid.puts(100, 100, '012ABCabc');
-  // rect.vao.updateInstance(grid.array);
+  grid.puts(100, 100, '0123456789');
+  grid.puts(100, 200, '~!@#$%^&*()_+=-:;{][]\'"?/<>,.');
+  grid.puts(100, 300, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  grid.puts(100, 400, 'abcdefghijklmnopqrstuvwxyz');
   gl.bindBuffer(gl.ARRAY_BUFFER, rect.instanceVbo.buffer);
   gl.bufferData(gl.ARRAY_BUFFER, rect.instances, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
+  // clear
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.viewport(0, 0, canvas.width, canvas.height);
 
+  // font texture
   program.use(gl);
   console.log(uniforms.projection, projection.array);
   gl.uniformMatrix4fv(uniforms.projection, false, projection.array);
   gl.bindTexture(gl.TEXTURE_2D, imageTexture.texture);
-  // TODO: Texture
+
+  // draw instancing rects
   rect.draw(gl, grid.length);
 }
 
