@@ -31,7 +31,6 @@ export class Program {
   constructor(public readonly gl: WebGL2RenderingContext,
     name: string,
     vertSrc: string, fragSrc: string,
-    attribMap: { [key: string]: number },
     defines: { [key: string]: number }) {
     this.program = gl.createProgram()!;
     // console.log('create', this.program);
@@ -58,14 +57,6 @@ export class Program {
       console.error(`[${name}] Fragment shader compile error: ${gl.getShaderInfoLog(fragShader)}: ${definesString + fragSrc}`);
     }
 
-    if (attribMap) {
-      for (let attribName in attribMap) {
-        // before gl.linkProgram !
-        gl.bindAttribLocation(this.program, attribMap[attribName], attribName);
-        this.attrib[attribName] = attribMap[attribName];
-      }
-    }
-
     gl.attachShader(this.program, fragShader);
     gl.attachShader(this.program, vertShader);
     gl.linkProgram(this.program);
@@ -75,13 +66,11 @@ export class Program {
       console.error(`[${name}] Program link error: ${gl.getProgramInfoLog(this.program)}`);
     }
 
-    if (!attribMap) {
-      let attribCount = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
-      for (let i = 0; i < attribCount; i++) {
-        let attribInfo = gl.getActiveAttrib(this.program, i);
-        if (attribInfo) {
-          this.attrib[attribInfo.name] = gl.getAttribLocation(this.program, attribInfo.name);
-        }
+    let attribCount = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
+    for (let i = 0; i < attribCount; i++) {
+      let attribInfo = gl.getActiveAttrib(this.program, i);
+      if (attribInfo) {
+        this.attrib[attribInfo.name] = gl.getAttribLocation(this.program, attribInfo.name);
       }
     }
 
@@ -156,7 +145,7 @@ export class ProgramFactory {
 
     program = new Program(this.gl,
       material.materialName,
-      material.vertexSource, material.fragmentSource, ATTRIB, {});
+      material.vertexSource, material.fragmentSource, {});
     this._programCache[key] = program;
 
     program.onNextUse((program: Program) => {

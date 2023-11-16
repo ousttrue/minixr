@@ -14,6 +14,7 @@ import { UrlTexture } from './js/scene/materials/texture.mjs';
 import { cubeSeaFactory } from './js/scene/factory/cube-sea.mjs';
 import { interactionFactory } from './js/scene/factory/interaction.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';
+import { bitmapFontFactory } from './js/scene/factory/bitmap-font.mjs';
 
 
 export default class App {
@@ -110,10 +111,11 @@ export default class App {
 
     this._loadGltfAsync();
 
+    this.scene.add(await cubeSeaFactory(6, 0.5));
     {
-      const { nodes, components } = await cubeSeaFactory(6, 0.5);
-      this.scene.addNodes(nodes);
-      this.scene.addComponents(components);
+      const created = await bitmapFontFactory();
+      created.nodes[0].local.translation = vec3.fromValues(0, 0, -0.2);
+      this.scene.add(created);
     }
   }
 

@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { Primitive, PrimitiveAttribute } from './primitive.mjs';
-import { Material } from '../material.mjs';
+import { Material } from '../materials/material.mjs';
 import { mat3, vec3, BoundingBox } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums

@@ -82,6 +82,11 @@ export class Scene {
     }
   }
 
+  add(obj: { nodes: Node[], components: Component[] }) {
+    this.addNodes(obj.nodes);
+    this.addComponents(obj.components);
+  }
+
   updateAndGetRenderList(time: number, frameDelta: number,
     refSpace: XRReferenceSpace, frame: XRFrame,
     inputSources: XRInputSourceArray): RenderCommands {

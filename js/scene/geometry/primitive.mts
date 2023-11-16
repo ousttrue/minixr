@@ -59,6 +59,9 @@ export class PrimitiveAttribute {
     public readonly stride: number = 0,
     public readonly byteOffset: number = 0,
     public readonly normalized = false) {
+    if (this.stride == 0) {
+      console.warn(name, 'stride=0');
+    }
   }
 
   calcStride(): number {
@@ -69,6 +72,8 @@ export class PrimitiveAttribute {
 export class Primitive {
   bb = new BoundingBox();
   vertexUpdated = false;
+  drawCount: number = 0;
+  instanceCount: number = 0;
   constructor(
     public material: Material,
     public attributes: PrimitiveAttribute[],
@@ -89,6 +94,13 @@ export class Primitive {
       if (attr.name == 'POSITION') {
         this.updateBBFromPositions(attr);
       }
+    }
+
+    if (indices) {
+      this.drawCount = indices.length;
+    }
+    else {
+      this.drawCount = vertexCount;
     }
   }
 

@@ -168,12 +168,6 @@ export class Renderer {
 
     this.gl.bindVertexArray(null);
 
-    // IBO
-    let ibo: Ibo | undefined = undefined;
-    if (primitive.indices) {
-      ibo = this._getOrCreateIndexBuffer(primitive.indices, primitive.options?.indicesUsage ?? GL.STATIC_DRAW);
-    }
-
     // VBO
     const vboList: Vbo[] = [];
     for (let attrib of primitive.attributes) {
@@ -181,8 +175,23 @@ export class Renderer {
       vboList.push(vbo);
     }
 
+    // IBO
+    let ibo: Ibo | undefined = undefined;
+    if (primitive.indices) {
+      ibo = this._getOrCreateIndexBuffer(primitive.indices, primitive.options?.indicesUsage ?? GL.STATIC_DRAW);
+    }
+
+    // Instancing
+    const instanceList: Vbo[] = [];
+    if (primitive.options?.instanceAttributes) {
+      for (let attrib of primitive.options?.instanceAttributes) {
+        const vbo = this._getOrCreateVertexBuffer(attrib.buffer, GL.STATIC_DRAW);
+        instanceList.push(vbo);
+      }
+    }
+
     // VAO
-    vao = new Vao(this.gl, program, primitive, vboList, ibo);
+    vao = new Vao(this.gl, program, primitive, vboList, ibo, instanceList);
     this._primVaoMap.set(primitive, vao);
     return vao;
   }
@@ -244,22 +253,22 @@ export class Renderer {
           if (!prevProgram) {
             throw new Error("arienai");
           }
-          prevProgram.use();
+          program.use();
 
-          if (prevProgram.uniformMap.LIGHT_DIRECTION) {
-            gl.uniform3fv(prevProgram.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
+          if (program.uniformMap.LIGHT_DIRECTION) {
+            gl.uniform3fv(program.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
           }
 
-          if (prevProgram.uniformMap.LIGHT_COLOR) {
-            gl.uniform3fv(prevProgram.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
+          if (program.uniformMap.LIGHT_COLOR) {
+            gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
           }
 
-          gl.uniformMatrix4fv(prevProgram.uniformMap.PROJECTION_MATRIX, false,
+          gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
             view.projectionMatrix);
-          gl.uniformMatrix4fv(prevProgram.uniformMap.VIEW_MATRIX, false,
+          gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
             view.transform.inverse.matrix);
-          gl.uniform3fv(prevProgram.uniformMap.CAMERA_POSITION, cameraPosition);
-          gl.uniform1i(prevProgram.uniformMap.EYE_INDEX, eyeIndex);
+          gl.uniform3fv(program.uniformMap.CAMERA_POSITION, cameraPosition);
+          gl.uniform1i(program.uniformMap.EYE_INDEX, eyeIndex);
         }
 
         if (programChanged || prevMaterial != primitive.material) {
@@ -270,14 +279,14 @@ export class Renderer {
         }
 
         // @ts-ignore
-        gl.uniformMatrix4fv(prevProgram.uniformMap.MODEL_MATRIX, false,
+        gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false,
           node.worldMatrix.array);
 
         if (vao != prevVao) {
           vao.bind(gl);
           prevVao = vao;
         }
-        vao.draw(gl);
+        vao.draw(gl, primitive.drawCount, primitive.instanceCount);
       }
     });
   }

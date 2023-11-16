@@ -99,7 +99,7 @@ export class ArMeshDetection extends Component {
     // new primitive
     let vertexBuffer = new DataView(mesh.vertices.buffer, mesh.vertices.byteOffset, mesh.vertices.byteLength);
     let attributes = [
-      new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 0, 0),
+      new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
     ];
     // wrong d.ts ?
     // @ts-ignore
