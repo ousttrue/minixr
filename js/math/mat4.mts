@@ -1225,42 +1225,37 @@ export class mat4 {
   //   out[15] = 0.0;
   //   return out;
   // }
-  //
-  // /**
-  //  * Generates a orthogonal projection matrix with the given bounds
-  //  *
-  //  * @param {mat4} out mat4 frustum matrix will be written into
-  //  * @param {number} left Left bound of the frustum
-  //  * @param {number} right Right bound of the frustum
-  //  * @param {number} bottom Bottom bound of the frustum
-  //  * @param {number} top Top bound of the frustum
-  //  * @param {number} near Near bound of the frustum
-  //  * @param {number} far Far bound of the frustum
-  //  * @returns {mat4} out
-  //  */
-  // export function ortho(out: mat4, left: number, right: number, bottom: number, top: number, near: number, far: number): mat4 {
-  //   let lr = 1 / (left - right);
-  //   let bt = 1 / (bottom - top);
-  //   let nf = 1 / (near - far);
-  //   out[0] = -2 * lr;
-  //   out[1] = 0;
-  //   out[2] = 0;
-  //   out[3] = 0;
-  //   out[4] = 0;
-  //   out[5] = -2 * bt;
-  //   out[6] = 0;
-  //   out[7] = 0;
-  //   out[8] = 0;
-  //   out[9] = 0;
-  //   out[10] = 2 * nf;
-  //   out[11] = 0;
-  //   out[12] = (left + right) * lr;
-  //   out[13] = (top + bottom) * bt;
-  //   out[14] = (far + near) * nf;
-  //   out[15] = 1;
-  //   return out;
-  // }
-  //
+
+  /**
+   * Generates a orthogonal projection matrix with the given bounds
+   */
+  static ortho(left: number, right: number,
+    bottom: number, top: number,
+    near: number, far: number, option?: { out: mat4 }): mat4 {
+    const dst = option?.out ?? new mat4();
+    const out = dst.array;
+    let lr = 1 / (left - right);
+    let bt = 1 / (bottom - top);
+    let nf = 1 / (near - far);
+    out[0] = -2 * lr;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = -2 * bt;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[10] = 2 * nf;
+    out[11] = 0;
+    out[12] = (left + right) * lr;
+    out[13] = (top + bottom) * bt;
+    out[14] = (far + near) * nf;
+    out[15] = 1;
+    return dst;
+  }
+
   // /**
   //  * Generates a look-at matrix with the given eye position, focal point, and up axis.
   //  * If you want a matrix that actually makes an object look at another object, you should use targetTo instead.
