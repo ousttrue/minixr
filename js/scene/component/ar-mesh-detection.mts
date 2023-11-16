@@ -1,56 +1,41 @@
-import { Node } from './node.mjs';
+import { Node } from '../nodes/node.mjs';
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
 import { mat4 } from '../../math/gl-matrix.mjs';
-import { Material } from '../materials/material.mjs';
+import { ArOcclusionMaterial } from '../materials/ar-occlusion.mjs';
+import { Component } from '../component/component.mjs';
+
 
 const GL = WebGLRenderingContext; // For enums
+
 
 type MeshPrimitive = {
   node: Node,
   time: number,
 }
 
-export class ArOcclusionMaterial extends Material {
-  constructor() {
-    super();
-  }
-
-  get materialName() {
-    return 'ArOcclusion';
-  }
-
-  get vertexSource() {
-    return `
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-    in vec3 POSITION;
-
-    void main() {
-      gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
-    }`;
-  }
-
-  get fragmentSource() {
-    return `
-      precision mediump float;
-      out vec4 _Color;
-
-      void main() {
-        _Color = vec4(0, 0, 0, 0);
-      }`;
+export class MeshDetectedEvent extends Event {
+  constructor(public readonly mesh: Node) {
+    super('ar-mesh-detected');
   }
 }
-export class ArMeshOccusion extends Node {
+export class MeshUpdatedEvent extends Event {
+  constructor(public readonly mesh: Node) {
+    super('ar-mesh-updated');
+  }
+}
+export class MeshLostEvent extends Event {
+  constructor(public readonly mesh: Node) {
+    super('ar-mesh-lost');
+  }
+}
+
+export class ArMeshDetection extends Component {
 
   lastMap: Map<XRMesh, MeshPrimitive> = new Map();
   newMap: Map<XRMesh, MeshPrimitive> = new Map();
   arOcclusionMaterial = new ArOcclusionMaterial();
 
-  constructor() {
-    super("ArMeshOccusion");
-    // this.arOcclusionMaterial.baseColorFactor.value = [0, 0, 0, 0];
-  }
-
-  protected _onUpdate(_timestamp: number, _frameDelta: number,
+  update(_timestamp: number, _frameDelta: number,
     refsp: XRReferenceSpace, frame: XRFrame, _inputSources: XRInputSourceArray) {
 
     // @ts-ignore
@@ -78,7 +63,7 @@ export class ArMeshOccusion extends Node {
             node,
             time: mesh.lastChangedTime
           });
-          this.addNode(node);
+          this.dispatchEvent(new MeshUpdatedEvent(node));
         }
         else {
           // keep same
@@ -96,13 +81,13 @@ export class ArMeshOccusion extends Node {
           node,
           time: mesh.lastChangedTime
         });
-        this.addNode(node);
+        this.dispatchEvent(new MeshDetectedEvent(node));
       }
     });
 
     this.lastMap.forEach((c, _) => {
       // not found. remove
-      this.removeNode(c.node);
+      this.dispatchEvent(new MeshLostEvent(c.node));
     });
 
     const tmp = this.lastMap;

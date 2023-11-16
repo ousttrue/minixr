@@ -2,7 +2,10 @@ import { Scene } from './js/scene/scene.mjs';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { Hand } from './js/scene/nodes/hand.mjs';
-import { ArMeshOccusion } from './js/scene/nodes/ar-mesh-occlusion.mjs';
+import {
+  ArMeshDetection,
+  MeshDetectedEvent, MeshUpdatedEvent, MeshLostEvent
+} from './js/scene/component/ar-mesh-detection.mjs';
 import { StatsViewer } from './js/scene/nodes/stats-viewer.mjs';
 import { StatsGraph } from './js/scene/nodes/stats-graph.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
@@ -25,6 +28,7 @@ export default class App {
   term: XRTerm;
   xrGLFactory: XRWebGLBinding;
   quadLayer: XRQuadLayer;
+  meshDetection: ArMeshDetection;
 
   constructor(session: XRSession) {
     // Create a WebGL context to render with, initialized to be compatible
@@ -69,9 +73,22 @@ export default class App {
       this._stats.pushUpdater(graph);
     }
 
-
-    const occlusion = new ArMeshOccusion();
-    this.scene.root.addNode(occlusion);
+    this.meshDetection = new ArMeshDetection();
+    this.meshDetection.addEventListener('ar-mesh-detected',
+      event => {
+        this.scene.root.addNode(
+          (event as MeshDetectedEvent).mesh);
+      });
+    this.meshDetection.addEventListener('ar-mesh-updated',
+      event => {
+        // console.log(event);
+      });
+    this.meshDetection.addEventListener('ar-mesh-lost',
+      event => {
+        this.scene.root.removeNode(
+          (event as MeshLostEvent).mesh);
+      });
+    this.scene.addComponents([this.meshDetection]);
 
     const leftHand = new Hand("left");
     this.scene.root.addNode(leftHand);
