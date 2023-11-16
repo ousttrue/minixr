@@ -5,6 +5,7 @@ import { Interaction } from './js/scene/nodes/interaction.mjs';
 import { Hand } from './js/scene/nodes/hand.mjs';
 import { ArMeshOccusion } from './js/scene/nodes/ar-mesh-occlusion.mjs';
 import { StatsViewer } from './js/scene/nodes/stats-viewer.mjs';
+import { StatsGraph } from './js/scene/nodes/stats-graph.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
 import { Gltf2Loader } from './js/scene/loaders/gltf2.mjs';
 import { UrlTexture } from './js/scene/materials/texture.mjs';
@@ -53,15 +54,21 @@ export default class App {
   _setupScene() {
     // stats
     this._stats = new StatsViewer();
-    this.scene.root.addNode(this._stats);
-    if (false) {
-      // TODO: head relative
-      this._stats.local.translation = vec3.fromValues(0, 1.4, -0.75);
-    } else {
-      this._stats.local.translation = vec3.fromValues(0, -0.3, -0.5);
+
+    {
+      const graph = new StatsGraph();
+      this.scene.root.addNode(graph);
+      if (false) {
+        // TODO: head relative
+        graph.local.translation = vec3.fromValues(0, 1.4, -0.75);
+      } else {
+        graph.local.translation = vec3.fromValues(0, -0.3, -0.5);
+      }
+      graph.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
+      graph.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
+      this._stats.pushUpdater(graph);
     }
-    this._stats.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
-    this._stats.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
+
 
     const occlusion = new ArMeshOccusion();
     this.scene.root.addNode(occlusion);

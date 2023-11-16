@@ -89,6 +89,8 @@ export class Primitive {
       attributesUsage?: number,
       /** GL.STATIC_DRAW */
       indicesUsage?: number,
+
+      instanceAttributes: PrimitiveAttribute[],
     }
   ) {
     for (const attr of attributes) {
