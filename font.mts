@@ -30,12 +30,23 @@ vec2 glyph(vec2 base, int unicode)
     ;
 }
 
+vec4 extractUint32(float src)
+{
+  uint rgba = floatBitsToUint(src);
+  return vec4(
+    float((rgba>>24) & uint(255)) / 255.0,
+    float((rgba>>14) & uint(255)) / 255.0,
+    float((rgba>> 8) & uint(255)) / 255.0,
+    float((rgba>> 0) & uint(255)) / 255.0
+  );
+}
+
 void main() {
   vec2 pos = i_Cell.xy + i_Cell.zw * a_Position;
   gl_Position = projection * vec4(pos, 0, 1);
   f_Uv = ATLAS_OFFSET + glyph(a_Uv, int(i_Unicode_FgBg.x)) / ATLAS_SIZE;
-  f_Fg = vec4(1,1,1,1);
-  f_Bg = vec4(0,0,0,1);
+  f_Fg = extractUint32(i_Unicode_FgBg.z);
+  f_Bg = extractUint32(i_Unicode_FgBg.w);
 }
 `;
 
@@ -112,17 +123,28 @@ class Rect {
 
 class TextGrid {
   length = 0;
+  fg = 0xFF0000FF;
+  bg = 0xFFFF00FF;
+  uintView: Uint32Array;
+
   constructor(private array: Float32Array,
     public cell_width: number = 24,
-    public cell_height: number = 32) { }
+    public cell_height: number = 32) {
+    this.uintView = new Uint32Array(array.buffer,
+      array.byteOffset, array.byteLength / 4);
+  }
 
-  puts(x: number, y: number, line: string) {
+  puts(x: number, y: number, line: string, option?: { fg: number, bg: number }) {
     let offset = this.length * 8;
     for (const c of line) {
       this.array.set([
         x, y, this.cell_width, this.cell_height,
-        c.codePointAt(0)!
+        c.codePointAt(0)!, 0,
       ], offset);
+      this.uintView.set([
+        this.fg, this.bg,
+      ], offset + 6);
+
       offset += 8;
       x += this.cell_width;
       this.length += 1;
