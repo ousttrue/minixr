@@ -66,14 +66,6 @@ export class PrimitiveAttribute {
   }
 }
 
-export function getAttributeMask(attributes: PrimitiveAttribute[]): number {
-  let attributeMask = 0;
-  for (let attribute of attributes) {
-    attributeMask |= ATTRIB_MASK[attribute.name];
-  }
-  return attributeMask;
-}
-
 export class Primitive {
   bb = new BoundingBox();
   vertexUpdated = false;
@@ -98,6 +90,14 @@ export class Primitive {
         this.updateBBFromPositions(attr);
       }
     }
+  }
+
+  getAttributeMask(): number {
+    let attributeMask = 0;
+    for (let attribute of this.attributes) {
+      attributeMask |= ATTRIB_MASK[attribute.name];
+    }
+    return attributeMask;
   }
 
   calcStrideFor(attribute: PrimitiveAttribute) {

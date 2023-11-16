@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { Material } from '../scene/materials/material.mjs';
-import { ATTRIB } from '../scene/geometry/primitive.mjs';
+import { Primitive, ATTRIB } from '../scene/geometry/primitive.mjs';
 import { Texture } from '../scene/materials/texture.mjs';
 
 
@@ -149,7 +149,9 @@ export class ProgramFactory {
   ) {
   }
 
-  getOrCreateProgram(material: Material, attributeMask: number): Program {
+  getOrCreateProgram(primitive: Primitive): Program {
+    const attributeMask = primitive.getAttributeMask();
+    const material = primitive.material;
     let defines = material.getProgramDefines(attributeMask);
     let key = this._getProgramKey(material.materialName, defines);
     let program = this._programCache[key];

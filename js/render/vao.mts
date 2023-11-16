@@ -57,7 +57,6 @@ export class Vao {
     gl: WebGL2RenderingContext,
     primitive: Primitive,
     vboList: Vbo[],
-    attributeMask: number,
     ibo?: Ibo) {
 
     this._mode = primitive.options?.mode ?? GL.TRIANGLES;
@@ -79,6 +78,7 @@ export class Vao {
     }
 
     // VBO
+    const attributeMask = primitive.getAttributeMask();
     for (let attrib in ATTRIB) {
       if (attributeMask & ATTRIB_MASK[attrib]) {
         gl.enableVertexAttribArray(ATTRIB[attrib]);
@@ -86,6 +86,7 @@ export class Vao {
         gl.disableVertexAttribArray(ATTRIB[attrib]);
       }
     }
+
     for (let i = 0; i < primitive.attributes.length; ++i) {
       const attrib = primitive.attributes[i];
       const buffer = vboList[i];

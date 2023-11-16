@@ -21,7 +21,7 @@
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 import { RenderCommands } from '../scene/scene.mjs';
 import { Material, MaterialState, CAP } from '../scene/materials/material.mjs';
-import { Primitive, getAttributeMask } from '../scene/geometry/primitive.mjs';
+import { Primitive } from '../scene/geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program, ProgramFactory } from './program.mjs';
 import { TextureFactory } from './texturefactory.mjs';
@@ -147,7 +147,7 @@ export class Renderer {
   }
 
   _used = new Set();
-  private _getOrCreatePrimtive(primitive: Primitive, attributeMask: number) {
+  private _getOrCreatePrimtive(primitive: Primitive) {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
       if (primitive.vertexUpdated) {
@@ -182,7 +182,7 @@ export class Renderer {
     }
 
     // VAO
-    vao = new Vao(this.gl, primitive, vboList, attributeMask, ibo);
+    vao = new Vao(this.gl, primitive, vboList, ibo);
     this._primVaoMap.set(primitive, vao);
     return vao;
   }
@@ -231,10 +231,8 @@ export class Renderer {
     let prevMaterial: Material | null = null;
     let prevVao: Vao | null = null;
     renderList.forEach((nodes, primitive) => {
-      const attributeMask = getAttributeMask(primitive.attributes);
-      const vao = this._getOrCreatePrimtive(primitive, attributeMask);
-
-      const program = this._programFactory.getOrCreateProgram(primitive.material, attributeMask);
+      const vao = this._getOrCreatePrimtive(primitive);
+      const program = this._programFactory.getOrCreateProgram(primitive);
       for (const node of nodes) {
         // Loop through every primitive known to the renderer.
         // Bind the primitive material's program if it's different than the one we
