@@ -1,7 +1,7 @@
 import { Scene } from './js/scene/scene.mjs';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
-import { Hand } from './js/scene/nodes/hand.mjs';
+import { handFactory } from './js/scene/factory/hand.mjs';
 import {
   ArMeshDetection,
   MeshDetectedEvent, MeshUpdatedEvent, MeshLostEvent
@@ -90,11 +90,17 @@ export default class App {
       });
     this.scene.addComponents([this.meshDetection]);
 
-    const leftHand = new Hand("left");
-    this.scene.root.addNode(leftHand);
+    {
+      const { nodes, components } = await handFactory("left");
+      this.scene.addNodes(nodes);
+      this.scene.addComponents(components);
+    }
 
-    const rightHand = new Hand("right");
-    this.scene.root.addNode(rightHand);
+    {
+      const { nodes, components } = await handFactory("right");
+      this.scene.addNodes(nodes);
+      this.scene.addComponents(components);
+    }
 
     {
       const { nodes, components } = await interactionFactory();
