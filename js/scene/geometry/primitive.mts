@@ -92,14 +92,6 @@ export class Primitive {
     }
   }
 
-  getAttributeMask(): number {
-    let attributeMask = 0;
-    for (let attribute of this.attributes) {
-      attributeMask |= ATTRIB_MASK[attribute.name];
-    }
-    return attributeMask;
-  }
-
   calcStrideFor(attribute: PrimitiveAttribute) {
     let stride = 0;
     for (const a of this.attributes) {

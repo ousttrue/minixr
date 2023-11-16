@@ -1,4 +1,5 @@
-import { ATTRIB, ATTRIB_MASK, Primitive } from '../scene/geometry/primitive.mjs';
+import { Primitive } from '../scene/geometry/primitive.mjs';
+import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -55,6 +56,7 @@ export class Vao {
 
   constructor(
     gl: WebGL2RenderingContext,
+    program: Program,
     primitive: Primitive,
     vboList: Vbo[],
     ibo?: Ibo) {
@@ -77,23 +79,15 @@ export class Vao {
       this._drawCount = primitive.vertexCount;
     }
 
-    // VBO
-    const attributeMask = primitive.getAttributeMask();
-    for (let attrib in ATTRIB) {
-      if (attributeMask & ATTRIB_MASK[attrib]) {
-        gl.enableVertexAttribArray(ATTRIB[attrib]);
-      } else {
-        gl.disableVertexAttribArray(ATTRIB[attrib]);
-      }
-    }
-
     for (let i = 0; i < primitive.attributes.length; ++i) {
       const attrib = primitive.attributes[i];
       const buffer = vboList[i];
       this.vboMap.set(attrib.buffer, buffer);
+      const location = program.attrib[attrib.name];
+      gl.enableVertexAttribArray(location);
       buffer.bind(gl);
       gl.vertexAttribPointer(
-        ATTRIB[attrib.name], attrib.componentCount, attrib.componentType,
+        location, attrib.componentCount, attrib.componentType,
         attrib.normalized, attrib.stride, attrib.byteOffset);
     }
 
@@ -101,6 +95,9 @@ export class Vao {
     gl.bindVertexArray(null);
     gl.bindBuffer(GL.ARRAY_BUFFER, null);
     gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+    for (let i = 0; i < primitive.attributes.length; ++i) {
+      gl.disableVertexAttribArray(i);
+    }
   }
 
   bind(gl: WebGL2RenderingContext) {

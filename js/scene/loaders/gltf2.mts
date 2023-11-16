@@ -190,44 +190,44 @@ export class Gltf2Loader {
 
     let materials: PbrMaterial[] = [];
     if (json.materials) {
-      for (let material of json.materials) {
-        let glMaterial = new PbrMaterial();
-        let pbr = material.pbrMetallicRoughness || {};
+      for (let glMaterial of json.materials) {
+        let pbr = new PbrMaterial();
+        let metallicROughness = glMaterial.pbrMetallicRoughness || {};
 
-        glMaterial.baseColorFactor.value = pbr.baseColorFactor || [1, 1, 1, 1];
-        glMaterial.baseColor.texture = getTexture(pbr.baseColorTexture);
-        glMaterial.metallicRoughnessFactor.value = [
-          pbr.metallicFactor || 1.0,
-          pbr.roughnessFactor || 1.0,
+        pbr.baseColorFactor.value = metallicROughness.baseColorFactor || [1, 1, 1, 1];
+        pbr.baseColor.texture = getTexture(metallicROughness.baseColorTexture);
+        pbr.metallicRoughnessFactor.value = [
+          metallicROughness.metallicFactor || 1.0,
+          metallicROughness.roughnessFactor || 1.0,
         ];
-        glMaterial.metallicRoughness.texture = getTexture(pbr.metallicRoughnessTexture);
-        glMaterial.normal.texture = getTexture(material.normalTexture);
-        glMaterial.occlusion.texture = getTexture(material.occlusionTexture);
-        glMaterial.occlusionStrength.value = (material.occlusionTexture && material.occlusionTexture.strength) ?
-          material.occlusionTexture.strength : 1.0;
-        glMaterial.emissiveFactor.value = material.emissiveFactor || [0, 0, 0];
-        glMaterial.emissive.texture = getTexture(material.emissiveTexture);
-        if (glMaterial.emissive.texture == null && material.emissiveFactor) {
-          glMaterial.emissive.texture = new ColorTexture(1.0, 1.0, 1.0, 1.0);
+        pbr.metallicRoughness.texture = getTexture(metallicROughness.metallicRoughnessTexture);
+        pbr.normal.texture = getTexture(glMaterial.normalTexture);
+        pbr.occlusion.texture = getTexture(glMaterial.occlusionTexture);
+        pbr.occlusionStrength.value = (glMaterial.occlusionTexture && glMaterial.occlusionTexture.strength) ?
+          glMaterial.occlusionTexture.strength : 1.0;
+        pbr.emissiveFactor.value = glMaterial.emissiveFactor || [0, 0, 0];
+        pbr.emissive.texture = getTexture(glMaterial.emissiveTexture);
+        if (pbr.emissive.texture == null && glMaterial.emissiveFactor) {
+          pbr.emissive.texture = new ColorTexture(1.0, 1.0, 1.0, 1.0);
         }
 
-        switch (material.alphaMode) {
+        switch (glMaterial.alphaMode) {
           case 'BLEND':
-            glMaterial.state.blend = true;
+            pbr.state.blend = true;
             break;
           case 'MASK':
             // Not really supported.
-            glMaterial.state.blend = true;
+            pbr.state.blend = true;
             break;
           default: // Includes 'OPAQUE'
-            glMaterial.state.blend = false;
+            pbr.state.blend = false;
         }
 
         // glMaterial.alpha_mode = material.alphaMode;
         // glMaterial.alpha_cutoff = material.alphaCutoff;
-        glMaterial.state.cullFace = !(material.doubleSided);
+        pbr.state.cullFace = !(glMaterial.doubleSided);
 
-        materials.push(glMaterial);
+        materials.push(pbr);
       }
     }
 
@@ -247,6 +247,18 @@ export class Gltf2Loader {
             // Create a "default" material if the primitive has none.
             material = new PbrMaterial();
           }
+
+          // TODO:
+          // determine shader defines by material & primitive combination 
+          // const attributeMask = primitive.getAttributeMask();
+          // getProgramDefines(attributeMask);
+          // getAttributeMask(): number {
+          //   let attributeMask = 0;
+          //   for (let attribute of this.attributes) {
+          //     attributeMask |= ATTRIB_MASK[attribute.name];
+          //   }
+          //   return attributeMask;
+          // }
 
           let attributes = [];
 

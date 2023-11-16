@@ -22,7 +22,7 @@ import { vec2, vec3, vec4 } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
-export const VS_UNIFORMS='uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;'
+export const VS_UNIFORMS = 'uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;'
 
 export const CAP = {
   // Enable caps
@@ -309,9 +309,6 @@ export abstract class Material {
   abstract get materialName(): string;
   abstract get vertexSource(): string;
   abstract get fragmentSource(): string;
-  getProgramDefines(attributeMask: number): { [key: string]: number } {
-    return {};
-  }
 
   bind(gl: WebGL2RenderingContext,
     uniformMap: { [key: string]: WebGLUniformLocation }) {

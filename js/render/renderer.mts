@@ -147,7 +147,7 @@ export class Renderer {
   }
 
   _used = new Set();
-  private _getOrCreatePrimtive(primitive: Primitive) {
+  private _getOrCreatePrimtive(primitive: Primitive, program: Program) {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
       if (primitive.vertexUpdated) {
@@ -182,7 +182,7 @@ export class Renderer {
     }
 
     // VAO
-    vao = new Vao(this.gl, primitive, vboList, ibo);
+    vao = new Vao(this.gl, program, primitive, vboList, ibo);
     this._primVaoMap.set(primitive, vao);
     return vao;
   }
@@ -231,8 +231,8 @@ export class Renderer {
     let prevMaterial: Material | null = null;
     let prevVao: Vao | null = null;
     renderList.forEach((nodes, primitive) => {
-      const vao = this._getOrCreatePrimtive(primitive);
       const program = this._programFactory.getOrCreateProgram(primitive);
+      const vao = this._getOrCreatePrimtive(primitive, program);
       for (const node of nodes) {
         // Loop through every primitive known to the renderer.
         // Bind the primitive material's program if it's different than the one we

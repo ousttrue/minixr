@@ -22,9 +22,6 @@ import { Primitive, ATTRIB } from '../scene/geometry/primitive.mjs';
 import { Texture } from '../scene/materials/texture.mjs';
 
 
-// const VERTEX_SHADER_UNIFORM = 'uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;'
-
-
 export class Program {
   program: WebGLProgram;
   attrib: { [key: string]: number } = {};
@@ -150,10 +147,8 @@ export class ProgramFactory {
   }
 
   getOrCreateProgram(primitive: Primitive): Program {
-    const attributeMask = primitive.getAttributeMask();
     const material = primitive.material;
-    let defines = material.getProgramDefines(attributeMask);
-    let key = this._getProgramKey(material.materialName, defines);
+    let key = this._getProgramKey(material.materialName, {});
     let program = this._programCache[key];
     if (program) {
       return program;
@@ -161,7 +156,7 @@ export class ProgramFactory {
 
     program = new Program(this.gl,
       material.materialName,
-      material.vertexSource, material.fragmentSource, ATTRIB, defines);
+      material.vertexSource, material.fragmentSource, ATTRIB, {});
     this._programCache[key] = program;
 
     program.onNextUse((program: Program) => {
