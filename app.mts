@@ -202,10 +202,38 @@ export default class App {
       // into the corresponding viewport.
       const viewports = pose.views.map(view => glLayer.getViewport(view)!);
 
-      // left
-      this.renderer.drawView(pose.views, viewports, 0, renderList);
-      // right
-      this.renderer.drawView(pose.views, viewports, 1, renderList);
+      {
+        // left eye
+        const vp = viewports[0];
+        gl.viewport(vp.x, vp.y, vp.width, vp.height);
+        const state = {
+          prevProgram: null,
+          prevMaterial: null,
+          prevVao: null,
+        }
+        const view = pose.views[0];
+        renderList.forEach((nodes, primitive) => {
+          for (const node of nodes) {
+            this.renderer.drawPrimitive(view, 0, node.worldMatrix, primitive, state);
+          }
+        });
+      }
+      {
+        // right eye
+        const vp = viewports[1];
+        gl.viewport(vp.x, vp.y, vp.width, vp.height);
+        const state = {
+          prevProgram: null,
+          prevMaterial: null,
+          prevVao: null,
+        }
+        const view = pose.views[1];
+        renderList.forEach((nodes, primitive) => {
+          for (const node of nodes) {
+            this.renderer.drawPrimitive(view, 1, node.worldMatrix, primitive, state);
+          }
+        });
+      }
 
     } else {
       // There's several options for handling cases where no pose is given.

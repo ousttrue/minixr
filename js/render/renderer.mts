@@ -25,6 +25,7 @@ import { Primitive } from '../scene/geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program, ProgramFactory } from './program.mjs';
 import { TextureFactory } from './texturefactory.mjs';
+import { Node } from '../scene/nodes/node.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -194,68 +195,60 @@ export class Renderer {
     return vao;
   }
 
-  drawView(
-    views: readonly XRView[], viewports: readonly XRViewport[], eyeIndex: number,
-    renderList: RenderCommands) {
+  drawPrimitive(
+    view: XRView, eyeIndex: number,
+    matrix: mat4, primitive: Primitive,
+    state: {
+      prevProgram: Program | null,
+      prevMaterial: Material | null,
+      prevVao: Vao | null,
+    }) {
+
     let gl = this.gl;
-
-    const view = views[eyeIndex];
-    const vp = viewports[eyeIndex];
-    gl.viewport(vp.x, vp.y, vp.width, vp.height);
-
-    let prevProgram: Program | null = null;
-    let prevMaterial: Material | null = null;
-    let prevVao: Vao | null = null;
-    renderList.forEach((nodes, primitive) => {
-      const program = this._programFactory.getOrCreateProgram(primitive);
-      const vao = this._getOrCreatePrimtive(primitive, program);
-      for (const node of nodes) {
-        // Loop through every primitive known to the renderer.
-        // Bind the primitive material's program if it's different than the one we
-        // were using for the previous primitive.
-        // TODO: The ording of this could be more efficient.
-        const programChanged = prevProgram != program
-        if (programChanged) {
-          prevProgram = program;
-          if (!prevProgram) {
-            throw new Error("arienai");
-          }
-          program.use();
-
-          if (program.uniformMap.LIGHT_DIRECTION) {
-            gl.uniform3fv(program.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
-          }
-
-          if (program.uniformMap.LIGHT_COLOR) {
-            gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
-          }
-
-          gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
-            view.projectionMatrix);
-          gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
-            view.transform.inverse.matrix);
-          gl.uniform3fv(program.uniformMap.CAMERA_POSITION, view.transform.matrix.subarray(12, 15));
-          gl.uniform1i(program.uniformMap.EYE_INDEX, eyeIndex);
-        }
-
-        if (programChanged || prevMaterial != primitive.material) {
-          this._bindMaterialState(primitive.material.state, prevMaterial?.state);
-          program.bindMaterial(primitive.material,
-            (src) => this._textureFactory.getOrCreateTexture(src));
-          prevMaterial = primitive.material;
-        }
-
-        // @ts-ignore
-        gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false,
-          node.worldMatrix.array);
-
-        if (vao != prevVao) {
-          vao.bind(gl);
-          prevVao = vao;
-        }
-        vao.draw(gl, primitive.drawCount, primitive.instanceCount);
+    const program = this._programFactory.getOrCreateProgram(primitive);
+    const vao = this._getOrCreatePrimtive(primitive, program);
+    // Loop through every primitive known to the renderer.
+    // Bind the primitive material's program if it's different than the one we
+    // were using for the previous primitive.
+    // TODO: The ording of this could be more efficient.
+    const programChanged = state.prevProgram != program
+    if (programChanged) {
+      state.prevProgram = program;
+      if (!state.prevProgram) {
+        throw new Error("arienai");
       }
-    });
+      program.use();
+
+      if (program.uniformMap.LIGHT_DIRECTION) {
+        gl.uniform3fv(program.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
+      }
+
+      if (program.uniformMap.LIGHT_COLOR) {
+        gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
+      }
+
+      gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
+        view.projectionMatrix);
+      gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
+        view.transform.inverse.matrix);
+      gl.uniform3fv(program.uniformMap.CAMERA_POSITION, view.transform.matrix.subarray(12, 15));
+      gl.uniform1i(program.uniformMap.EYE_INDEX, eyeIndex);
+    }
+
+    if (programChanged || state.prevMaterial != primitive.material) {
+      this._bindMaterialState(primitive.material.state, state.prevMaterial?.state);
+      program.bindMaterial(primitive.material,
+        (src) => this._textureFactory.getOrCreateTexture(src));
+      state.prevMaterial = primitive.material;
+    }
+
+    gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
+
+    if (vao != state.prevVao) {
+      vao.bind(gl);
+      state.prevVao = vao;
+    }
+    vao.draw(gl, primitive.drawCount, primitive.instanceCount);
   }
 
   _colorMaskNeedsReset = false;
