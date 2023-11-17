@@ -1,5 +1,5 @@
 import { Material } from './material.mjs';
-import { vec4 } from '../../math/gl-matrix.mts';
+import { vec4 } from '../../math/gl-matrix.mjs';
 
 
 class MaterialUniformFloat4 {

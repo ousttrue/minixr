@@ -18,6 +18,7 @@ import { bitmapFontFactory } from './js/scene/factory/bitmap-font.mjs';
 import { World } from './js/third-party/uecs-0.4.2/index.mjs';
 import { Transform } from './js/math/gl-matrix.mjs';
 import { Primitive } from './js/scene/geometry/primitive.mjs';
+import { Rotater } from './js/scene/component/Rotater.mjs';
 
 
 export default class App {
@@ -116,15 +117,7 @@ export default class App {
 
     this._loadGltfAsync();
 
-    {
-      const created = await cubeSeaFactory(6, 0.5)
-      this.scene.add(created);
-      for (const node of created.nodes) {
-        for (const primitive of node.primitives) {
-          this.world.create(node.local, primitive);
-        }
-      }
-    }
+    await cubeSeaFactory(this.world, 6, 0.5)
 
     {
       const created = await bitmapFontFactory();
@@ -179,9 +172,12 @@ export default class App {
     }
     this._prevTime = time;
     const refSpace = this.xrRefSpace!
-    const renderList = this.scene.updateAndGetRenderList(time, frameDelta, refSpace, frame, session.inputSources);
+    this.scene.updateAndGetRenderList(
+      time, frameDelta, refSpace, frame, session.inputSources);
 
     this.term.getTermTexture();
+
+    Rotater.system(this.world, time);
 
     //
     // render scene

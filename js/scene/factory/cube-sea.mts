@@ -20,13 +20,15 @@
 
 import { Node } from '../nodes/node.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
-import { vec3 } from '../../math/gl-matrix.mjs';
-import { HoverMaterial } from '../materials/hover.mts';
-import { Rotater } from '../component/rotater.mts';
-import { Component } from '../component/component.mts';
+import { vec3, Transform } from '../../math/gl-matrix.mjs';
+import { HoverMaterial } from '../materials/hover.mjs';
+import { Rotater } from '../component/rotater.mjs';
+import { Component } from '../component/component.mjs';
+import { World } from '../../third-party/uecs-0.4.2/index.mjs';
 
 
 export async function cubeSeaFactory(
+  world: World,
   cubeCount: number = 10,
   cubeScale: number = 1.0,
 ): Promise<{ nodes: Node[], components: Component[] }> {
@@ -38,27 +40,25 @@ export async function cubeSeaFactory(
     [-0.8, 0.25, 0],
   ]
 
-  const nodes: Node[] = []
-  const components: Component[] = []
   for (const pos of positions) {
     let boxBuilder = new BoxBuilder();
     // Build the spinning "hero" cubes
     boxBuilder.pushCube(pos, 0.1);
     const material = new HoverMaterial();
     let heroPrimitive = boxBuilder.finishPrimitive(material);
-    const heroNode = new Node("hero");
-    heroNode.action = 'passive';
-    heroNode.primitives.push(heroPrimitive);
-    heroNode.addEventListener('hover-passive-start', (_: Event) => {
-      material.color.value.set(1, 0, 0, 1);;
-    });
-    heroNode.addEventListener('hover-passive-end', (_: Event) => {
-      material.color.value.set(1, 1, 1, 1);;
-    });
-    nodes.push(heroNode);
+    // const heroNode = new Node("hero");
+    // heroNode.action = 'passive';
+    // heroNode.primitives.push(heroPrimitive);
+    // heroNode.addEventListener('hover-passive-start', (_: Event) => {
+    //   material.color.value.set(1, 0, 0, 1);;
+    // });
+    // heroNode.addEventListener('hover-passive-end', (_: Event) => {
+    //   material.color.value.set(1, 1, 1, 1);;
+    // });
 
-    const rotater = new Rotater(heroNode);
-    components.push(rotater);
+    // const rotater = ;
+
+    world.create(new Transform(), heroPrimitive, new Rotater());
   }
 
   {
