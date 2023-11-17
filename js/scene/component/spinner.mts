@@ -1,16 +1,14 @@
-import { Component } from './component.mjs';
-import { Node } from '../nodes/node.mjs';
+import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { Transform } from '../../math/gl-matrix.mjs';
 
-export class Spinner extends Component {
+export class Spinner {
 
-  constructor(private readonly _node: Node) {
-    super()
+  static system(world: World, timestamp: number, delta: number) {
+    world.view(Transform, Spinner).each((entity, transform, spinner) => {
+      transform.matrix.rotateX(delta / 1000);
+      transform.matrix.rotateY(delta / 1500);
+      transform.invalidate();
+    });
   }
 
-  update(timestamp: number, _frameDelta: number,
-    _refsp: XRReferenceSpace, _frame: XRFrame) {
-    this._node.local.matrix.rotateX(_frameDelta / 1000);
-    this._node.local.matrix.rotateY(_frameDelta / 1500);
-    this._node.local.invalidate();
-  }
 }

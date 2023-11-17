@@ -18,12 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node } from '../nodes/node.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, Transform } from '../../math/gl-matrix.mjs';
 import { HoverMaterial } from '../materials/hover.mjs';
 import { Rotater } from '../component/rotater.mjs';
-import { Component } from '../component/component.mjs';
 import { World } from '../../third-party/uecs-0.4.2/index.mjs';
 
 
@@ -31,7 +29,7 @@ export async function cubeSeaFactory(
   world: World,
   cubeCount: number = 10,
   cubeScale: number = 1.0,
-): Promise<{ nodes: Node[], components: Component[] }> {
+): Promise<void> {
 
   const positions = [
     [0, 0.25, -0.8],
@@ -85,24 +83,25 @@ export async function cubeSeaFactory(
           const material = new HoverMaterial();
           let cubeSeaPrimitive = boxBuilder.finishPrimitive(material);
 
-          const node = new Node('sea');
-          node.action = 'passive';
-          node.primitives.push(cubeSeaPrimitive);
-          node.local.translation = vec3.fromValues(pos[0], pos[1], pos[2]);
+          // const node = new Node('sea');
+          // node.action = 'passive';
+          // node.primitives.push(cubeSeaPrimitive);
+          //
+          // node.addEventListener('hover-passive-start', (_: Event) => {
+          //   material.color.value.set(1, 0, 0, 1);;
+          // });
+          //
+          // node.addEventListener('hover-passive-end', (_: Event) => {
+          //   material.color.value.set(1, 1, 1, 1);;
+          // });
 
-          node.addEventListener('hover-passive-start', (_: Event) => {
-            material.color.value.set(1, 0, 0, 1);;
-          });
-
-          node.addEventListener('hover-passive-end', (_: Event) => {
-            material.color.value.set(1, 1, 1, 1);;
-          });
-
-          nodes.push(node);
+          const transform = new Transform()
+          transform.translation = vec3.fromValues(pos[0], pos[1], pos[2]);
+          world.create(transform, cubeSeaPrimitive);
         }
       }
     }
   }
 
-  return Promise.resolve({ nodes, components });
+  return Promise.resolve();
 }

@@ -1,13 +1,13 @@
-import { Node } from '../nodes/node.mjs';
-import { Component } from '../component/component.mjs';
 import { HandTracking } from '../component/hand-tracking.mjs';
 import { SimpleMaterial } from '../materials/simple.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { Transform } from '../../math/gl-matrix.mjs';
 
 
-export async function handFactory(
+export async function handFactory(world: World,
   hand: 'left' | 'right'
-): Promise<{ nodes: Node[], components: Component[] }> {
+): Promise<void> {
 
   const material = new SimpleMaterial();
 
@@ -15,15 +15,15 @@ export async function handFactory(
   boxBuilder.pushCube([0, 0, 0], 0.01);
   const primitive = boxBuilder.finishPrimitive(material);
 
-  const nodes: Node[] = []
+  const joints: Transform[] = [];
   for (let i = 0; i < 24; i++) {
-    const node = new Node(`${hand}hand:${i}`);
-    node.primitives.push(primitive);
-    nodes.push(node);
+    const transform = new Transform();
+    world.create(transform, primitive);
+    joints.push(transform);
   }
 
-  const handTracking = new HandTracking(hand, nodes);
+  world.create(new HandTracking(hand, joints));
 
-  return Promise.resolve({ nodes, components: [handTracking] });
+  return Promise.resolve();
 }
 

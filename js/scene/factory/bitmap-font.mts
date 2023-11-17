@@ -1,9 +1,7 @@
 import { BitmapFontMaterial } from '../materials/bitmap-font.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { Node } from '../nodes/node.mjs';
-import { Component } from '../component/component.mjs';
-import { vec3 } from '../../math/gl-matrix.mjs';
-
+import { vec3, Transform } from '../../math/gl-matrix.mjs';
+import { World } from '../../third-party/uecs-0.4.2/index.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -40,14 +38,12 @@ class TextGrid {
 }
 
 
-export async function bitmapFontFactory(
-): Promise<{ nodes: Node[], components: Component[] }> {
+export async function bitmapFontFactory(world: World, pos: vec3): Promise<void> {
 
   const material = new BitmapFontMaterial();
   await material.loadTextureAsync();
 
   // counter clock wise
-  const node = new Node('BitmapFont');
   const vertices = new DataView(new Float32Array([
     0, 1, 0, 0,
     0, 0, 0, 1,
@@ -87,7 +83,10 @@ export async function bitmapFontFactory(
 
   const primitive = new Primitive(material, attributes, 4, ibo, { instanceAttributes });
   primitive.instanceCount = grid.length;
-  node.primitives.push(primitive);
 
-  return Promise.resolve({ nodes: [node], components: [] })
+  const transform = new Transform();
+  transform.translation = pos;
+  world.create(transform, primitive);
+
+  return Promise.resolve()
 }

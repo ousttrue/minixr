@@ -18,7 +18,9 @@ import { bitmapFontFactory } from './js/scene/factory/bitmap-font.mjs';
 import { World } from './js/third-party/uecs-0.4.2/index.mjs';
 import { Transform } from './js/math/gl-matrix.mjs';
 import { Primitive } from './js/scene/geometry/primitive.mjs';
-import { Rotater } from './js/scene/component/Rotater.mjs';
+import { Rotater } from './js/scene/component/rotater.mjs';
+import { Spinner } from './js/scene/component/spinner.mjs';
+import { HandTracking } from './js/scene/component/hand-tracking.mjs';
 
 
 export default class App {
@@ -97,33 +99,13 @@ export default class App {
       });
     this.scene.addComponents([this.meshDetection]);
 
-    {
-      const { nodes, components } = await handFactory("left");
-      this.scene.addNodes(nodes);
-      this.scene.addComponents(components);
-    }
-
-    {
-      const { nodes, components } = await handFactory("right");
-      this.scene.addNodes(nodes);
-      this.scene.addComponents(components);
-    }
-
-    {
-      const { nodes, components } = await interactionFactory();
-      this.scene.addNodes(nodes);
-      this.scene.addComponents(components);
-    }
-
     this._loadGltfAsync();
 
+    await handFactory(this.world, "left");
+    await handFactory(this.world, "right");
+    await interactionFactory(this.world);
     await cubeSeaFactory(this.world, 6, 0.5)
-
-    {
-      const created = await bitmapFontFactory();
-      created.nodes[0].local.translation = vec3.fromValues(0, 0, -0.2);
-      this.scene.add(created);
-    }
+    await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
   }
 
   private async _loadGltfAsync(): Promise<void> {
@@ -178,6 +160,8 @@ export default class App {
     this.term.getTermTexture();
 
     Rotater.system(this.world, time);
+    Spinner.system(this.world, time, frameDelta);
+    HandTracking.system(this.world, time, frameDelta, refSpace, frame, session.inputSources);
 
     //
     // render scene
