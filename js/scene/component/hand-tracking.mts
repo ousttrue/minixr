@@ -1,9 +1,11 @@
 /**
  * https://immersive-web.github.io/webxr-hand-input/
  */
-import { Node, HoverActiveStartEvent } from '../nodes/node.mjs';
 import { mat4, Transform } from '../../math/gl-matrix.mjs';
 import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { SimpleMaterial } from '../materials/simple.mjs';
+import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { HoverActive, HoverPassive } from './hover.mjs';
 
 const PINCH_START_DISTANCE = 0.015;
 const PINCH_END_DISTANCE = 0.03;
@@ -102,6 +104,33 @@ export class HandTracking extends EventTarget {
     //     // case 24: // little
     //   }
     // }
+  }
+
+  static async factory(world: World,
+    hand: 'left' | 'right'
+  ): Promise<void> {
+
+    const material = new SimpleMaterial();
+
+    const boxBuilder = new BoxBuilder();
+    boxBuilder.pushCube([0, 0, 0], 0.01);
+    const primitive = boxBuilder.finishPrimitive(material);
+
+    const joints: Transform[] = [];
+    for (let i = 0; i < 24; i++) {
+      const transform = new Transform();
+      if (i == 9) {
+        world.create(transform, primitive, new HoverActive());
+      }
+      else {
+        world.create(transform, primitive);
+      }
+      joints.push(transform);
+    }
+
+    world.create(new HandTracking(hand, joints));
+
+    return Promise.resolve();
   }
 
   static system(world: World, time: number, delta: number,

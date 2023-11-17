@@ -29,35 +29,7 @@ import { Component } from '../component/component.mjs';
 
 export type RenderCommands = Map<Primitive, Node[]>;
 
-class HoverStatus {
-  _last: Set<Node> = new Set();
-  _current: Set<Node> = new Set();
 
-  update(active: Node, hitList: readonly Node[]) {
-    this._current.clear();
-    for (const passive of hitList) {
-      if (this._last.delete(passive)) {
-      }
-      else {
-        // enter
-        passive.dispatchEvent(new HoverPassiveStartEvent(active));
-        active.dispatchEvent(new HoverActiveStartEvent(passive));
-      }
-      this._current.add(passive);
-    }
-
-    // not hit. hover end
-    this._last.forEach(passive => {
-      passive.dispatchEvent(new HoverPassiveEndEvent(active));
-      active.dispatchEvent(new HoverActiveEndEvent(passive));
-    });
-
-    // swap
-    const tmp = this._last;
-    this._last = this._current;
-    this._current = tmp;
-  }
-}
 
 
 export class Scene {
@@ -99,20 +71,6 @@ export class Scene {
     }
 
     this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, inputSources, this.root);
-
-    // hittest
-    for (const active of this._actives) {
-      const hitList: Node[] = [];
-      this._hitTestRecursive(active, hitList, this.root);
-
-      // update hover set
-      let hovers = this._hoverMap.get(active);
-      if (!hovers) {
-        hovers = new HoverStatus();
-        this._hoverMap.set(active, hovers);
-      }
-      hovers.update(active, hitList);
-    }
 
     return this._renderCommands;
   }

@@ -23,6 +23,7 @@ import { vec3, Transform } from '../../math/gl-matrix.mjs';
 import { HoverMaterial } from '../materials/hover.mjs';
 import { Rotater } from '../component/rotater.mjs';
 import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { HoverPassive } from '../component/hover.mjs';
 
 
 export async function cubeSeaFactory(
@@ -44,19 +45,15 @@ export async function cubeSeaFactory(
     boxBuilder.pushCube(pos, 0.1);
     const material = new HoverMaterial();
     let heroPrimitive = boxBuilder.finishPrimitive(material);
-    // const heroNode = new Node("hero");
-    // heroNode.action = 'passive';
-    // heroNode.primitives.push(heroPrimitive);
-    // heroNode.addEventListener('hover-passive-start', (_: Event) => {
-    //   material.color.value.set(1, 0, 0, 1);;
-    // });
-    // heroNode.addEventListener('hover-passive-end', (_: Event) => {
-    //   material.color.value.set(1, 1, 1, 1);;
-    // });
-
-    // const rotater = ;
-
-    world.create(new Transform(), heroPrimitive, new Rotater());
+    const hover = new HoverPassive(
+      () => {
+        material.color.value.set(1, 0, 0, 1);;
+      },
+      () => {
+        material.color.value.set(1, 1, 1, 1);;
+      },
+    )
+    world.create(new Transform(), heroPrimitive, new Rotater(), hover);
   }
 
   {
@@ -82,22 +79,18 @@ export async function cubeSeaFactory(
           boxBuilder.pushCube([0, 0, 0], size);
           const material = new HoverMaterial();
           let cubeSeaPrimitive = boxBuilder.finishPrimitive(material);
-
-          // const node = new Node('sea');
-          // node.action = 'passive';
-          // node.primitives.push(cubeSeaPrimitive);
-          //
-          // node.addEventListener('hover-passive-start', (_: Event) => {
-          //   material.color.value.set(1, 0, 0, 1);;
-          // });
-          //
-          // node.addEventListener('hover-passive-end', (_: Event) => {
-          //   material.color.value.set(1, 1, 1, 1);;
-          // });
+          const hover = new HoverPassive(
+            () => {
+              material.color.value.set(1, 0, 0, 1);;
+            },
+            () => {
+              material.color.value.set(1, 1, 1, 1);;
+            },
+          );
 
           const transform = new Transform()
           transform.translation = vec3.fromValues(pos[0], pos[1], pos[2]);
-          world.create(transform, cubeSeaPrimitive);
+          world.create(transform, cubeSeaPrimitive, hover);
         }
       }
     }

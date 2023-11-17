@@ -128,16 +128,3 @@ export class Node extends EventTarget {
   }
 }
 
-export class HoverPassiveStartEvent extends Event {
-  constructor(public readonly active: Node) { super('hover-passive-start'); }
-}
-export class HoverPassiveEndEvent extends Event {
-  constructor(public readonly active: Node) { super('hover-passive-end'); }
-}
-export class HoverActiveStartEvent extends Event {
-  constructor(public readonly passive: Node) { super('hover-active-start'); }
-}
-export class HoverActiveEndEvent extends Event {
-  constructor(public readonly passive: Node) { super('hover-active-end'); }
-}
-

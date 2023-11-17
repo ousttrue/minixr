@@ -1,7 +1,6 @@
 import { Scene } from './js/scene/scene.mjs';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
-import { handFactory } from './js/scene/factory/hand.mjs';
 import {
   ArMeshDetection,
   MeshDetectedEvent, MeshUpdatedEvent, MeshLostEvent
@@ -21,6 +20,7 @@ import { Primitive } from './js/scene/geometry/primitive.mjs';
 import { Rotater } from './js/scene/component/rotater.mjs';
 import { Spinner } from './js/scene/component/spinner.mjs';
 import { HandTracking } from './js/scene/component/hand-tracking.mjs';
+import { hoverSystem } from './js/scene/component/hover.mjs';
 
 
 export default class App {
@@ -101,8 +101,8 @@ export default class App {
 
     this._loadGltfAsync();
 
-    await handFactory(this.world, "left");
-    await handFactory(this.world, "right");
+    await HandTracking.factory(this.world, "left");
+    await HandTracking.factory(this.world, "right");
     await interactionFactory(this.world);
     await cubeSeaFactory(this.world, 6, 0.5)
     await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
@@ -162,6 +162,7 @@ export default class App {
     Rotater.system(this.world, time);
     Spinner.system(this.world, time, frameDelta);
     HandTracking.system(this.world, time, frameDelta, refSpace, frame, session.inputSources);
+    hoverSystem(this.world);
 
     //
     // render scene
