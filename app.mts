@@ -31,7 +31,7 @@ export default class App {
   renderer: Renderer;
   xrRefSpace: XRReferenceSpace | null = null;
 
-  _stats: StatsViewer | null = null;
+  _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
 
   term: XRTerm;
@@ -65,21 +65,30 @@ export default class App {
   }
 
   async _setupScene() {
-    // stats
-    this._stats = new StatsViewer();
-
     {
-      const graph = new StatsGraph();
-      this.scene.root.addNode(graph);
+      const transform = await StatsGraph.factory(this.world);
       if (false) {
         // TODO: head relative
-        graph.local.translation = vec3.fromValues(0, 1.4, -0.75);
+        transform.translation = vec3.fromValues(0, 1.4, -0.75);
       } else {
-        graph.local.translation = vec3.fromValues(0, -0.3, -0.5);
+        transform.translation = vec3.fromValues(0, -0.3, -0.5);
       }
-      graph.local.scale = vec3.fromValues(0.3, 0.3, 0.3);
-      graph.local.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
-      this._stats.pushUpdater(graph);
+      transform.scale = vec3.fromValues(0.3, 0.3, 0.3);
+      transform.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
+    }
+
+    {
+      // this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
+      // // Hard coded because it doesn't change:
+      // // Scale by 0.075 in X and Y
+      // // Translate into upper left corner w/ z = 0.02
+      // this._sevenSegmentNode.local.matrix.set(
+      //   0.075, 0, 0, 0,
+      //   0, 0.075, 0, 0,
+      //   0, 0, 1, 0,
+      //   -0.3625, 0.3625, 0.02, 1,
+      // );
+      // this._sevenSegmentNode.local.invalidate();
     }
 
     this.meshDetection = new ArMeshDetection();
@@ -141,9 +150,7 @@ export default class App {
 
     // Per-frame scene setup. Nothing WebXR specific here.
     // this.scene.startFrame(time, refSpace, frame);
-    if (this._stats) {
-      this._stats.begin();
-    }
+    this._stats.begin(this.world);
 
     //
     // update scene
@@ -242,8 +249,6 @@ export default class App {
       // use.
     }
 
-    if (this._stats) {
-      this._stats.end();
-    }
+    this._stats.end(this.world);
   }
 }

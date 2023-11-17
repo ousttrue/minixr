@@ -1,3 +1,6 @@
+import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+
+
 export const now = (window.performance && performance.now) ? performance.now.bind(performance) : Date.now;
 
 export class Stats {
@@ -6,7 +9,7 @@ export class Stats {
   frames: number = 0;
   fpsMin: number = 0;
 
-  constructor() {
+  constructor(public readonly updater: (time: number, stats: Stats) => boolean) {
 
   }
 
@@ -18,37 +21,27 @@ export class Stats {
       ? Math.min(this.fpsMin, frameFps)
       : frameFps;
     this.frames++;
+
+    if (this.updater(time, this)) {
+      this.frames = 0;
+      this.fpsMin = 0;
+    }
   }
 };
 
-type Updater = { updateStats: (time: number, stats: Stats) => boolean };
 
 export class StatsViewer {
-  updatersMap: Map<Updater, Stats> = new Map();// { updateStats: Updater }[] = []
-
-  constructor() {
-    // this.stats.prevFrameTime = this.stats.startTime;
-  }
-
-  pushUpdater(updater: Updater) {
-    this.updatersMap.set(updater, new Stats);
-  }
-
-  begin() {
+  begin(world: World) {
     const time = now();
-    this.updatersMap.forEach(stats => {
+    world.view(Stats).each((_, stats) => {
       stats.startTime = time;
     });
   }
 
-  end() {
+  end(world: World) {
     let time = now();
-    this.updatersMap.forEach((stats, updater) => {
+    world.view(Stats).each((_, stats) => {
       stats.update(time);
-      if (updater.updateStats(time, stats)) {
-        stats.frames = 0;
-        stats.fpsMin = 0;
-      }
     });
   }
 }

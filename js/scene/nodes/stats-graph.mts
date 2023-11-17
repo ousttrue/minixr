@@ -25,12 +25,11 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
-import { Node } from './node.mjs';
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { SevenSegmentText } from './seven-segment-text.mjs';
-import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
+import { vec3, BoundingBox, Transform } from '../../math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
+import { World } from '../../third-party/uecs-0.4.2/index.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -45,25 +44,25 @@ class StatsMaterial extends Material {
   get vertexSource() {
     return `
 uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-    in vec3 POSITION;
-    in vec3 COLOR_0;
-    out vec4 vColor;
+in vec3 POSITION;
+in vec3 COLOR_0;
+out vec4 vColor;
 
-    void main() {
-      vColor = vec4(COLOR_0, 1.0);
-      gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
-    }`;
+void main() {
+  vColor = vec4(COLOR_0, 1.0);
+  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+}`;
   }
 
   get fragmentSource() {
     return `
-    precision mediump float;
-    in vec4 vColor;
-    out vec4 _Color;
+precision mediump float;
+in vec4 vColor;
+out vec4 _Color;
 
-    void main() {
-      _Color = vColor;
-    }`;
+void main() {
+  _Color = vColor;
+}`;
   }
 }
 
@@ -84,33 +83,18 @@ function fpsToRGB(value: number): { r: Number, g: Number, b: Number } {
 }
 
 
-export class StatsGraph extends Node {
+export class StatsGraph {
+  fpsVertexBuffer: Float32Array;
+  fpsIndexBuffer: Uint16Array;
+  primitive: Primitive;
+
   private _performanceMonitoring: boolean = false;
-  private _prevGraphUpdateTime: number;
+  private _prevGraphUpdateTime: number = now();
   private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
   private _lastSegment: number = 0;
-  private _fpsVertexBuffer: Float32Array;
-  private _fpsNode: Node;
-  private _sevenSegmentNode: SevenSegmentText = new SevenSegmentText();
   private _fpsAverage: number = 0;
 
   constructor() {
-    super('StatsGraph');
-    this._prevGraphUpdateTime = now();
-
-    // Hard coded because it doesn't change:
-    // Scale by 0.075 in X and Y
-    // Translate into upper left corner w/ z = 0.02
-    this._sevenSegmentNode.local.matrix.set(
-      0.075, 0, 0, 0,
-      0, 0.075, 0, 0,
-      0, 0, 1, 0,
-      -0.3625, 0.3625, 0.02, 1,
-    );
-    this._sevenSegmentNode.local.invalidate();
-
-    this.clearNodes();
-
     let fpsVerts = [];
     let fpsIndices = [];
 
@@ -155,34 +139,19 @@ export class StatsGraph extends Node {
     // 60 FPS line
     addBGSquare(-0.45, fpsToY(60), 0.45, fpsToY(62), 0.015, 0.2, 0.0, 0.75);
 
-    this._fpsVertexBuffer = new Float32Array(fpsVerts);
-    const fpsVertexBuffer = new DataView(this._fpsVertexBuffer.buffer);
-    const fpsIndexBuffer = new Uint16Array(fpsIndices);
+    this.fpsVertexBuffer = new Float32Array(fpsVerts);
+    this.fpsIndexBuffer = new Uint16Array(fpsIndices);
+
+    const fpsVertexBuffer = new DataView(this.fpsVertexBuffer.buffer);
     const fpsAttribs = [
       new PrimitiveAttribute('POSITION', fpsVertexBuffer, 3, GL.FLOAT, 24, 0),
       new PrimitiveAttribute('COLOR_0', fpsVertexBuffer, 3, GL.FLOAT, 24, 12),
     ];
     const material = new StatsMaterial()
-    let fpsPrimitive = new Primitive(material,
-      fpsAttribs, fpsVerts.length / 6, fpsIndexBuffer,
+    this.primitive = new Primitive(material,
+      fpsAttribs, this.fpsVertexBuffer.length / 6, this.fpsIndexBuffer,
       { attributesUsage: GL.DYNAMIC_DRAW });
-    fpsPrimitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
-
-    this._fpsNode = new Node('fps');
-    this._fpsNode.primitives.push(fpsPrimitive);
-
-    this.addNode(this._fpsNode);
-    this.addNode(this._sevenSegmentNode);
-
-  }
-
-  get performanceMonitoring() {
-    return this._performanceMonitoring;
-  }
-
-  set performanceMonitoring(value) {
-    this._performanceMonitoring = value;
-    this._fpsStep = value ? 1000 : 250;
+    this.primitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
   }
 
   updateStats(time: number, stats: Stats): boolean {
@@ -196,8 +165,6 @@ export class StatsGraph extends Node {
     // Draw both average and minimum FPS for this period
     // so that dropped frames are more clearly visible.
     this._updateGraph(stats.fpsMin, this._fpsAverage);
-
-    this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
 
     if (this._performanceMonitoring) {
       console.log(`Average FPS: ${this._fpsAverage} Min FPS: ${stats.fpsMin}`);
@@ -233,14 +200,14 @@ export class StatsGraph extends Node {
     if (this._lastSegment == SEGMENTS - 1) {
       // If we're updating the last segment we need to do two bufferSubDatas
       // to update the segment and turn the first segment into the progress line.
-      this._fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
+      this.fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
       updateVerts = [
         segmentToX(0), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
         segmentToX(.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
         segmentToX(0), fpsToY(0), 0.02, color.r, color.g, color.b,
         segmentToX(.25), fpsToY(0), 0.02, color.r, color.g, color.b,
       ];
-      this._fpsVertexBuffer.set(updateVerts);
+      this.fpsVertexBuffer.set(updateVerts);
     } else {
       updateVerts.push(
         segmentToX(this._lastSegment + 1), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
@@ -248,15 +215,23 @@ export class StatsGraph extends Node {
         segmentToX(this._lastSegment + 1), fpsToY(0), 0.02, color.r, color.g, color.b,
         segmentToX(this._lastSegment + 1.25), fpsToY(0), 0.02, color.r, color.g, color.b
       );
-      this._fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
+      this.fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
     }
 
     this._lastSegment = (this._lastSegment + 1) % SEGMENTS;
 
-    for (const prim of this._fpsNode.primitives) {
-      prim.vertexUpdated = true;
-    }
+    this.primitive.vertexUpdated = true;
+  }
+
+  static async factory(world: World): Promise<Transform> {
+    const graph = new StatsGraph();
+
+    const transform = new Transform();
+
+    world.create(transform, graph.primitive, new Stats((time, stats) => {
+      return graph.updateStats(time, stats);
+    }));
+
+    return Promise.resolve(transform);
   }
 }
-
-
