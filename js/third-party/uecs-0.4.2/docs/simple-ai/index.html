@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+        <title>Simple AI Example | μECS</title>
+        <meta content="width=device-width, initial-scale=1" name="viewport"/>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                background-color: black;
+            }
+
+            canvas#game {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+            }
+
+            div#controls {
+                position: absolute;
+                top: 5vh;
+                left: 5vw;
+                z-index: 1000;
+                width: auto;
+                height: auto;
+                background: none;
+                color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="game">Canvas is not supported in your browser.</canvas>
+        <noscript>JavaScript is required to view the example.</noscript>
+        <div id="controls">
+            Press WASD to move the Square entity.<br>
+            The AI walk/stops at random intervals, and it reverses direction upon hitting a wall.
+        </div>
+        <script type="module" src="./index.mts">
+        </script>
+    </body>
+</html>
