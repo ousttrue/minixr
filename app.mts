@@ -201,7 +201,11 @@ export default class App {
       // Loop through each of the views reported by the frame and draw them
       // into the corresponding viewport.
       const viewports = pose.views.map(view => glLayer.getViewport(view)!);
-      this.renderer.drawViews(pose.views, viewports, renderList);
+
+      // left
+      this.renderer.drawView(pose.views, viewports, 0, renderList);
+      // right
+      this.renderer.drawView(pose.views, viewports, 1, renderList);
 
     } else {
       // There's several options for handling cases where no pose is given.

@@ -92,7 +92,6 @@ class Lighting {
 
 
 export class Renderer {
-  private _cameraPositions = new Float32Array(8);
   private _lighting = new Lighting();
   private _textureFactory: TextureFactory;
   private _programFactory: ProgramFactory;
@@ -101,9 +100,8 @@ export class Renderer {
   private _primVaoMap: Map<Primitive, Vao> = new Map();
 
   constructor(
-    private readonly gl: WebGL2RenderingContext,
-    private _multiview = false) {
-    this._programFactory = new ProgramFactory(gl, _multiview);
+    private readonly gl: WebGL2RenderingContext) {
+    this._programFactory = new ProgramFactory(gl);
     this._textureFactory = new TextureFactory(gl);
   }
 
@@ -196,40 +194,9 @@ export class Renderer {
     return vao;
   }
 
-  drawViews(views: readonly XRView[], viewports: readonly XRViewport[], renderList: RenderCommands) {
-    if (views.length != viewports.length) {
-      throw new Error("arienai !!");
-    }
-
-    // Get the positions of the 'camera' for each view matrix.
-    for (let i = 0; i < views.length; ++i) {
-      if (i == 0) {
-        this._cameraPositions.set(views[i].transform.matrix.subarray(12), 0);
-      }
-      else if (i == 1) {
-        this._cameraPositions.set(views[i].transform.matrix.subarray(12), 4);
-      }
-      else {
-        throw new Error("?");
-      }
-    }
-
-    if (this._multiview) {
-      throw new Error("not implemented");
-    }
-    else {
-      if (views.length != 2 || viewports.length != 2) {
-        throw new Error("arienai ?");
-      }
-      // left
-      this._drawView(views, viewports, 0, this._cameraPositions.subarray(0, 3), renderList);
-      // right
-      this._drawView(views, viewports, 1, this._cameraPositions.subarray(4, 7), renderList);
-    }
-  }
-
-  private _drawView(views: readonly XRView[], viewports: readonly XRViewport[], eyeIndex: number,
-    cameraPosition: Float32Array, renderList: RenderCommands) {
+  drawView(
+    views: readonly XRView[], viewports: readonly XRViewport[], eyeIndex: number,
+    renderList: RenderCommands) {
     let gl = this.gl;
 
     const view = views[eyeIndex];
@@ -267,7 +234,7 @@ export class Renderer {
             view.projectionMatrix);
           gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
             view.transform.inverse.matrix);
-          gl.uniform3fv(program.uniformMap.CAMERA_POSITION, cameraPosition);
+          gl.uniform3fv(program.uniformMap.CAMERA_POSITION, view.transform.matrix.subarray(12, 15));
           gl.uniform1i(program.uniformMap.EYE_INDEX, eyeIndex);
         }
 
