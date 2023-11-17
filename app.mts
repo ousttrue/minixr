@@ -15,9 +15,14 @@ import { cubeSeaFactory } from './js/scene/factory/cube-sea.mjs';
 import { interactionFactory } from './js/scene/factory/interaction.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';
 import { bitmapFontFactory } from './js/scene/factory/bitmap-font.mjs';
+import { World } from './js/third-party/uecs-0.4.2/index.mjs';
+import { Transform } from './js/math/gl-matrix.mjs';
+import { Primitive } from './js/scene/geometry/primitive.mjs';
 
 
 export default class App {
+  world = new World();
+
   scene = new Scene();
   gl: WebGL2RenderingContext;
   renderer: Renderer;
@@ -111,7 +116,16 @@ export default class App {
 
     this._loadGltfAsync();
 
-    this.scene.add(await cubeSeaFactory(6, 0.5));
+    {
+      const created = await cubeSeaFactory(6, 0.5)
+      this.scene.add(created);
+      for (const node of created.nodes) {
+        for (const primitive of node.primitives) {
+          this.world.create(node.local, primitive);
+        }
+      }
+    }
+
     {
       const created = await bitmapFontFactory();
       created.nodes[0].local.translation = vec3.fromValues(0, 0, -0.2);
@@ -202,6 +216,8 @@ export default class App {
       // into the corresponding viewport.
       const viewports = pose.views.map(view => glLayer.getViewport(view)!);
 
+      const renderList = this.world.view(Transform, Primitive);
+
       {
         // left eye
         const vp = viewports[0];
@@ -212,10 +228,8 @@ export default class App {
           prevVao: null,
         }
         const view = pose.views[0];
-        renderList.forEach((nodes, primitive) => {
-          for (const node of nodes) {
-            this.renderer.drawPrimitive(view, 0, node.worldMatrix, primitive, state);
-          }
+        renderList.each((entity, transform, primitive) => {
+          this.renderer.drawPrimitive(view, 0, transform.matrix, primitive, state);
         });
       }
       {
@@ -228,10 +242,8 @@ export default class App {
           prevVao: null,
         }
         const view = pose.views[1];
-        renderList.forEach((nodes, primitive) => {
-          for (const node of nodes) {
-            this.renderer.drawPrimitive(view, 1, node.worldMatrix, primitive, state);
-          }
+        renderList.each((entity, transform, primitive) => {
+          this.renderer.drawPrimitive(view, 1, transform.matrix, primitive, state);
         });
       }
 
