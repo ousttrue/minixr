@@ -1,5 +1,5 @@
 // some randomizers to spice things up
-function randomInt(min, max) {
+function randomInt(min: number, max: number) {
   return Math.floor(min + Math.random() * (max - min));
 }
 function randomDir() {
@@ -24,27 +24,30 @@ function randomRGB() {
 // the only requirement for components 
 // is that they *MUST* be classes.
 class Position {
-  constructor(x = 0, y = 0) {
+  constructor(public x = 0, public y = 0) {
     this.x = x;
     this.y = y;
   }
 }
 class Velocity {
-  constructor(x = 0, y = 0) {
+  constructor(public x = 0, public y = 0) {
     this.x = x;
     this.y = y;
   }
 }
 class Body {
+  size: { w: number, h: number }
   constructor(
-    type,
-    color,
-    dims
+    public type: 'square' | 'circle',
+    public color: string,
+    public radius?: number,
+    public dims?: { w: number, h: number },
   ) {
-    this.type = type;
-    this.color = color;
-    this.dims = dims;
-    console.log(this.type, this.color, this.dims);
+    switch (this.type) {
+      case "circle": this.size = { w: this.radius!, h: this.radius! }; break;
+      case "square": this.size = this.dims!; break;
+    }
+    console.log(this.type, this.color, this.radius, this.dims);
   }
 }
 class AI {
@@ -53,14 +56,14 @@ class AI {
   walkDir = { x: 0, y: 0 };
 }
 
-import { World } from '../../index.mjs';
+import { World, Entity } from '../../index.mjs';
 // initialize the world
 const world = new World;
 // create the player entity, this one will be controlled by the user with the WASD keys
 let player = world.create(
   new Position(window.innerWidth / 2, window.innerHeight / 2),
   new Velocity,
-  new Body("square", "#AA0080", { w: 32, h: 32 }));
+  new Body("square", "#AA0080", undefined, { w: 32, h: 32 }));
 // now create some AI entities
 // these will be controlled by a simple state machine
 for (let i = 0; i < 100; ++i) {
@@ -75,12 +78,12 @@ for (let i = 0; i < 100; ++i) {
   )
 }
 
-let keys = {};
+let keys: { [key: string]: boolean } = {};
 window.addEventListener("keydown", e => keys[e.code] = true);
 window.addEventListener("keyup", e => keys[e.code] = false);
 // input changes the player's velocity
-function input(player) {
-  const velocity = world.get(player, Velocity);
+function input(player: Entity) {
+  const velocity = world.get(player, Velocity) as Velocity;
   velocity.x = 0;
   velocity.y = 0;
   if (keys["KeyW"]) velocity.y -= 1;
@@ -89,7 +92,7 @@ function input(player) {
   if (keys["KeyD"]) velocity.x += 1;
 }
 
-function ai(world) {
+function ai(world: World) {
   const now = Date.now();
 
   // this state machine switches between  the "walk" and "idle" states at a random interval
@@ -118,11 +121,11 @@ function ai(world) {
       }
       case "walk": {
         // don't walk into walls
-        if (position.x + velocity.x < body.dims ||
-          position.x + velocity.x > window.innerWidth - body.dims)
+        if (position.x + velocity.x < body.radius! ||
+          position.x + velocity.x > window.innerWidth - body.radius!)
           ai.walkDir.x *= -1;
-        if (position.y + velocity.y < body.dims ||
-          position.y + velocity.y > window.innerHeight - body.dims)
+        if (position.y + velocity.y < body.radius! ||
+          position.y + velocity.y > window.innerHeight - body.radius!)
           ai.walkDir.y *= -1;
 
         // walk
@@ -143,16 +146,16 @@ function ai(world) {
 }
 
 // move anything that has a Position and Velocity component
-function movement(world, dt) {
+function movement(world: World, dt: number) {
   world.view(Position, Velocity).each((entity, position, velocity) => {
     position.x += velocity.x * 5 * dt;
     position.y += velocity.y * 5 * dt;
   });
 }
 
-/** @type {CanvasRenderingContext2D} */
-const ctx = document.querySelector("canvas#game").getContext("2d");
-function draw(world) {
+// @ts-ignore
+const ctx = document.querySelector("canvas#game").getContext("2d") as CanvasRenderingContext2D
+function draw(world: World) {
   // resize and clear the canvas
   if (ctx.canvas.width !== ctx.canvas.clientWidth || ctx.canvas.height !== ctx.canvas.clientHeight) {
     ctx.canvas.width = ctx.canvas.clientWidth;
@@ -165,30 +168,26 @@ function draw(world) {
     switch (body.type) {
       case "circle": {
         ctx.beginPath();
-        ctx.arc(position.x, position.y, body.dims, 0, 2 * Math.PI);
+        ctx.arc(position.x, position.y, body.radius!, 0, 2 * Math.PI);
         ctx.fillStyle = body.color;
         ctx.fill();
         break;
       }
       case "square": {
-        let hw = body.dims.w / 2;
-        let hh = body.dims.h / 2;
+        let hw = body.dims!.w / 2;
+        let hh = body.dims!.h / 2;
         ctx.fillStyle = body.color;
-        ctx.fillRect(position.x - hw, position.y - hh, body.dims.w, body.dims.h);
+        ctx.fillRect(position.x - hw, position.y - hh, body.dims!.w, body.dims!.h);
         break;
       }
     }
   });
 }
 
-function collision(world) {
+function collision(world: World) {
   // collide against the world boundaries, which are the screen dimensions
-  world.view(Position, Body).each((entity, position, body) => {
-    let size;
-    switch (body.type) {
-      case "circle": size = { w: body.dims, h: body.dims }; break;
-      case "square": size = body.dims; break;
-    }
+  world.view(Position, Body).each((entity, position: Position, body: Body) => {
+    const size = body.size;
 
     if (position.x < size.w) position.x = size.w;
     if (position.x > window.innerWidth - size.w) position.x = window.innerWidth - size.w;
@@ -200,7 +199,7 @@ function collision(world) {
 // our main loop
 let last = window.performance.now();
 const target = 1000 / 30;
-function update(time) {
+function update(time: number) {
   let dt = (time - last) / (1000 / 30);
   last = time;
 
