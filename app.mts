@@ -7,6 +7,7 @@ import {
 } from './js/scene/component/ar-mesh-detection.mjs';
 import { StatsViewer } from './js/scene/nodes/stats-viewer.mjs';
 import { StatsGraph } from './js/scene/nodes/stats-graph.mjs';
+import { SevenSegmentText } from './js/scene/nodes/seven-segment-text.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
 import { Gltf2Loader } from './js/scene/loaders/gltf2.mjs';
 import { UrlTexture } from './js/scene/materials/texture.mjs';
@@ -76,19 +77,16 @@ export default class App {
       transform.scale = vec3.fromValues(0.3, 0.3, 0.3);
       transform.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
     }
-
     {
-      // this._sevenSegmentNode.text = `${this._fpsAverage.toString().padEnd(3)}FP5`;
-      // // Hard coded because it doesn't change:
-      // // Scale by 0.075 in X and Y
-      // // Translate into upper left corner w/ z = 0.02
-      // this._sevenSegmentNode.local.matrix.set(
-      //   0.075, 0, 0, 0,
-      //   0, 0.075, 0, 0,
-      //   0, 0, 1, 0,
-      //   -0.3625, 0.3625, 0.02, 1,
-      // );
-      // this._sevenSegmentNode.local.invalidate();
+      const transform = await SevenSegmentText.factory(this.world);
+      if (false) {
+        // TODO: head relative
+        transform.translation = vec3.fromValues(0, 1.4, -0.75);
+      } else {
+        transform.translation = vec3.fromValues(0, -0.3, -0.5);
+      }
+      transform.scale = vec3.fromValues(0.3, 0.3, 0.3);
+      transform.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
     }
 
     this.meshDetection = new ArMeshDetection();

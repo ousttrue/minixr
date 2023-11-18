@@ -49,7 +49,7 @@ async function onRequestSession() {
         'mesh-detection',
       ],
       optionalFeatures: [
-        'layers',
+        // 'layers',
         // 'local-floor',
         // 'bounded-floor',
         // 'high-fixed-foveation-level',

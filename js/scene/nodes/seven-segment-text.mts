@@ -23,195 +23,286 @@ Renders simple text using a seven-segment LED style pattern. Only really good
 for numbers and a limited number of other characters.
 */
 
-import { Node } from './node.mjs';
-import { Material, VS_UNIFORMS } from '../materials/material.mjs';
+import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { vec3 } from '../../math/gl-matrix.mjs';
+import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
+import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { Stats, now } from './stats-viewer.mjs';
+import { Transform } from '../../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
-const TEXT_KERNING = 2.0;
-
-
-type Character = {
-  character: string;
-  offset: number;
-  count: number;
-};
-
-
 class SevenSegmentMaterial extends Material {
+  ascii: Int32Array | null = null;
+
   get materialName() {
     return 'SEVEN_SEGMENT_TEXT';
   }
 
   get vertexSource() {
     return `
-    in vec2 POSITION;
+in vec3 a_Position;
+in vec4 i_Cell;
+in vec2 i_Char_Color;
+out vec4 f_Color;
 
-    uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+// TODO: pack to int[32]
+uniform int ascii[128];
 
-    void main() {
-      gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 0.0, 1.0);
-    }`;
+int getMask(int code)
+{
+  return ascii[code];
+}
+
+bool isVisible(int code, int segment)
+{
+  int mask = getMask(code);
+  return (mask & (1 << segment)) != 0;
+}
+
+vec4 extractUint32(float src)
+{
+  uint rgba = floatBitsToUint(src);
+  return vec4(
+    float((rgba>>24) & uint(255)) / 255.0,
+    float((rgba>>14) & uint(255)) / 255.0,
+    float((rgba>> 8) & uint(255)) / 255.0,
+    float((rgba>> 0) & uint(255)) / 255.0
+  );
+}
+
+void main() {
+  vec2 pos = i_Cell.xy + i_Cell.zw * a_Position.xy;
+  bool visible = isVisible(floatBitsToInt(i_Char_Color.x), int(a_Position.z) % 7);
+  // gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(pos, 0.01, 1);
+  gl_Position = visible
+    ? PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(pos, 0.04, 1.0)
+    : vec4(0,0,0,0) // discard
+    ;
+  f_Color = extractUint32(i_Char_Color.y);
+  // f_Color = vec4(1,1,1,1);
+}`;
   }
 
   get fragmentSource() {
     return `
-    precision mediump float;
-    const vec4 color = vec4(0.0, 1.0, 0.0, 1.0);
-    out vec4 _Color;
+precision mediump float;
+in vec4 f_Color;
+out vec4 _Color;
+void main() {
+  _Color=f_Color;
+}`;
+  }
 
-    void main() {
-      _Color=color;
-    }`;
+  bind(gl: WebGL2RenderingContext,
+    uniformMap: { [key: string]: WebGLUniformLocation }) {
+    if (this.ascii) {
+      gl.uniform1iv(uniformMap.ascii, this.ascii);
+    }
   }
 }
 
-export class SevenSegmentText extends Node {
-  private _text: string = '';
-  private _charNodes: Node[] = [];
-  private _charPrimitives: { [key: string]: Primitive } = {};
-  constructor() {
-    super('SevenSegmentText');
+/* Segment layout is as follows:
 
-    this.clearNodes();
-    this._charNodes = [];
+|-0-|
+3   4
+|-1-|
+5   6
+|-2-|
 
-    let vertices: number[] = [];
-    let segmentIndices: { [key: number]: number[] } = {};
-    let indices: number[] = [];
+*/
+class SevenSegment {
 
-    const width = 0.5;
-    const thickness = 0.25;
+  vertices = new Float32Array(12 * 7);
+  indices = new Uint16Array(6 * 7);
+  ascii = new Int32Array(128);
+  cells = new Float32Array(65535)
+  charColors = new Uint32Array(65535)
+  cellWidth = 0.08;
+  cellHeight = this.cellWidth * 2;
 
-    function defineSegment(id: number,
-      left: number, top: number, right: number, bottom: number) {
-      let idx = vertices.length / 2;
-      vertices.push(
-        left, top,
-        right, top,
-        right, bottom,
-        left, bottom);
+  private _performanceMonitoring: boolean = false;
+  private _prevGraphUpdateTime: number = now();
+  private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
+  private _fpsAverage: number = 0;
+  primitive: Primitive;
 
-      segmentIndices[id] = [
-        idx, idx + 2, idx + 1,
-        idx, idx + 3, idx + 2,
-      ];
+  constructor(thickness = 0.1, margin = 0.05) {
+    const l = 0 + margin
+    const r = 1 - margin
+    const cx = (l + r) * 0.5
+    const t = 0
+    const b = -1
+    const cy = (t + b) * 0.5
+    const tx = thickness * 2
+    const ty = thickness
+
+    this.defineSegment(0,
+      l, t,
+      r, t - ty);
+    this.defineSegment(1,
+      l, cy + ty * 0.5,
+      r, cy - ty * 0.5);
+    this.defineSegment(2,
+      l, b + ty,
+      r, b);
+
+    this.defineSegment(3,
+      l, t,
+      l + tx, cy - ty * 0.5);
+    this.defineSegment(5,
+      l, cy + ty * 0.5,
+      l + tx, b);
+
+    this.defineSegment(4,
+      r - tx, t,
+      r, cy - ty * 0.5);
+    this.defineSegment(6,
+      r - tx, cy + ty * 0.5,
+      r, b);
+
+    for (const key in SevenSegmentDefinition) {
+      this.defineAscii(key.codePointAt(0)!, SevenSegmentDefinition[key]);
     }
 
-    let characters: { [key: string]: Character } = {};
-    function defineCharacter(c: string, segments: number[]) {
-      let character = {
-        character: c,
-        offset: indices.length,
-        count: 0,
-      };
+    const material = new SevenSegmentMaterial();
+    material.ascii = this.ascii;
 
-      for (let i = 0; i < segments.length; ++i) {
-        let idx = segments[i];
-        let segment = segmentIndices[idx];
-        character.count += segment.length;
-        indices.push(...segment);
-      }
-
-      characters[c] = character;
-    }
-
-    /* Segment layout is as follows:
-
-    |-0-|
-    3   4
-    |-1-|
-    5   6
-    |-2-|
-
-    */
-
-    defineSegment(0, -1, 1, width, 1 - thickness);
-    defineSegment(1, -1, thickness * 0.5, width, -thickness * 0.5);
-    defineSegment(2, -1, -1 + thickness, width, -1);
-    defineSegment(3, -1, 1, -1 + thickness, -thickness * 0.5);
-    defineSegment(4, width - thickness, 1, width, -thickness * 0.5);
-    defineSegment(5, -1, thickness * 0.5, -1 + thickness, -1);
-    defineSegment(6, width - thickness, thickness * 0.5, width, -1);
-
-
-    defineCharacter('0', [0, 2, 3, 4, 5, 6]);
-    defineCharacter('1', [4, 6]);
-    defineCharacter('2', [0, 1, 2, 4, 5]);
-    defineCharacter('3', [0, 1, 2, 4, 6]);
-    defineCharacter('4', [1, 3, 4, 6]);
-    defineCharacter('5', [0, 1, 2, 3, 6]);
-    defineCharacter('6', [0, 1, 2, 3, 5, 6]);
-    defineCharacter('7', [0, 4, 6]);
-    defineCharacter('8', [0, 1, 2, 3, 4, 5, 6]);
-    defineCharacter('9', [0, 1, 2, 3, 4, 6]);
-    defineCharacter('A', [0, 1, 3, 4, 5, 6]);
-    defineCharacter('B', [1, 2, 3, 5, 6]);
-    defineCharacter('C', [0, 2, 3, 5]);
-    defineCharacter('D', [1, 2, 4, 5, 6]);
-    defineCharacter('E', [0, 1, 2, 4, 6]);
-    defineCharacter('F', [0, 1, 3, 5]);
-    defineCharacter('P', [0, 1, 3, 4, 5]);
-    defineCharacter('-', [1]);
-    defineCharacter(' ', []);
-    defineCharacter('_', [2]); // Used for undefined characters
-
-    let material = new SevenSegmentMaterial();
-    let vertexBuffer = new DataView(new Float32Array(vertices).buffer);
-    let indexBuffer = new Uint16Array(indices);
-    let vertexAttribs = [
-      new PrimitiveAttribute('POSITION', vertexBuffer, 2, GL.FLOAT, 8, 0),
+    // in vec2 a_Position;
+    const vertexBuffer = new DataView(this.vertices.buffer);
+    const vertexAttribs = [
+      new PrimitiveAttribute('a_Position', vertexBuffer, 3, GL.FLOAT, 12, 0),
     ];
 
-    this._charPrimitives = {};
-    for (let char in characters) {
-      let charDef = characters[char];
-      let primitive = new Primitive(material,
-        vertexAttribs, vertices.length / 2,
-        indexBuffer.subarray(charDef.offset, charDef.offset + charDef.count));
-      this._charPrimitives[char] = primitive;
+    const instanceAttribs = [
+      new PrimitiveAttribute('i_Cell',
+        new DataView(this.cells.buffer), 4, GL.FLOAT, 16, 0),
+      new PrimitiveAttribute('i_Char_Color',
+        new DataView(this.charColors.buffer), 2, GL.FLOAT, 8, 0)
+    ]
+
+    this.primitive = new Primitive(material,
+      vertexAttribs, this.vertices.length / 2,
+      this.indices, {
+      instanceAttributes: instanceAttribs,
+    });
+  }
+
+  defineSegment(id: number,
+    left: number, top: number, right: number, bottom: number) {
+    /*
+     * 0 1
+     * 3 2
+     */
+    let vOffset = id * 12;
+    this.vertices[vOffset++] = left;
+    this.vertices[vOffset++] = top;
+    this.vertices[vOffset++] = id;
+    this.vertices[vOffset++] = right;
+    this.vertices[vOffset++] = top;
+    this.vertices[vOffset++] = id;
+    this.vertices[vOffset++] = right;
+    this.vertices[vOffset++] = bottom;
+    this.vertices[vOffset++] = id;
+    this.vertices[vOffset++] = left;
+    this.vertices[vOffset++] = bottom;
+    this.vertices[vOffset++] = id;
+
+    const idx = id * 4;
+    let iOffset = id * 6;
+    /* 0 1 ccw
+     *   2
+     */
+    this.indices[iOffset++] = idx;
+    this.indices[iOffset++] = idx + 2;
+    this.indices[iOffset++] = idx + 1;
+    /* 0
+     * 3 2 ccw
+     */
+    this.indices[iOffset++] = idx;
+    this.indices[iOffset++] = idx + 3;
+    this.indices[iOffset++] = idx + 2;
+  }
+
+  defineAscii(code: number, def: string) {
+    const lines = def.split('\n')
+    const bits: number[] = [
+      lines[1][1] ?? ' ',
+      lines[3][1] ?? ' ',
+      lines[5][1] ?? ' ',
+      lines[2][0] ?? ' ',
+      lines[2][2] ?? ' ',
+      lines[4][0] ?? ' ',
+      lines[4][2] ?? ' ',
+    ].map(x => x == ' ' ? 0 : 1)
+    const mask =
+      (bits[0] << 0)
+      | (bits[1] << 1)
+      | (bits[2] << 2)
+      | (bits[3] << 3)
+      | (bits[4] << 4)
+      | (bits[5] << 5)
+      | (bits[6] << 6)
+      ;
+    console.log(lines, bits);
+    this.ascii[code] = mask;
+  }
+
+  updateStats(time: number, stats: Stats): boolean {
+    if (time <= this._prevGraphUpdateTime + this._fpsStep) {
+      return false;
     }
 
-    this.text = this._text;
+    let intervalTime = time - this._prevGraphUpdateTime;
+    this._fpsAverage = Math.round(1000 / (intervalTime / stats.frames));
+
+    // Draw both average and minimum FPS for this period
+    // so that dropped frames are more clearly visible.
+    // this._updateGraph(stats.fpsMin, this._fpsAverage);
+    this.puts(0, 0.45, `${this._fpsAverage.toString().padEnd(3)}FP5`);
+
+    if (this._performanceMonitoring) {
+      console.log(`Average FPS: ${this._fpsAverage} Min FPS: ${stats.fpsMin}`);
+    }
+
+    this._prevGraphUpdateTime = time;
+    return true;
   }
 
-  get text(): string {
-    return this._text;
-  }
-
-  set text(value: string) {
-    this._text = value;
-
+  puts(x: number, y: number, text: string) {
+    this.primitive.instanceCount = 0
     let i = 0;
-    let charPrimitive = null;
-    for (; i < value.length; ++i) {
-      if (value[i] in this._charPrimitives) {
-        charPrimitive = this._charPrimitives[value[i]];
-      } else {
-        charPrimitive = this._charPrimitives['_'];
-      }
-
-      if (this._charNodes.length <= i) {
-        let node = new Node('');
-        node.primitives.push(charPrimitive);
-        let offset = i * TEXT_KERNING;
-        node.local.translation = vec3.fromValues(offset, 0, 0);
-        this._charNodes.push(node);
-        this.addNode(node);
-      } else {
-        // This is sort of an abuse of how these things are expected to work,
-        // but it's the cheapest thing I could think of that didn't break the
-        // world.
-        this._charNodes[i].primitives = [charPrimitive];
-        this._charNodes[i].visible = true;
-      }
+    let j = 0;
+    for (const c of text) {
+      this.cells[i] = x
+      this.cells[i + 1] = y
+      this.cells[i + 2] = this.cellWidth
+      this.cells[i + 3] = this.cellHeight
+      this.charColors[j] = c.codePointAt(0) ?? 0;
+      this.charColors[j + 1] = 0xFFFF00FF
+      x += this.cellWidth;
+      i += 4;
+      j += 2;
+      ++this.primitive.instanceCount;
     }
+    this.primitive.instanceUpdated = true;
+  }
+}
 
-    // If there's any nodes left over make them invisible
-    for (; i < this._charNodes.length; ++i) {
-      this._charNodes[i].visible = false;
-    }
+export class SevenSegmentText {
+
+  static async factory(world: World): Promise<Transform> {
+
+    const segment = new SevenSegment();
+    segment.puts(0, 0, '0123456789')
+
+
+    const transform = new Transform();
+    world.create(transform, segment.primitive, new Stats((time, stats) => {
+      return segment.updateStats(time, stats);
+    }));
+
+    return Promise.resolve(transform);
   }
 }

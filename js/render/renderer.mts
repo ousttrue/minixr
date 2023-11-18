@@ -162,6 +162,19 @@ export class Renderer {
           }
         }
       }
+      if (primitive.instanceUpdated) {
+        primitive.instanceUpdated = false;
+        this._used.clear();
+        for (const attrib of primitive.options?.instanceAttributes!) {
+          const vbo = vao.vboMap.get(attrib.buffer);
+          if (vbo) {
+            if (!this._used.has(vbo)) {
+              this._used.add(vbo);
+              vbo.updateRenderBuffer(this.gl, attrib.buffer);
+            }
+          }
+        }
+      }
       return vao;
     }
 
