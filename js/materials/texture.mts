@@ -23,10 +23,10 @@ const GL = WebGLRenderingContext; // For enums
 let nextDataTextureIndex = 0;
 
 export class TextureSampler {
-  minFilter = null;
-  magFilter = null;
-  wrapS = null;
-  wrapT = null;
+  minFilter: number = GL.NEAREST;
+  magFilter: number = GL.NEAREST;
+  wrapS: number = GL.CLAMP_TO_EDGE;
+  wrapT: number = GL.CLAMP_TO_EDGE;
   constructor() {
   }
 }

@@ -78,13 +78,9 @@ class AppSession {
     await interactionFactory(this.world);
     await cubeSeaFactory(this.world, 6, 0.5)
     await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
-  }
 
-  // private async _loadGltfAsync(): Promise<void> {
-  //   const loader = new Gltf2Loader();
-  //   const node = await loader.loadFromUrl('./assets/gltf/space/space.gltf');
-  //   this.scene.root.addNode(node);
-  // }
+    await Gltf2Loader.loadFromUrl(this.world, './assets/gltf/space/space.gltf');
+  }
 
   onXRFrame(time: number, frame: XRFrame) {
     const session = frame.session;

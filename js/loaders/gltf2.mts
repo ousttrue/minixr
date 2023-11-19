@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node } from '../scene/nodes/node.mjs';
 import { PbrMaterial } from '../materials/pbr.mjs';
 import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { vec3, quat, mat4, BoundingBox } from '../math/gl-matrix.mjs';
 import * as GLTF2 from './GLTF.js';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { vec3, quat, mat4, Transform } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -33,13 +33,15 @@ const CHUNK_TYPE = {
   BIN: 0x004E4942,
 };
 
+type IndexBuffer = Uint8Array | Uint16Array | Uint32Array;
+
 function isAbsoluteUri(uri: string): boolean {
-  let absRegEx = new RegExp('^' + window.location.protocol, 'i');
+  const absRegEx = new RegExp('^' + window.location.protocol, 'i');
   return !!uri.match(absRegEx);
 }
 
 function isDataUri(uri: string): boolean {
-  let dataRegEx = /^data:/;
+  const dataRegEx = /^data:/;
   return !!uri.match(dataRegEx);
 }
 
@@ -63,6 +65,7 @@ function getComponentCount(type: string): number {
 function getTypeSize(type: number): number {
   switch (type) {
     case GL.UNSIGNED_SHORT: return 2;
+    case GL.FLOAT: return 4;
     default: throw new Error("unknown");
   }
 }
@@ -71,35 +74,42 @@ function getItemSize(accessor: GLTF2.Accessor): number {
   return getComponentCount(accessor.type) * getTypeSize(accessor.componentType)
 }
 
+class Gltf2Mesh {
+  primitives: Primitive[] = [];
+  constructor() {
+  }
+}
+
+
 /**
  * Gltf2SceneLoader
  * Loads glTF 2.0 scenes into a renderable node tree.
  */
-
 export class Gltf2Loader {
-  constructor() {
-  }
+  images: HTMLImageElement[] = [];
+  textures: ImageTexture[] = [];
+  materials: PbrMaterial[] = [];
+  meshes: Gltf2Mesh[] = [];
+  urlBytesMap: { [key: string]: Uint8Array } = {}
 
-  async loadFromUrl(url: string): Promise<Node> {
-    const response = await fetch(url);
-    let i = url.lastIndexOf('/');
-    let baseUrl = (i !== 0) ? url.substring(0, i + 1) : '';
-    if (url.endsWith('.gltf')) {
-      const json = await response.json();
-      return await this.loadFromJson(json, baseUrl);
-    } else if (url.endsWith('.glb')) {
-      const arrayBuffer = await response.arrayBuffer()
-      return await this.loadFromBinary(arrayBuffer, baseUrl);
-    } else {
-      throw new Error('Unrecognized file extension');
+  constructor(
+    public readonly json: GLTF2.GlTf,
+    public readonly baseUrl: string,
+    public readonly binaryChunk?: Uint8Array) {
+
+    if (!json.asset) {
+      throw new Error('Missing asset description.');
+    }
+    if (json.asset.minVersion != '2.0' && json.asset.version != '2.0') {
+      throw new Error('Incompatible asset version.');
     }
   }
 
-  async loadFromBinary(arrayBuffer: ArrayBuffer, baseUrl: string): Promise<Node> {
-    let headerView = new DataView(arrayBuffer, 0, 12);
-    let magic = headerView.getUint32(0, true);
-    let version = headerView.getUint32(4, true);
-    let length = headerView.getUint32(8, true);
+  static loadFromBinary(arrayBuffer: ArrayBuffer, baseUrl: string): Gltf2Loader {
+    const headerView = new DataView(arrayBuffer, 0, 12);
+    const magic = headerView.getUint32(0, true);
+    const version = headerView.getUint32(4, true);
+    const length = headerView.getUint32(8, true);
 
     if (magic != GLB_MAGIC) {
       throw new Error('Invalid magic string in binary header.');
@@ -109,12 +119,12 @@ export class Gltf2Loader {
       throw new Error('Incompatible version in binary header.');
     }
 
-    let chunks: { [key: string]: Uint8Array } = {};
+    const chunks: { [key: string]: Uint8Array } = {};
     let chunkOffset = 12;
     while (chunkOffset < length) {
-      let chunkHeaderView = new DataView(arrayBuffer, chunkOffset, 8);
-      let chunkLength = chunkHeaderView.getUint32(0, true);
-      let chunkType = chunkHeaderView.getUint32(4, true);
+      const chunkHeaderView = new DataView(arrayBuffer, chunkOffset, 8);
+      const chunkLength = chunkHeaderView.getUint32(0, true);
+      const chunkType = chunkHeaderView.getUint32(4, true);
       chunks[chunkType] = new Uint8Array(arrayBuffer).subarray(chunkOffset + 8, chunkOffset + 8 + chunkLength);
       chunkOffset += chunkLength + 8;
     }
@@ -123,90 +133,204 @@ export class Gltf2Loader {
       throw new Error('File contained no json chunk.');
     }
 
-    let decoder = new TextDecoder('utf-8');
-    let jsonString = decoder.decode(chunks[CHUNK_TYPE.JSON]);
-    let json = JSON.parse(jsonString);
-    return await this.loadFromJson(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
+    const decoder = new TextDecoder('utf-8');
+    const jsonString = decoder.decode(chunks[CHUNK_TYPE.JSON]);
+    const json = JSON.parse(jsonString);
+    return new Gltf2Loader(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
   }
 
-  async loadFromJson(json: GLTF2.GlTf, baseUrl: string, binaryChunk?: Uint8Array): Promise<Node> {
-    if (!json.asset) {
-      throw new Error('Missing asset description.');
+  static async loadFromUrl(world: World, url: string): Promise<Gltf2Loader> {
+    const response = await fetch(url);
+    const i = url.lastIndexOf('/');
+    const baseUrl = (i !== 0) ? url.substring(0, i + 1) : '';
+    if (url.endsWith('.gltf')) {
+      const json = await response.json();
+      const loader = new Gltf2Loader(json, baseUrl);
+      await loader.load();
+      loader.build(world);
+      return loader;
+    } else if (url.endsWith('.glb')) {
+      const arrayBuffer = await response.arrayBuffer()
+      const loader = Gltf2Loader.loadFromBinary(arrayBuffer, baseUrl);
+      await loader.load();
+      loader.build(world);
+      return loader;
+    } else {
+      throw new Error('Unrecognized file extension');
+    }
+  }
+
+  private async _bytesFromBuffer(buffer: GLTF2.Buffer): Promise<Uint8Array> {
+    if (buffer.uri) {
+      const bytes = this.urlBytesMap[buffer.uri];
+      if (bytes) {
+        return bytes;
+      }
+      if (isDataUri(buffer.uri)) {
+        // decode base64
+        const base64String = this.json.uri.replace('data:application/octet-stream;base64,', '');
+        const bytes = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
+        this.urlBytesMap[buffer.uri] = bytes;
+        return bytes;
+      }
+      else {
+        const response = await fetch(resolveUri(buffer.uri, this.baseUrl));
+        const arrayBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        this.urlBytesMap[buffer.uri] = bytes;
+        return bytes;
+      }
+    }
+    else if (this.binaryChunk) {
+      return this.binaryChunk;
+    }
+    else {
+      throw new Error("invalid buffer");
+    }
+  }
+
+  private async _bytesFromBufferView(bufferView: GLTF2.BufferView): Promise<Uint8Array> {
+    if (!this.json.buffers) {
+      throw new Error("no buffers");
+    }
+    const buffer = this.json.buffers[bufferView.buffer];
+    const bytes = await this._bytesFromBuffer(buffer);
+    const offset = bufferView.byteOffset ?? 0;
+    return bytes.subarray(offset, offset + buffer.byteLength);
+  }
+
+  private _getTexture(textureInfo?: GLTF2.TextureInfo | GLTF2.MaterialNormalTextureInfo): ImageTexture | null {
+    if (!textureInfo) {
+      return null;
+    }
+    return this.textures[textureInfo.index];
+  }
+
+  private async _primitiveAttributeFromAccessor(name: string, accessorIndex: number): Promise<PrimitiveAttribute> {
+    if (!this.json.accessors) {
+      throw new Error('no accessors');
+    }
+    const accessor = this.json.accessors[accessorIndex];
+    if (accessor.bufferView == null) {
+      // spare ?
+      throw new Error('no bufferViewId');
+    }
+    if (!this.json.bufferViews) {
+      throw new Error('no bufferViews');
+    }
+    const bufferView = this.json.bufferViews[accessor.bufferView];
+    const bytes = await this._bytesFromBufferView(bufferView);
+    return new PrimitiveAttribute(
+      name,
+      new DataView(bytes.buffer,
+        bytes.byteOffset + (accessor.byteOffset ?? 0),
+        accessor.count * getItemSize(accessor)),
+      getComponentCount(accessor.type),
+      accessor.componentType,
+      bufferView.byteStride ?? 0,
+      accessor.byteOffset ?? 0,
+      accessor.normalized ?? false
+    );
+  }
+
+  private async _indexBufferFromAccessor(accessorIndex?: number): Promise<IndexBuffer | undefined> {
+    if (accessorIndex == null) {
+      return Promise.resolve(undefined);
+    }
+    if (!this.json.accessors) {
+      throw new Error("no accessors");
     }
 
-    if (json.asset.minVersion != '2.0' && json.asset.version != '2.0') {
-      throw new Error('Incompatible asset version.');
-    }
+    let accessor = this.json.accessors[accessorIndex];
+    if (accessor.bufferView != null && this.json.bufferViews) {
+      const bufferView = this.json.bufferViews[accessor.bufferView];
+      const indexBytes = await this._bytesFromBufferView(bufferView);
+      switch (accessor.componentType) {
+        case GL.UNSIGNED_BYTE:
+          return new Uint8Array(indexBytes.buffer,
+            indexBytes.byteOffset + (accessor.byteOffset ?? 0)
+          ).subarray(0, accessor.count);
 
-    let buffers = [];
-    if (binaryChunk) {
-      const gltfBuffer: GLTF2.Buffer = { byteLength: binaryChunk.byteLength };
-      buffers[0] = new Gltf2Resource(gltfBuffer, baseUrl, binaryChunk);
-    } else if (json.buffers) {
-      for (let buffer of json.buffers) {
-        buffers.push(new Gltf2Resource(buffer, baseUrl));
+        case GL.UNSIGNED_SHORT:
+          return new Uint16Array(indexBytes.buffer,
+            indexBytes.byteOffset + (accessor.byteOffset ?? 0)
+          ).subarray(0, accessor.count);
+
+        case GL.UNSIGNED_INT:
+          return new Uint32Array(indexBytes.buffer,
+            indexBytes.byteOffset + (accessor.byteOffset ?? 0)
+          ).subarray(0, accessor.count);
+
+        default:
+          throw new Error("unknown indices type");
+      }
+    }
+    else {
+      throw new Error("accessor.bufferView==null");
+    }
+  }
+
+  async load(): Promise<void> {
+
+    if (this.json.images) {
+      for (let glImage of this.json.images) {
+        // images.push(new Gltf2Resource(image, baseUrl));
+        const image = new Image();
+        if (glImage.uri) {
+          if (isDataUri(glImage.uri)) {
+            image.src = glImage.uri;
+          } else {
+            image.src = `${this.baseUrl}${glImage.uri}`;
+          }
+        } else if (glImage.bufferView != null && this.json.bufferViews) {
+          // this._texture.genDataKey();
+          // let view = bufferViews[this.json.bufferView];
+          const bufferView = this.json.bufferViews[glImage.bufferView];
+          const bytes = await this._bytesFromBufferView(bufferView);
+          // const bytes = await view.bytesAsync();
+          const blob = new Blob([bytes], { type: glImage.mimeType });
+          image.src = window.URL.createObjectURL(blob);
+        }
+        this.images.push(image);
       }
     }
 
-    let bufferViews: Gltf2BufferView[] = [];
-    if (json.bufferViews) {
-      for (let bufferView of json.bufferViews) {
-        bufferViews.push(new Gltf2BufferView(bufferView, buffers));
-      }
-    }
-
-    let images: Gltf2Resource[] = [];
-    if (json.images) {
-      for (let image of json.images) {
-        images.push(new Gltf2Resource(image, baseUrl));
-      }
-    }
-
-    let textures: ImageTexture[] = [];
-    if (json.textures) {
-      for (let texture of json.textures) {
+    if (this.json.textures) {
+      for (let texture of this.json.textures) {
         if (texture.source == null) {
-          continue;
+          throw new Error("invalid texture");
         }
-        let image = images[texture.source];
-        let glTexture = image.texture(bufferViews);
-        if (texture.sampler != null) {
-          //   let sampler = sampler[texture.sampler];
-          //   glTexture.sampler.minFilter = sampler.minFilter;
-          //   glTexture.sampler.magFilter = sampler.magFilter;
-          //   glTexture.sampler.wrapS = sampler.wrapS;
-          //   glTexture.sampler.wrapT = sampler.wrapT;
+        let image = this.images[texture.source];
+        const glTexture = new ImageTexture(image);
+        if (texture.sampler != null && this.json.samplers) {
+          const sampler = this.json.samplers[texture.sampler];
+          glTexture.sampler.minFilter = sampler.minFilter!;
+          glTexture.sampler.magFilter = sampler.magFilter!;
+          glTexture.sampler.wrapS = sampler.wrapS!;
+          glTexture.sampler.wrapT = sampler.wrapT!;
         }
-        textures.push(glTexture);
+        this.textures.push(glTexture);
       }
     }
 
-    function getTexture(textureInfo: GLTF2.TextureInfo | GLTF2.MaterialNormalTextureInfo | undefined) {
-      if (!textureInfo) {
-        return null;
-      }
-      return textures[textureInfo.index];
-    }
-
-    let materials: PbrMaterial[] = [];
-    if (json.materials) {
-      for (let glMaterial of json.materials) {
-        let pbr = new PbrMaterial();
-        let metallicROughness = glMaterial.pbrMetallicRoughness || {};
+    if (this.json.materials) {
+      for (const glMaterial of this.json.materials) {
+        const pbr = new PbrMaterial();
+        const metallicROughness = glMaterial.pbrMetallicRoughness || {};
 
         pbr.baseColorFactor.value = metallicROughness.baseColorFactor || [1, 1, 1, 1];
-        pbr.baseColor.texture = getTexture(metallicROughness.baseColorTexture);
+        pbr.baseColor.texture = this._getTexture(metallicROughness.baseColorTexture);
         pbr.metallicRoughnessFactor.value = [
           metallicROughness.metallicFactor || 1.0,
           metallicROughness.roughnessFactor || 1.0,
         ];
-        pbr.metallicRoughness.texture = getTexture(metallicROughness.metallicRoughnessTexture);
-        pbr.normal.texture = getTexture(glMaterial.normalTexture);
-        pbr.occlusion.texture = getTexture(glMaterial.occlusionTexture);
+        pbr.metallicRoughness.texture = this._getTexture(metallicROughness.metallicRoughnessTexture);
+        pbr.normal.texture = this._getTexture(glMaterial.normalTexture);
+        pbr.occlusion.texture = this._getTexture(glMaterial.occlusionTexture);
         pbr.occlusionStrength.value = (glMaterial.occlusionTexture && glMaterial.occlusionTexture.strength) ?
           glMaterial.occlusionTexture.strength : 1.0;
         pbr.emissiveFactor.value = glMaterial.emissiveFactor || [0, 0, 0];
-        pbr.emissive.texture = getTexture(glMaterial.emissiveTexture);
+        pbr.emissive.texture = this._getTexture(glMaterial.emissiveTexture);
         if (pbr.emissive.texture == null && glMaterial.emissiveFactor) {
           pbr.emissive.texture = new ColorTexture(1.0, 1.0, 1.0, 1.0);
         }
@@ -227,26 +351,21 @@ export class Gltf2Loader {
         // glMaterial.alpha_cutoff = material.alphaCutoff;
         pbr.state.cullFace = !(glMaterial.doubleSided);
 
-        materials.push(pbr);
+        this.materials.push(pbr);
       }
     }
 
-    let accessors: GLTF2.Accessor[] = json.accessors ?? [];
+    if (this.json.meshes) {
+      for (const glMesh of this.json.meshes) {
+        const mesh = new Gltf2Mesh();
+        this.meshes.push(mesh);
 
-    let meshes: Gltf2Mesh[] = [];
-    if (json.meshes) {
-      for (let mesh of json.meshes) {
-        let glMesh = new Gltf2Mesh();
-        meshes.push(glMesh);
-
-        for (let primitive of mesh.primitives) {
-          let material = null;
-          if (primitive.material != null) {
-            material = materials[primitive.material];
-          } else {
+        for (const glPrimitive of glMesh.primitives) {
+          const material = (glPrimitive.material != null)
+            ? this.materials[glPrimitive.material]
             // Create a "default" material if the primitive has none.
-            material = new PbrMaterial();
-          }
+            : new PbrMaterial();
+          ;
 
           // TODO:
           // determine shader defines by material & primitive combination 
@@ -260,231 +379,91 @@ export class Gltf2Loader {
           //   return attributeMask;
           // }
 
-          let attributes = [];
+          // let min = null;
+          // let max = null;
 
-          let min = null;
-          let max = null;
-
+          const attributes: PrimitiveAttribute[] = [];
           let vertexCount = 0;
-          for (let name in primitive.attributes) {
-            const accessor = accessors[primitive.attributes[name]];
-            vertexCount = accessor.count;
-            const bufferViewId = accessor.bufferView;
-            if (bufferViewId == null) {
-              continue;
-            }
-            const bufferView = bufferViews[bufferViewId];
-            const bytes = await bufferView.dataViewAsync()
-            let glAttribute = new PrimitiveAttribute(
-              name,
-              bytes,
-              getComponentCount(accessor.type),
-              accessor.componentType,
-              bufferView.byteStride ?? 0,
-              accessor.byteOffset ?? 0,
-              accessor.normalized ?? false
-            );
+          for (const name in glPrimitive.attributes) {
+            const attribute = await this._primitiveAttributeFromAccessor(name, glPrimitive.attributes[name]);
 
-            if (name == 'POSITION') {
-              min = accessor.min;
-              max = accessor.max;
-            }
+            // if (name == 'POSITION') {
+            //   min = accessor.min;
+            //   max = accessor.max;
+            // }
 
-            attributes.push(glAttribute);
+            attributes.push(attribute);
           }
 
-          let indexBuffer: Uint8Array | Uint16Array | Uint32Array | undefined = undefined;
-          if (primitive.indices != null) {
-            let accessor = accessors[primitive.indices];
-            if (accessor.bufferView != null) {
-              let bufferView = bufferViews[accessor.bufferView];
-              const indexBytes = await bufferView.dataViewAsync();
-              switch (accessor.componentType) {
-                case GL.UNSIGNED_BYTE:
-                  indexBuffer = new Uint8Array(indexBytes.buffer,
-                    indexBytes.byteOffset + (accessor.byteOffset ?? 0)
-                  ).subarray(0, accessor.count);
-                  break;
+          const indexBuffer = await this._indexBufferFromAccessor(glPrimitive.indices);
 
-                case GL.UNSIGNED_SHORT:
-                  indexBuffer = new Uint16Array(indexBytes.buffer,
-                    indexBytes.byteOffset + (accessor.byteOffset ?? 0)
-                  ).subarray(0, accessor.count);
-                  break;
-
-                case GL.UNSIGNED_INT:
-                  indexBuffer = new Uint32Array(indexBytes.buffer,
-                    indexBytes.byteOffset + (accessor.byteOffset ?? 0)
-                  ).subarray(0, accessor.count);
-                  break;
-
-                default:
-                  throw new Error("unknown indices type");
-              }
-            }
-          }
-
-          let glPrimitive = new Primitive(
+          const primitive = new Primitive(
             material,
             attributes,
+            // TODO:
             vertexCount,
-            indexBuffer, {
-            mode: primitive.mode ?? GL.TRIANGLES
-          });
+            indexBuffer, { mode: glPrimitive.mode ?? GL.TRIANGLES });
 
-          if (min && max) {
-            glPrimitive.bb = new BoundingBox(
-              vec3.fromValues(min[0], min[1], min[2]),
-              vec3.fromValues(max[0], max[1], max[2]));
-          }
+          // if (min && max) {
+          //   glPrimitive.bb = new BoundingBox(
+          //     vec3.fromValues(min[0], min[1], min[2]),
+          //     vec3.fromValues(max[0], max[1], max[2]));
+          // }
 
           // After all the attributes have been processed, get a program that is
           // appropriate for both the material and the primitive attributes.
-          glMesh.primitives.push(glPrimitive);
+          mesh.primitives.push(primitive);
         }
       }
     }
+  }
 
-    let sceneNode = new Node('gltf.scene');
-    if (json.nodes && json.scenes) {
-      let scene = json.scenes[json.scene ?? 0];
+  build(world: World) {
+    // const sceneNode = new Node('gltf.scene');
+    if (this.json.nodes && this.json.scenes) {
+      const scene = this.json.scenes[this.json.scene ?? 0];
       if (scene.nodes) {
-        for (let nodeId of scene.nodes) {
-          let node = json.nodes[nodeId];
-          sceneNode.addNode(
-            this.processNodes(node, json.nodes, meshes));
+        for (const nodeId of scene.nodes) {
+          const glNode = this.json.nodes[nodeId];
+          this._processNodes(world, glNode);
         }
       }
     }
-
-    return sceneNode;
   }
 
-  processNodes(node: GLTF2.Node, nodes: GLTF2.Node[], meshes: Gltf2Mesh[]) {
-    let glNode = new Node(node.name);
+  private _processNodes(world: World, glNode: GLTF2.Node, parent?: Transform) {
+    const transform = new Transform();
+    // if (glNode.matrix) {
+    //   transform.matrix = new mat4(new Float32Array(glNode.matrix));
+    // } else if (glNode.translation || glNode.rotation || glNode.scale) {
+    //   if (glNode.translation) {
+    //     transform.translation = new vec3(new Float32Array(glNode.translation));
+    //   }
+    //
+    //   if (glNode.rotation) {
+    //     transform.rotation = new quat(new Float32Array(glNode.rotation));
+    //   }
+    //
+    //   if (glNode.scale) {
+    //     transform.scale = new vec3(new Float32Array(glNode.scale));
+    //   }
+    // }
 
-    if (node.mesh != null) {
-      let mesh = meshes[node.mesh];
-      for (let primitive of mesh.primitives) {
-        glNode.primitives.push(primitive);
+    let prims = 0;
+    if (glNode.mesh != null) {
+      const mesh = this.meshes[glNode.mesh];
+      for (const primitive of mesh.primitives) {
+
+        world.create(transform, primitive);
+        ++prims;
       }
     }
 
-    if (node.matrix) {
-      glNode.local.matrix = new mat4(new Float32Array(node.matrix));
-    } else if (node.translation || node.rotation || node.scale) {
-      if (node.translation) {
-        glNode.local.translation = new vec3(new Float32Array(node.translation));
-      }
-
-      if (node.rotation) {
-        glNode.local.rotation = new quat(new Float32Array(node.rotation));
-      }
-
-      if (node.scale) {
-        glNode.local.scale = new vec3(new Float32Array(node.scale));
+    if (glNode.children && this.json.nodes) {
+      for (const nodeId of glNode.children) {
+        const glChildNode = this.json.nodes[nodeId];
+        this._processNodes(world, glChildNode, transform);
       }
     }
-
-    if (node.children) {
-      for (let nodeId of node.children) {
-        let node = nodes[nodeId];
-        glNode.addNode(this.processNodes(node, nodes, meshes));
-      }
-    }
-
-    return glNode;
-  }
-}
-
-class Gltf2Mesh {
-  primitives: Primitive[] = [];
-  constructor() {
-  }
-}
-
-class Gltf2BufferView {
-  buffer: Gltf2Resource;
-  byteOffset: number;
-  byteLength: number;
-  byteStride: number;
-  private _viewPromise: Promise<Uint8Array> | null = null;
-  constructor(json: GLTF2.BufferView, buffers: Gltf2Resource[]) {
-    this.buffer = buffers[json.buffer];
-    this.byteLength = json.byteLength;
-    this.byteOffset = json.byteOffset || 0;
-    this.byteStride = json.byteStride || 0;
-  }
-
-  bytesAsync(): Promise<Uint8Array> {
-    if (!this._viewPromise) {
-      this._viewPromise = this.buffer.bytesAsync().then((data) => {
-        if (data.byteLength < this.byteLength) {
-          throw Error("not enugh byteLength");
-        }
-        return data.subarray(this.byteOffset, this.byteOffset + this.byteLength);
-      });
-    }
-    return this._viewPromise;
-  }
-
-  async dataViewAsync(): Promise<DataView> {
-    const data = await this.bytesAsync();
-    return new DataView(data.buffer, data.byteOffset, data.byteLength);
-  }
-}
-
-class Gltf2Resource {
-  private _dataPromise: Promise<Uint8Array> | null = null;
-  private _texture: ImageTexture | null = null;
-  constructor(public json: GLTF2.Buffer, public baseUrl: string,
-    data?: Uint8Array) {
-    if (data) {
-      this._dataPromise = Promise.resolve(data);
-    }
-  }
-
-  async bytesAsync(): Promise<Uint8Array> {
-    if (this._dataPromise) {
-      return this._dataPromise;
-    }
-
-    if (!this.json.uri) {
-      throw Error("no uri");
-    }
-
-    if (isDataUri(this.json.uri)) {
-      // decode base64
-      let base64String = this.json.uri.replace('data:application/octet-stream;base64,', '');
-      let binaryArray = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
-      this._dataPromise = Promise.resolve(binaryArray);
-      return await this._dataPromise;
-    }
-
-    this._dataPromise = fetch(resolveUri(this.json.uri, this.baseUrl))
-      .then((response) => response.arrayBuffer())
-      .then((arrayBuffer) => new Uint8Array(arrayBuffer));
-    return this._dataPromise;
-  }
-
-  async textureAsync(bufferViews: Gltf2BufferView[]): Promise<ImageTexture> {
-    if (!this._texture) {
-      let img = new Image();
-      this._texture = new ImageTexture(img);
-      if (this.json.uri) {
-        if (isDataUri(this.json.uri)) {
-          img.src = this.json.uri;
-        } else {
-          img.src = `${this.baseUrl}${this.json.uri}`;
-        }
-      } else {
-        this._texture.genDataKey();
-        let view = bufferViews[this.json.bufferView];
-        const bytes = await view.bytesAsync();
-        let blob = new Blob([bytes], { type: this.json.mimeType });
-        img.src = window.URL.createObjectURL(blob);
-      }
-    }
-    return this._texture;
   }
 }
