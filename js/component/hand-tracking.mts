@@ -2,46 +2,83 @@
  * https://immersive-web.github.io/webxr-hand-input/
  */
 import { mat4, Transform } from '../math/gl-matrix.mjs';
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
 import { SimpleMaterial } from '../materials/simple.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
-import { HoverActive, HoverPassive } from './hover.mjs';
+import { HoverActive } from './hover.mjs';
 
 const PINCH_START_DISTANCE = 0.015;
 const PINCH_END_DISTANCE = 0.03;
 
-export class PinchStartEvent extends Event {
+class Pinch {
+  delta: mat4;
   constructor(
-    public readonly finger: number) {
-    super('pinch-start');
+    public readonly mover: Transform,
+    public readonly target: Transform) {
+
+    console.log('Pinch', mover, target);
+
+    this.delta = this.mover.matrix.copy()
+    this.delta.invert({ out: this.delta });
+    this.delta.mul(this.target.matrix, { out: this.delta });
+  }
+
+  end() {
+    console.log('Pinch.end');
+  }
+
+  update() {
+    this.mover.matrix.mul(this.delta, { out: this.target.matrix });
+    this.target.invalidate();
   }
 }
 
-export class PinchEndEvent extends Event {
-  constructor(
-    public readonly finger: number) {
-    super('pinch-end');
+
+class PinchStatus {
+  isPinch = false;
+  pinches: Pinch[] = []
+
+  enable(world: World, tip: Transform) {
+    this.isPinch = true;
+
+    world.view(Transform, HoverActive).each((_, hoverTransform, hover) => {
+      if (hoverTransform == tip) {
+        hover.status._last.forEach((passive: Entity) => {
+          const passiveTransform = world.get(passive, Transform);
+          if (passiveTransform) {
+            this.pinches.push(new Pinch(tip, passiveTransform));
+          }
+        });
+      }
+    });
+  }
+
+  disable() {
+    this.isPinch = false;
+    for (const pinch of this.pinches) {
+      pinch.end();
+    }
+    this.pinches = [];
+  }
+
+  update(world: World, thumbTip: Transform, indexTip: Transform) {
+    const distance = indexTip.matrix.getTranslation().distance(
+      thumbTip.matrix.getTranslation());
+    if (!this.isPinch) {
+      if (distance < PINCH_START_DISTANCE) {
+        this.enable(world, indexTip);
+      }
+    }
+    else {
+      if (distance > PINCH_END_DISTANCE) {
+        this.disable();
+      }
+    }
+    for (const pinch of this.pinches) {
+      pinch.update();
+    }
   }
 }
-
-// class Pinch {
-//   delta: mat4;
-//   constructor(
-//     public readonly mover: Node,
-//     public readonly target: Node) {
-//
-//     console.log('Pinch', mover, target);
-//
-//     this.delta = this.mover.local.matrix.copy()
-//     this.delta.invert({ out: this.delta });
-//     this.delta.mul(this.target.local.matrix, { out: this.delta });
-//   }
-//
-//   update() {
-//     this.mover.local.matrix.mul(this.delta, { out: this.target.local.matrix });
-//     this.target.local.invalidate();
-//   }
-// }
 
 
 /**
@@ -56,54 +93,13 @@ export class PinchEndEvent extends Event {
  *
  * 09, 14, 19, 24 has hittest:active to hittest:passive
  */
-export class HandTracking extends EventTarget {
+export class HandTracking {
   private _radii = new Float32Array(25);
   private _positions = new Float32Array(16 * 25);
-
-  // // @ts-ignore
-  // private _thumbTip: Node;
-  // // @ts-ignore
-  // private _indexTip: Node;
-  // private _indexPinch = false;
-  // _hoverList: Set<Node> = new Set();
-  // _pinches: Pinch[] = []
+  private _indexPinch = new PinchStatus();
 
   constructor(public readonly hand: 'left' | 'right',
     public joints: Transform[]) {
-    super();
-
-    // for (let i = 0; i < nodes.length; ++i) {
-    //   const node = nodes[i];
-    //   switch (i) {
-    //     case 4:
-    //       this._thumbTip = node;
-    //       break;
-    //     case 9: // index
-    //       node.action = 'active';
-    //       this._indexTip = node;
-    //       node.addEventListener('hover-active-start',
-    //         (evt: Event) => {
-    //           this._hoverList.add((evt as HoverActiveStartEvent).passive);
-    //           console.log('hover-active', this._hoverList);
-    //         });
-    //       node.addEventListener('hover-active-end',
-    //         (evt: Event) => {
-    //           this._hoverList.delete((evt as HoverActiveStartEvent).passive);
-    //         });
-    //       node.addEventListener('pinch-start',
-    //         (_evt: Event) => {
-    //           if (this._hoverList.size > 0) {
-    //             this._hoverList.forEach(hover => {
-    //               this._pinches.push(new Pinch(node, hover));
-    //             });
-    //           }
-    //         });
-    //       break;
-    //     // case 14: // middle
-    //     // case 19: // ring
-    //     // case 24: // little
-    //   }
-    // }
   }
 
   static async factory(world: World,
@@ -140,28 +136,9 @@ export class HandTracking extends EventTarget {
     world.view(HandTracking).each((_, handTracking) => {
       for (const inputSource of inputSources) {
         handTracking._updateInput(refSpace, frame, inputSource);
+        handTracking._updatePinch(world);
       }
     });
-
-    // var distance = this._indexTip.local.matrix.getTranslation().distance(
-    //   this._thumbTip.local.matrix.getTranslation());
-    // if (!this._indexPinch) {
-    //   if (distance < PINCH_START_DISTANCE) {
-    //     this._indexPinch = true;
-    //     this._indexTip.dispatchEvent(new PinchStartEvent(9));
-    //   }
-    // }
-    // else {
-    //   if (distance > PINCH_END_DISTANCE) {
-    //     this._indexPinch = false;
-    //     this._indexTip.dispatchEvent(new PinchEndEvent(9));
-    //     this._pinches = [];
-    //   }
-    // }
-
-    // for (const pinch of this._pinches) {
-    //   pinch.update();
-    // }
   }
 
   _updateInput(refSpace: XRReferenceSpace, frame: XRFrame, inputSource: XRInputSource) {
@@ -196,5 +173,11 @@ export class HandTracking extends EventTarget {
       transform.matrix = matrix;
       offset += 16;
     }
+  }
+
+  _updatePinch(world: World) {
+    const thumbTip = this.joints[4];
+    const indexTip = this.joints[9];
+    this._indexPinch.update(world, thumbTip, indexTip);
   }
 }

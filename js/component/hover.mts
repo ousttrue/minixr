@@ -31,7 +31,8 @@ class HoverStatus {
 }
 
 export class HoverActive {
-  status = new HoverStatus();
+  status = new HoverStatus(
+  );
 }
 
 export class HoverPassive {
