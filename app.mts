@@ -1,10 +1,6 @@
-import { Scene } from './js/scene.mjs';
 import { Renderer } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
-import {
-  ArMeshDetection,
-  MeshDetectedEvent, MeshUpdatedEvent, MeshLostEvent
-} from './js/component/ar-mesh-detection.mjs';
+import { ArMeshDetection, } from './js/component/ar-mesh-detection.mjs';
 import { StatsViewer } from './js/component/stats-viewer.mjs';
 import { StatsGraph } from './js/component/stats-graph.mjs';
 import { SevenSegmentText } from './js/component/seven-segment-text.mjs';
@@ -28,7 +24,6 @@ import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
 class AppSession {
   world = new World();
 
-  scene = new Scene();
   renderer: Renderer;
 
   _stats: StatsViewer = new StatsViewer();
@@ -83,11 +78,11 @@ class AppSession {
     await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
   }
 
-  private async _loadGltfAsync(): Promise<void> {
-    const loader = new Gltf2Loader();
-    const node = await loader.loadFromUrl('./assets/gltf/space/space.gltf');
-    this.scene.root.addNode(node);
-  }
+  // private async _loadGltfAsync(): Promise<void> {
+  //   const loader = new Gltf2Loader();
+  //   const node = await loader.loadFromUrl('./assets/gltf/space/space.gltf');
+  //   this.scene.root.addNode(node);
+  // }
 
   onXRFrame(time: number, frame: XRFrame) {
     const session = frame.session;
@@ -95,7 +90,6 @@ class AppSession {
     session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
 
     // Per-frame scene setup. Nothing WebXR specific here.
-    // this.scene.startFrame(time, refSpace, frame);
     this._stats.begin(this.world);
 
     //
@@ -106,8 +100,6 @@ class AppSession {
       frameDelta = time - this._prevTime;
     }
     this._prevTime = time;
-    this.scene.updateAndGetRenderList(
-      time, frameDelta, this.localSpace, frame, session.inputSources);
 
     this.term.getTermTexture();
 
