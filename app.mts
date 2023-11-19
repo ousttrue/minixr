@@ -24,6 +24,7 @@ import { HandTracking } from './js/component/hand-tracking.mjs';
 import { hoverSystem } from './js/component/hover.mjs';
 
 
+
 export default class App {
   world = new World();
 
@@ -40,7 +41,19 @@ export default class App {
   quadLayer: XRQuadLayer;
   meshDetection: ArMeshDetection;
 
-  constructor(session: XRSession) {
+  constructor() {
+  }
+
+  endSession() {
+    console.log('App.endSession');
+  }
+
+  async startSession(session: XRSession): Promise<void> {
+    console.log('App.startSession', session);
+    session.addEventListener('end', _ => {
+      this.endSession();
+    });
+
     // Create a WebGL context to render with, initialized to be compatible
     // with the XRDisplay we're presenting to.
     this.gl = createWebGLContext({
@@ -60,9 +73,13 @@ export default class App {
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(this.gl);
 
-    this._setupScene();
+    await this.initSpace(session);
 
     this.term = new XRTerm(this.gl);
+
+    await this._setupScene();
+
+    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
   }
 
   async _setupScene() {

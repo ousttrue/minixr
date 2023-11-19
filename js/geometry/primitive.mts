@@ -60,7 +60,7 @@ export class PrimitiveAttribute {
     public readonly byteOffset: number = 0,
     public readonly normalized = false) {
     if (this.stride == 0) {
-      console.warn(name, 'stride=0');
+      // console.warn(name, 'stride=0');
     }
   }
 

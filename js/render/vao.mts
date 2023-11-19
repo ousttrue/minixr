@@ -75,7 +75,7 @@ export class Vao {
       this.vboMap.set(attrib.buffer, buffer);
       const location = program.attrib[attrib.name];
       if (location == null) {
-        console.warn(attrib);
+        // console.warn(attrib);
       }
       else {
         gl.enableVertexAttribArray(location);

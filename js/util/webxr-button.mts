@@ -46,7 +46,63 @@ const ERROR_UNKOWN = 'error-unkown';
 //
 
 const _LOGO_SCALE = 0.8;
-let _WEBXR_UI_CSS_INJECTED = {};
+let _WEBXR_UI_CSS_INJECTED: { [key: string]: boolean } = {};
+
+type WebXRButtonOptions = {
+  /** provide your own domElement to bind to */
+  domElement: HTMLElement;
+
+  requiredFeatures: string[];
+  optionalFeatures: string[];
+
+  /** set to false if you want to write your own styles */
+  injectCSS?: Boolean;
+  /** set the text for Enter XR */
+  textEnterXRTitle?: string;
+  /** set the text for when a XR display is not found */
+  textXRNotFoundTitle?: string;
+  /** set the text for exiting XR */
+  textExitXRTitle?: string;
+  /** text and icon color */
+  color?: string;
+  /** set to false for no brackground or a color */
+  background?: string | boolean;
+  /** set to 'round', 'square' or pixel value representing the corner radius */
+  corners?: string;
+  /** set opacity of button dom when disabled */
+  disabledOpacity?: number;
+  height?: number;
+  /** set to change the css prefix from default 'webvr-ui' */
+  cssprefix?: string;
+}
+
+
+type RequiredNotNull<T> = {
+  [P in keyof T]: NonNullable<T[P]>;
+};
+
+
+function validateOption(_options: WebXRButtonOptions)
+  : RequiredNotNull<WebXRButtonOptions> {
+  return {
+    domElement: _options.domElement,
+    requiredFeatures: _options.requiredFeatures,
+    optionalFeatures: _options.optionalFeatures,
+
+    color: _options.color || 'rgb(80,168,252)',
+    background: _options.background || false,
+    disabledOpacity: _options.disabledOpacity || 0.5,
+    height: _options.height || 55,
+    corners: _options.corners || 'square',
+    cssprefix: _options.cssprefix || 'webvr-ui',
+
+    // This reads VR as none of the samples are designed for other formats as of yet.
+    textEnterXRTitle: _options.textEnterXRTitle || 'ENTER VR',
+    textXRNotFoundTitle: _options.textXRNotFoundTitle || 'VR NOT FOUND',
+    textExitXRTitle: _options.textExitXRTitle || 'EXIT VR',
+    injectCSS: _options.injectCSS !== false,
+  }
+}
 
 /**
  * Generate the innerHTML for the button
@@ -86,7 +142,7 @@ const injectCSS = (cssText: string) => {
  * @return {HTMLElement}
  * @param {Object} options
  */
-const createDefaultView = (options: WebXRButtonOptions): HTMLElement => {
+const createDefaultView = (options: RequiredNotNull<WebXRButtonOptions>): HTMLElement => {
   const fontSize = options.height / 3;
   if (options.injectCSS) {
     // Check that css isnt already injected
@@ -98,17 +154,17 @@ const createDefaultView = (options: WebXRButtonOptions): HTMLElement => {
 
   const el = document.createElement('div');
   el.innerHTML = generateInnerHTML(options.cssprefix, fontSize);
-  return el.firstChild;
+  return el.firstChild as HTMLElement;
 };
 
 
-const createXRIcon = (cssPrefix, height) => {
+const createXRIcon = (cssPrefix: string, height: number) => {
   const el = document.createElement('div');
   el.innerHTML = generateXRIconString(cssPrefix, height);
   return el.firstChild;
 };
 
-const createNoXRIcon = (cssPrefix, height) => {
+const createNoXRIcon = (cssPrefix: string, height: number) => {
   const el = document.createElement('div');
   el.innerHTML = generateNoXRIconString(cssPrefix, height);
   return el.firstChild;
@@ -128,7 +184,7 @@ const generateXRIconString = (cssPrefix: string, height: number) => {
     </svg>`;
 };
 
-const generateNoXRIconString = (cssPrefix, height) => {
+const generateNoXRIconString = (cssPrefix: string, height: number) => {
   let aspect = 28 / 18;
   return `<svg class="${cssPrefix}-svg-error" x="0px" y="0px"
         width="${aspect * height}px" height="${aspect * height}px" viewBox="0 0 28 28" xml:space="preserve">
@@ -146,12 +202,9 @@ const generateNoXRIconString = (cssPrefix, height) => {
 
 /**
  * Generate the CSS string to inject
- *
- * @param {Object} options
- * @param {Number} [fontSize=18]
- * @return {string}
  */
-const generateCSS = (options, fontSize = 18) => {
+const generateCSS = (
+  options: RequiredNotNull<WebXRButtonOptions>, fontSize = 18): string => {
   const height = options.height;
   const borderWidth = 2;
   const borderColor = options.background ? options.background : options.color;
@@ -285,73 +338,119 @@ const generateCSS = (options, fontSize = 18) => {
   `);
 };
 
-type WebXRButtonOptions = {
-  onRequestSession?: Function;
-  onEndSession?: Function;
-  /** provide your own domElement to bind to */
-  domElement?: HTMLElement
-  /** set to false if you want to write your own styles */
-  injectCSS?: Boolean
-  /** set the text for Enter XR */
-  textEnterXRTitle?: string
-  /** set the text for when a XR display is not found */
-  textXRNotFoundTitle?: string
-  /** set the text for exiting XR */
-  textExitXRTitle?: string
-  /** text and icon color */
-  color?: string
-  /** set to false for no brackground or a color */
-  background?: string | boolean
-  /** set to 'round', 'square' or pixel value representing the corner radius */
-  corners?: string
-  /** set opacity of button dom when disabled */
-  disabledOpacity?: number
-  height?: number;
-  /** set to change the css prefix from default 'webvr-ui' */
-  cssprefix?: string
-}
-
-type RequiredNotNull<T> = {
-  [P in keyof T]: NonNullable<T[P]>;
+export class WebXRSessionStartEvent extends Event {
+  constructor(
+    public readonly mode: 'immersive-ar' | 'immersive-vr' | 'inline',
+    public readonly session: XRSession,
+  ) {
+    super('webxrsession-start');
+  }
 };
 
-export class WebXRButton {
-  options: RequiredNotNull<WebXRButtonOptions>;
-  private _enabled: boolean = false;
-  session: XRSession | null = null;
+
+/**
+ * Function checking if a specific css class exists as child of element.
+ *
+ * @param {HTMLElement} el element to find child in
+ * @param {string} cssPrefix css prefix of button
+ * @param {string} suffix class name
+ * @param {function} fn function to call if child is found
+ * @private
+ */
+const ifChild = (el: HTMLElement, cssPrefix: string, suffix: string, fn: Function) => {
+  const c = el.querySelector('.' + cssPrefix + '-' + suffix);
+  c && fn(c);
+};
+
+
+// // This informs the 'Enter XR' button that the session has started and
+// // that it should display 'Exit XR' instead.
+// xrButton.setSession(session);
+
+// // Called either when the user has explicitly ended the session (like in
+// // onEndSession()) or when the UA has ended the session for any reason.
+// // At this point the session object is no longer usable and should be
+// // discarded.
+// function onSessionEnded(_event: Event) {
+//   console.log('onSessionEnded');
+//
+//   xrButton.setSession(null);
+//
+//   // In this simple case discard the WebGL context too, since we're not
+//   // rendering anything else to the screen with it.
+//   g_app = null;
+// }
+// // Listen for the sessions 'end' event so we can respond if the user
+// // or UA ends the session for any reason.
+// session.addEventListener('end', onSessionEnded);
+// // Is WebXR available on this UA?
+// if (xr) {
+//   // If the device allows creation of exclusive sessions set it as the
+//   // target of the 'Enter XR' button.
+//   xr!.isSessionSupported(isAR ? 'immersive-ar' : 'immersive-vr').then((supported) => {
+//     xrButton.enabled = supported;
+//   });
+// }
+
+class InnerButton {
   domElement: HTMLElement;
+  private _enabled: boolean = false;
   private __forceDisabled: boolean = false;
   private __defaultDisplayStyle: string;
+  private __session: XRSession | null = null;
+  textEnterXRTitle: string;
+  textExitXRTitle: string;
 
-  /**
-   * Construct a new Enter XR Button
-   */
-  constructor(_options: WebXRButtonOptions) {
-    this.options = {} as RequiredNotNull<WebXRButtonOptions>;
-    this.options.color = _options.color || 'rgb(80,168,252)';
-    this.options.background = _options.background || false;
-    this.options.disabledOpacity = _options.disabledOpacity || 0.5;
-    this.options.height = _options.height || 55;
-    this.options.corners = _options.corners || 'square';
-    this.options.cssprefix = _options.cssprefix || 'webvr-ui';
+  constructor(mode: XRSessionMode,
+    public readonly options: RequiredNotNull<WebXRButtonOptions>,
+    requestSessionAsync: (mode: XRSessionMode) => Promise<XRSession>) {
 
-    // This reads VR as none of the samples are designed for other formats as of yet.
-    this.options.textEnterXRTitle = _options.textEnterXRTitle || 'ENTER VR';
-    this.options.textXRNotFoundTitle = _options.textXRNotFoundTitle || 'VR NOT FOUND';
-    this.options.textExitXRTitle = _options.textExitXRTitle || 'EXIT VR';
-    this.options.onRequestSession = _options.onRequestSession || (function() { });
-    this.options.onEndSession = _options.onEndSession || (function() { });
-    this.options.injectCSS = _options.injectCSS !== false;
+    this.textEnterXRTitle = options.textEnterXRTitle + `(${mode})`;
+    this.textExitXRTitle = options.textExitXRTitle + `(${mode})`;
 
-    // Pass in your own domElement if you really dont want to use ours
-    this.domElement = _options.domElement || createDefaultView(this.options);
+    this.domElement = createDefaultView(options);
+
     this.__defaultDisplayStyle = this.domElement.style.display || 'initial';
 
     // Bind button click events to __onClick
-    this.domElement.addEventListener('click', () => this.__onXRButtonClick());
+    this.domElement.addEventListener('click', async () => {
+
+      if (this.__session) {
+        // end exists session
+        console.log('onClick => end');
+        this.__session.end();
+        this.__session = null;
+        this.__updateButtonState();
+      } else if (navigator.xr) {
+        try {
+          // get new session
+          this.__session = await requestSessionAsync(mode)
+          console.log('onClick =>', this.__session);
+          this.__updateButtonState();
+        }
+        catch (err) {
+          // Reaching this point indicates that the session request has failed
+          // and we should communicate that to the user somehow.
+          let errorMsg = `XRSession creation failed: ${(err as Error).message}`;
+
+          this.setTooltip(errorMsg);
+          // console.error(errorMsg);
+
+          // Disable the button momentarily to indicate there was an issue.
+          this.__setDisabledAttribute(true);
+          this.domElement.setAttribute('error', 'true');
+          setTimeout(() => {
+            this.__setDisabledAttribute(false);
+            this.domElement.setAttribute('error', 'false');
+          }, 1000);
+          throw err;
+        }
+      }
+
+    });
 
     this.__setDisabledAttribute(true);
-    this.setTitle(this.options.textXRNotFoundTitle);
+    this.setTitle(options.textXRNotFoundTitle);
   }
 
   /**
@@ -371,21 +470,11 @@ export class WebXRButton {
   }
 
   /**
-   * Indicate that there's an active XRSession. Switches the button to "Exit XR"
-   * state if not null, or "Enter XR" state if null.
-   */
-  setSession(session: XRSession | null): WebXRButton {
-    this.session = session;
-    this.__updateButtonState();
-    return this;
-  }
-
-  /**
    * Set the title of the button
    */
-  setTitle(text: string): WebXRButton {
+  setTitle(text: string): InnerButton {
     this.domElement.title = text;
-    ifChild(this.domElement, this.options.cssprefix, 'title', (title) => {
+    ifChild(this.domElement, this.options.cssprefix, 'title', (title: HTMLElement) => {
       if (!text) {
         title.style.display = 'none';
       } else {
@@ -400,7 +489,7 @@ export class WebXRButton {
   /**
    * Set the tooltip of the button
    */
-  setTooltip(tooltip: string): WebXRButton {
+  setTooltip(tooltip: string): InnerButton {
     this.domElement.title = tooltip;
     return this;
   }
@@ -408,7 +497,7 @@ export class WebXRButton {
   /**
    * Show the button
    */
-  show(): WebXRButton {
+  show(): InnerButton {
     this.domElement.style.display = this.__defaultDisplayStyle;
     return this;
   }
@@ -416,7 +505,7 @@ export class WebXRButton {
   /**
    * Hide the button
    */
-  hide(): WebXRButton {
+  hide(): InnerButton {
     this.domElement.style.display = 'none';
     return this;
   }
@@ -424,7 +513,7 @@ export class WebXRButton {
   /**
    * Enable the button
    */
-  enable(): WebXRButton {
+  enable(): InnerButton {
     this.__setDisabledAttribute(false);
     this.__forceDisabled = false;
     return this;
@@ -434,7 +523,7 @@ export class WebXRButton {
    * Disable the button from being clicked
    * @return {EnterXRButton}
    */
-  disable(): WebXRButton {
+  disable(): InnerButton {
     this.__setDisabledAttribute(true);
     this.__forceDisabled = true;
     return this;
@@ -461,45 +550,15 @@ export class WebXRButton {
   }
 
   /**
-   * Handling click event from button
-   */
-  private __onXRButtonClick() {
-    if (this.session) {
-      this.options.onEndSession(this.session);
-    } else if (this._enabled) {
-      let requestPromise = this.options.onRequestSession();
-      if (requestPromise) {
-        requestPromise.catch((err) => {
-          // Reaching this point indicates that the session request has failed
-          // and we should communicate that to the user somehow.
-          let errorMsg = `XRSession creation failed: ${err.message}`;
-          this.setTooltip(errorMsg);
-          // console.error(errorMsg);
-
-          // Disable the button momentarily to indicate there was an issue.
-          this.__setDisabledAttribute(true);
-          this.domElement.setAttribute('error', 'true');
-          setTimeout(() => {
-            this.__setDisabledAttribute(false);
-            this.domElement.setAttribute('error', 'false');
-          }, 1000);
-
-          throw err;
-        });
-      }
-    }
-  }
-
-  /**
    * Updates the display of the button based on it's current state
    */
   private __updateButtonState() {
-    if (this.session) {
-      this.setTitle(this.options.textExitXRTitle);
+    if (this.__session) {
+      this.setTitle(this.textExitXRTitle);
       this.setTooltip('Exit XR presentation');
       this.__setDisabledAttribute(false);
     } else if (this._enabled) {
-      this.setTitle(this.options.textEnterXRTitle);
+      this.setTitle(this.textEnterXRTitle);
       this.setTooltip('Enter XR');
       this.__setDisabledAttribute(false);
     } else {
@@ -510,16 +569,67 @@ export class WebXRButton {
   }
 }
 
-/**
- * Function checking if a specific css class exists as child of element.
- *
- * @param {HTMLElement} el element to find child in
- * @param {string} cssPrefix css prefix of button
- * @param {string} suffix class name
- * @param {function} fn function to call if child is found
- * @private
- */
-const ifChild = (el: HTMLElement, cssPrefix: string, suffix: string, fn: Function) => {
-  const c = el.querySelector('.' + cssPrefix + '-' + suffix);
-  c && fn(c);
-};
+
+export class WebXRButton extends EventTarget {
+  options: RequiredNotNull<WebXRButtonOptions>;
+
+  buttonInline: InnerButton;
+  buttonVR: InnerButton;
+  buttonAR: InnerButton;
+
+  /**
+   * Construct a new Enter XR Button
+   */
+  constructor(_options: WebXRButtonOptions) {
+
+    if (!_options.domElement) {
+      throw new Error("require placement elment");
+    }
+
+    super();
+
+    this.options = validateOption(_options);
+
+    const onClick = async (mode: XRSessionMode) => {
+      const session = await navigator.xr!.requestSession(mode, {
+        requiredFeatures: this.options.requiredFeatures,
+        optionalFeatures: this.options.optionalFeatures,
+      });
+      this.dispatchEvent(new WebXRSessionStartEvent('immersive-vr', session));
+      return session;
+    };
+
+    // inline
+    this.buttonInline = new InnerButton('inline', this.options, onClick);
+    this.options.domElement.appendChild(this.buttonInline.domElement);
+
+    // vr
+    this.buttonVR = new InnerButton('immersive-vr', this.options, onClick);
+    this.options.domElement.appendChild(this.buttonVR.domElement);
+
+    // ar
+    this.buttonAR = new InnerButton('immersive-ar', this.options, onClick);
+    this.options.domElement.appendChild(this.buttonAR.domElement);
+
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('inline').then(isSupported => {
+        if (isSupported) {
+          this.buttonInline.enabled = true;
+        }
+      });
+      navigator.xr.isSessionSupported('immersive-vr').then(isSupported => {
+        if (isSupported) {
+          this.buttonVR.enabled = true;
+        }
+      });
+      navigator.xr.isSessionSupported('immersive-ar').then(isSupported => {
+        if (isSupported) {
+          this.buttonAR.enabled = true;
+        }
+      });
+    }
+    else {
+      console.warn('no navigator.xr');
+    }
+  }
+}

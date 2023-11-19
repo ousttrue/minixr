@@ -245,7 +245,7 @@ class SevenSegment {
       | (bits[5] << 5)
       | (bits[6] << 6)
       ;
-    console.log(lines, bits);
+    // console.log(lines, bits);
     this.ascii[code] = mask;
   }
 
