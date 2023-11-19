@@ -1,5 +1,5 @@
-import { vec3, mat4, Transform } from '../../math/gl-matrix.mjs';
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { vec3, mat4, Transform } from '../math/gl-matrix.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
 
 export class Rotater {
   static system(world: World, timestamp: number) {

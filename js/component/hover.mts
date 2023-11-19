@@ -1,5 +1,5 @@
-import { mat4, Transform } from '../../math/gl-matrix.mjs';
-import { World, Entity } from '../../third-party/uecs-0.4.2/index.mjs';
+import { mat4, Transform } from '../math/gl-matrix.mjs';
+import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
 import { Primitive } from '../geometry/primitive.mjs';
 
 class HoverStatus {

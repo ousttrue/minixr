@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';
+import { vec3, BoundingBox } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
 
 const GL = WebGLRenderingContext; // For enums

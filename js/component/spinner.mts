@@ -1,5 +1,5 @@
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
-import { Transform } from '../../math/gl-matrix.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { Transform } from '../math/gl-matrix.mjs';
 
 export class Spinner {
 

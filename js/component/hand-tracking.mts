@@ -1,8 +1,8 @@
 /**
  * https://immersive-web.github.io/webxr-hand-input/
  */
-import { mat4, Transform } from '../../math/gl-matrix.mjs';
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { mat4, Transform } from '../math/gl-matrix.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { SimpleMaterial } from '../materials/simple.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { HoverActive, HoverPassive } from './hover.mjs';

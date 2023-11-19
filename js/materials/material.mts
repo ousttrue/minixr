@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { Texture } from './texture.mjs';
-import { vec2, vec3, vec4 } from '../../math/gl-matrix.mjs';
+import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 

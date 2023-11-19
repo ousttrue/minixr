@@ -26,9 +26,9 @@ for numbers and a limited number of other characters.
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Stats, now } from './stats-viewer.mjs';
-import { Transform } from '../../math/gl-matrix.mjs';
+import { Transform } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 

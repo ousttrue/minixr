@@ -1,6 +1,6 @@
-import { Node } from '../nodes/node.mjs';
+import { Node } from '../scene/nodes/node.mjs';
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
-import { mat4 } from '../../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 import { ArOcclusionMaterial } from '../materials/ar-occlusion.mjs';
 import { Component } from '../component/component.mjs';
 

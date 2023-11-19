@@ -19,10 +19,10 @@
 // SOFTWARE.
 
 import { BoxBuilder } from '../geometry/box-builder.mjs';
-import { vec3, Transform } from '../../math/gl-matrix.mjs';
+import { vec3, Transform } from '../math/gl-matrix.mjs';
 import { HoverMaterial } from '../materials/hover.mjs';
 import { Rotater } from '../component/rotater.mjs';
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { HoverPassive } from '../component/hover.mjs';
 
 

@@ -19,13 +19,11 @@
 // SOFTWARE.
 
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
-import { RenderCommands } from '../scene/scene.mjs';
-import { Material, MaterialState, CAP } from '../scene/materials/material.mjs';
-import { Primitive } from '../scene/geometry/primitive.mjs';
+import { Material, MaterialState, CAP } from '../materials/material.mjs';
+import { Primitive } from '../geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program, ProgramFactory } from './program.mjs';
 import { TextureFactory } from './texturefactory.mjs';
-import { Node } from '../scene/nodes/node.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 

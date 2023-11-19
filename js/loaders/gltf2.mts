@@ -18,11 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Node } from '../nodes/node.mjs';
+import { Node } from '../scene/nodes/node.mjs';
 import { PbrMaterial } from '../materials/pbr.mjs';
 import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { vec3, quat, mat4, BoundingBox } from '../../math/gl-matrix.mjs';
+import { vec3, quat, mat4, BoundingBox } from '../math/gl-matrix.mjs';
 import * as GLTF2 from './GLTF.js';
 
 const GL = WebGLRenderingContext; // For enums

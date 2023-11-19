@@ -20,7 +20,7 @@
 
 import { Material, MaterialSampler, MaterialUniform, ProgramDefines } from './material.mjs';
 import { ATTRIB_MASK } from '../geometry/primitive.mjs';
-import { vec2, vec3, vec4 } from '../../math/gl-matrix.mjs';
+import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 
 const VERTEX_SOURCE = `
 

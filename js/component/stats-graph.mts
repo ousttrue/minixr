@@ -27,9 +27,9 @@ your scene.
 
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { vec3, BoundingBox, Transform } from '../../math/gl-matrix.mjs';
+import { vec3, BoundingBox, Transform } from '../math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 

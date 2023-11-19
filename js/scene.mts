@@ -22,10 +22,10 @@ import {
   Node,
   HoverPassiveStartEvent, HoverPassiveEndEvent,
   HoverActiveStartEvent, HoverActiveEndEvent,
-} from './nodes/node.mjs';
+} from './scene/nodes/node.mjs';
 import { Primitive } from './geometry/primitive.mjs';
-import { mat4 } from '../math/gl-matrix.mjs';
-import { Component } from '../component/component.mjs';
+import { mat4 } from './math/gl-matrix.mjs';
+import { Component } from './component/component.mjs';
 
 export type RenderCommands = Map<Primitive, Node[]>;
 

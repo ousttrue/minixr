@@ -1,7 +1,7 @@
 import { BitmapFontMaterial } from '../materials/bitmap-font.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { vec3, Transform } from '../../math/gl-matrix.mjs';
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { vec3, Transform } from '../math/gl-matrix.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -81,7 +81,8 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<void> 
   grid.puts(0, 0.3, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
   grid.puts(0, 0.4, 'abcdefghijklmnopqrstuvwxyz');
 
-  const primitive = new Primitive(material, attributes, 4, ibo, { instanceAttributes });
+  const primitive = new Primitive(material,
+    attributes, 4, ibo, { instanceAttributes });
   primitive.instanceCount = grid.length;
 
   const transform = new Transform();

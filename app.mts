@@ -1,27 +1,27 @@
-import { Scene } from './js/scene/scene.mjs';
+import { Scene } from './js/scene.mjs';
 import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
 import {
   ArMeshDetection,
   MeshDetectedEvent, MeshUpdatedEvent, MeshLostEvent
-} from './js/scene/component/ar-mesh-detection.mjs';
-import { StatsViewer } from './js/scene/nodes/stats-viewer.mjs';
-import { StatsGraph } from './js/scene/nodes/stats-graph.mjs';
-import { SevenSegmentText } from './js/scene/nodes/seven-segment-text.mjs';
+} from './js/component/ar-mesh-detection.mjs';
+import { StatsViewer } from './js/component/stats-viewer.mjs';
+import { StatsGraph } from './js/component/stats-graph.mjs';
+import { SevenSegmentText } from './js/component/seven-segment-text.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
-import { Gltf2Loader } from './js/scene/loaders/gltf2.mjs';
-import { UrlTexture } from './js/scene/materials/texture.mjs';
-import { cubeSeaFactory } from './js/scene/factory/cube-sea.mjs';
-import { interactionFactory } from './js/scene/factory/interaction.mjs';
+import { Gltf2Loader } from './js/loaders/gltf2.mjs';
+import { UrlTexture } from './js/materials/texture.mjs';
+import { cubeSeaFactory } from './js/factory/cube-sea.mjs';
+import { interactionFactory } from './js/factory/interaction.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';
-import { bitmapFontFactory } from './js/scene/factory/bitmap-font.mjs';
+import { bitmapFontFactory } from './js/factory/bitmap-font.mjs';
 import { World } from './js/third-party/uecs-0.4.2/index.mjs';
 import { Transform } from './js/math/gl-matrix.mjs';
-import { Primitive } from './js/scene/geometry/primitive.mjs';
-import { Rotater } from './js/scene/component/rotater.mjs';
-import { Spinner } from './js/scene/component/spinner.mjs';
-import { HandTracking } from './js/scene/component/hand-tracking.mjs';
-import { hoverSystem } from './js/scene/component/hover.mjs';
+import { Primitive } from './js/geometry/primitive.mjs';
+import { Rotater } from './js/component/rotater.mjs';
+import { Spinner } from './js/component/spinner.mjs';
+import { HandTracking } from './js/component/hand-tracking.mjs';
+import { hoverSystem } from './js/component/hover.mjs';
 
 
 export default class App {
