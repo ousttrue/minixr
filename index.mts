@@ -22,11 +22,11 @@ document.addEventListener("DOMContentLoaded", _ => {
     requiredFeatures: [
       HandTracking.requiredFeature,
       ArMeshDetection.requiredFeature,
+      'local-floor',
     ],
     optionalFeatures: [
       BoundsRenderer.requiredFeature,
       // 'layers',
-      // 'local-floor',
       // 'high-fixed-foveation-level',
     ],
   });

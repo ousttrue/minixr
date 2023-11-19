@@ -1,5 +1,5 @@
 import { Scene } from './js/scene.mjs';
-import { Renderer, createWebGLContext } from './js/render/renderer.mjs';
+import { Renderer } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
 import {
   ArMeshDetection,
@@ -25,13 +25,11 @@ import { hoverSystem } from './js/component/hover.mjs';
 import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
 
 
-export default class App {
+class AppSession {
   world = new World();
 
   scene = new Scene();
-  gl: WebGL2RenderingContext;
   renderer: Renderer;
-  xrRefSpace: XRReferenceSpace | null = null;
 
   _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
@@ -41,72 +39,33 @@ export default class App {
   quadLayer: XRQuadLayer;
   meshDetection: ArMeshDetection;
 
-  constructor() {
-  }
-
-  endSession() {
-    console.log('App.endSession');
-  }
-
-  async startSession(session: XRSession): Promise<void> {
-    console.log('App.startSession', session);
-    session.addEventListener('end', _ => {
-      this.endSession();
-    });
-
-    // Create a WebGL context to render with, initialized to be compatible
-    // with the XRDisplay we're presenting to.
-    this.gl = createWebGLContext({
-      webgl2: true,
-      xrCompatible: true,
-    }) as WebGL2RenderingContext;
-
-    const gl = this.gl;
-    function onResize() {
-      gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
-      gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
-    }
-    window.addEventListener('resize', onResize);
-    onResize();
-
+  constructor(
+    public readonly session: XRSession,
+    public readonly localSpace: XRReferenceSpace,
+    public readonly floorSpace: XRReferenceSpace | XRBoundedReferenceSpace,
+    public readonly gl: WebGL2RenderingContext,
+  ) {
     // Create a renderer with that GL context (this is just for the samples
     // framework and has nothing to do with WebXR specifically.)
-    this.renderer = new Renderer(this.gl);
-
-    // Use the new WebGL context to create a XRWebGLLayer and set it as the
-    // sessions baseLayer. This allows any content rendered to the layer to
-    // be displayed on the XRDevice.
-    session.updateRenderState({
-      baseLayer: new XRWebGLLayer(session, this.gl, {
-        // framebufferScaleFactor: 0.1,
-      })
-    });
-
-    // Get a frame of reference, which is required for querying poses. In
-    // this case an 'local' frame of reference means that all poses will
-    // be relative to the location where the XRDevice was first detected.
-    try {
-      const space = await session.requestReferenceSpace('bounded-floor');
-      if (space instanceof XRBoundedReferenceSpace) {
-        await BoundsRenderer.factory(this.world, space);
-        this.xrRefSpace = space;
-      }
-      else {
-        throw Error('no space');
-      }
-    }
-    catch (err) {
-      this.xrRefSpace = await session.requestReferenceSpace('local');
-    }
-
-    this.term = new XRTerm(this.gl);
-
-    await this._setupScene(session);
-
-    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
+    this.renderer = new Renderer(gl);
+    this.term = new XRTerm(gl);
   }
 
-  async _setupScene(session: XRSession) {
+  async start() {
+    if (this.floorSpace instanceof XRBoundedReferenceSpace) {
+      await BoundsRenderer.factory(this.world, this.floorSpace);
+    }
+
+    await this._setupScene();
+
+    this.session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
+  }
+
+  shutdown() {
+    console.log('shutdown');
+  }
+
+  async _setupScene() {
     {
       const transform = await StatsGraph.factory(this.world);
       if (false) {
@@ -179,15 +138,14 @@ export default class App {
       frameDelta = time - this._prevTime;
     }
     this._prevTime = time;
-    const refSpace = this.xrRefSpace!
     this.scene.updateAndGetRenderList(
-      time, frameDelta, refSpace, frame, session.inputSources);
+      time, frameDelta, this.localSpace, frame, session.inputSources);
 
     this.term.getTermTexture();
 
     Rotater.system(this.world, time);
     Spinner.system(this.world, time, frameDelta);
-    HandTracking.system(this.world, time, frameDelta, refSpace, frame, session.inputSources);
+    HandTracking.system(this.world, time, frameDelta, this.localSpace, frame, session.inputSources);
     hoverSystem(this.world);
 
     //
@@ -199,7 +157,7 @@ export default class App {
 
     // Get the XRDevice pose relative to the Frame of Reference we created
     // earlier.
-    let pose = frame.getViewerPose(refSpace);
+    let pose = frame.getViewerPose(this.localSpace);
 
     // Getting the pose may fail if, for example, tracking is lost. So we
     // have to check to make sure that we got a valid pose before attempting
@@ -269,5 +227,69 @@ export default class App {
     }
 
     this._stats.end(this.world);
+  }
+}
+
+
+export default class App {
+  appSession: AppSession | null = null;
+
+  constructor() {
+  }
+
+  endSession() {
+    console.log('App.endSession');
+    if (this.appSession) {
+      this.appSession.shutdown();
+    }
+  }
+
+  async startSession(session: XRSession): Promise<void> {
+    console.log('App.startSession', session);
+    session.addEventListener('end', _ => {
+      this.endSession();
+    });
+
+    // Create a WebGL context to render with, initialized to be compatible
+    // with the XRDisplay we're presenting to.
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2',
+      {
+        xrCompatible: true,
+      });
+    if (!gl) {
+      throw new Error('fail to create WebGL2RenderingContext');
+    }
+
+    function onResize() {
+      canvas.width = canvas.clientWidth * window.devicePixelRatio;
+      canvas.height = canvas.clientHeight * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    // Use the new WebGL context to create a XRWebGLLayer and set it as the
+    // sessions baseLayer. This allows any content rendered to the layer to
+    // be displayed on the XRDevice.
+    session.updateRenderState({
+      baseLayer: new XRWebGLLayer(session, gl, {
+        // framebufferScaleFactor: 0.1,
+      })
+    });
+
+    // Get a frame of reference, which is required for querying poses. In
+    // this case an 'local' frame of reference means that all poses will
+    // be relative to the location where the XRDevice was first detected.
+    let localSpace = await session.requestReferenceSpace('local');
+    let floorSpace: XRReferenceSpace;
+    try {
+      floorSpace = await session.requestReferenceSpace('bounded-floor');
+    }
+    catch (err) {
+      floorSpace = await session.requestReferenceSpace('local-floor');
+    }
+
+    this.appSession = new AppSession(session, localSpace, floorSpace, gl);
+    this.appSession.start();
   }
 }
