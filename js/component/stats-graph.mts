@@ -223,15 +223,13 @@ export class StatsGraph {
     this.primitive.vertexUpdated = true;
   }
 
-  static async factory(world: World): Promise<Transform> {
+  static async factory(world: World, transform: Transform): Promise<void> {
     const graph = new StatsGraph();
-
-    const transform = new Transform();
 
     world.create(transform, graph.primitive, new Stats((time, stats) => {
       return graph.updateStats(time, stats);
     }));
 
-    return Promise.resolve(transform);
+    return Promise.resolve();
   }
 }

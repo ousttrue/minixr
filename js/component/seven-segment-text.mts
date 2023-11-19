@@ -292,17 +292,15 @@ class SevenSegment {
 
 export class SevenSegmentText {
 
-  static async factory(world: World): Promise<Transform> {
+  static async factory(world: World, transform: Transform): Promise<void> {
 
     const segment = new SevenSegment();
     segment.puts(0, 0, '0123456789')
 
-
-    const transform = new Transform();
     world.create(transform, segment.primitive, new Stats((time, stats) => {
       return segment.updateStats(time, stats);
     }));
 
-    return Promise.resolve(transform);
+    return Promise.resolve();
   }
 }

@@ -33,6 +33,7 @@ class AppSession {
 
   _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
+  _meshDetection = new ArMeshDetection();
 
   term: XRTerm;
   xrGLFactory: XRWebGLBinding;
@@ -67,46 +68,13 @@ class AppSession {
 
   async _setupScene() {
     {
-      const transform = await StatsGraph.factory(this.world);
-      if (false) {
-        // TODO: head relative
-        transform.translation = vec3.fromValues(0, 1.4, -0.75);
-      } else {
-        transform.translation = vec3.fromValues(0, -0.3, -0.5);
-      }
-      transform.scale = vec3.fromValues(0.3, 0.3, 0.3);
+      const transform = new Transform();
+      transform.translation = vec3.fromValues(0, -0.3, -0.5);
       transform.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
-    }
-    {
-      const transform = await SevenSegmentText.factory(this.world);
-      if (false) {
-        // TODO: head relative
-        transform.translation = vec3.fromValues(0, 1.4, -0.75);
-      } else {
-        transform.translation = vec3.fromValues(0, -0.3, -0.5);
-      }
       transform.scale = vec3.fromValues(0.3, 0.3, 0.3);
-      transform.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
+      await StatsGraph.factory(this.world, transform);
+      await SevenSegmentText.factory(this.world, transform);
     }
-
-    this.meshDetection = new ArMeshDetection();
-    this.meshDetection.addEventListener('ar-mesh-detected',
-      event => {
-        this.scene.root.addNode(
-          (event as MeshDetectedEvent).mesh);
-      });
-    this.meshDetection.addEventListener('ar-mesh-updated',
-      event => {
-        // console.log(event);
-      });
-    this.meshDetection.addEventListener('ar-mesh-lost',
-      event => {
-        this.scene.root.removeNode(
-          (event as MeshLostEvent).mesh);
-      });
-    this.scene.addComponents([this.meshDetection]);
-
-    this._loadGltfAsync();
 
     await HandTracking.factory(this.world, "left");
     await HandTracking.factory(this.world, "right");
@@ -145,7 +113,11 @@ class AppSession {
 
     Rotater.system(this.world, time);
     Spinner.system(this.world, time, frameDelta);
-    HandTracking.system(this.world, time, frameDelta, this.localSpace, frame, session.inputSources);
+    HandTracking.system(
+      this.world, time, frameDelta, this.localSpace, frame, session.inputSources);
+
+    this._meshDetection.update(this.world, this.localSpace, frame);
+
     hoverSystem(this.world);
 
     //

@@ -20,32 +20,16 @@
 
 import {
   Node,
-  HoverPassiveStartEvent, HoverPassiveEndEvent,
-  HoverActiveStartEvent, HoverActiveEndEvent,
 } from './scene/nodes/node.mjs';
 import { Primitive } from './geometry/primitive.mjs';
-import { mat4 } from './math/gl-matrix.mjs';
-import { Component } from './component/component.mjs';
 
 export type RenderCommands = Map<Primitive, Node[]>;
-
-
-
 
 export class Scene {
   root = new Node("__root__");
   _renderCommands: RenderCommands = new Map();
-  _actives: Node[] = [];
-  _hoverMap: Map<Node, HoverStatus> = new Map();
-  _components: Component[] = [];
 
   constructor() {
-  }
-
-  addComponents(components: Component[]) {
-    for (const component of components) {
-      this._components.push(component);
-    }
   }
 
   addNodes(nodes: Node[]) {
@@ -54,21 +38,11 @@ export class Scene {
     }
   }
 
-  add(obj: { nodes: Node[], components: Component[] }) {
-    this.addNodes(obj.nodes);
-    this.addComponents(obj.components);
-  }
-
   updateAndGetRenderList(time: number, frameDelta: number,
     refSpace: XRReferenceSpace, frame: XRFrame,
     inputSources: XRInputSourceArray): RenderCommands {
 
     this._renderCommands.clear();
-    this._actives = [];
-
-    for (const component of this._components) {
-      component.update(time, frameDelta, refSpace, frame, inputSources);
-    }
 
     this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, inputSources, this.root);
 
@@ -80,10 +54,6 @@ export class Scene {
 
     if (!node.visible) {
       return;
-    }
-
-    if (node.action == 'active') {
-      this._actives.push(node);
     }
 
     node.update(time, frameDelta, refSpace, frame, inputSources);
@@ -100,37 +70,6 @@ export class Scene {
 
     for (const child of node.children) {
       this._pushRenderCommandRecursive(time, frameDelta, refSpace, frame, inputSources, child);
-    }
-  }
-
-  _toLocal = new mat4();
-  private _hitTestRecursive(active: Node, hitList: Node[], node: Node) {
-    if (!node.visible) {
-      return;
-    }
-    if (node.action == 'active') {
-      return;
-    }
-
-    if (node.action == 'passive') {
-      if (node.primitives.length > 0) {
-
-        const worldPoint = active.worldMatrix.getTranslation();
-
-        node.worldMatrix.invert({ out: this._toLocal });
-        const local = worldPoint.transformMat4(this._toLocal);
-
-        for (const prim of node.primitives) {
-          if (prim.hitTest(local)) {
-            hitList.push(node);
-            break;
-          }
-        }
-      }
-    }
-
-    for (const child of node.children) {
-      this._hitTestRecursive(active, hitList, child);
     }
   }
 }

@@ -1,46 +1,74 @@
-import { Node } from '../scene/nodes/node.mjs';
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
-import { mat4 } from '../math/gl-matrix.mjs';
-import { ArOcclusionMaterial } from '../materials/ar-occlusion.mjs';
-import { Component } from '../component/component.mjs';
+import { mat4, Transform } from '../math/gl-matrix.mjs';
+import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
+import { Material } from '../materials/material.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
 
 
-type MeshPrimitive = {
-  node: Node,
+class ArOcclusionMaterial extends Material {
+  constructor() {
+    super();
+  }
+
+  get materialName() {
+    return 'ArOcclusion';
+  }
+
+  get vertexSource() {
+    return `
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+in vec3 POSITION;
+
+void main() {
+  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+}`;
+  }
+
+  get fragmentSource() {
+    return `
+precision mediump float;
+out vec4 _Color;
+
+void main() {
+  _Color = vec4(0, 0, 0, 0);
+  // _Color = vec4(0, 0, 0, 1);
+}`;
+  }
+}
+
+
+type MeshItem = {
+  entity: Entity,
   time: number,
 }
 
-export class MeshDetectedEvent extends Event {
-  constructor(public readonly mesh: Node) {
-    super('ar-mesh-detected');
-  }
-}
-export class MeshUpdatedEvent extends Event {
-  constructor(public readonly mesh: Node) {
-    super('ar-mesh-updated');
-  }
-}
-export class MeshLostEvent extends Event {
-  constructor(public readonly mesh: Node) {
-    super('ar-mesh-lost');
-  }
+
+function createPrimitive(mesh: XRMesh, material: Material): Primitive {
+  let vertexBuffer = new DataView(
+    mesh.vertices.buffer, mesh.vertices.byteOffset, mesh.vertices.byteLength);
+  let attributes = [
+    new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
+  ];
+  // wrong d.ts ?
+  // @ts-ignore
+  const indices = mesh.indices as Uint32Array;
+  const primitive = new Primitive(material, attributes, mesh.vertices.length / 3, indices);
+  return primitive;
 }
 
-export class ArMeshDetection extends Component {
+export class ArMeshDetection {
 
   static get requiredFeature(): string {
     return 'mesh-detection';
   }
 
-  lastMap: Map<XRMesh, MeshPrimitive> = new Map();
-  newMap: Map<XRMesh, MeshPrimitive> = new Map();
+  lastMap: Map<XRMesh, MeshItem> = new Map();
+  newMap: Map<XRMesh, MeshItem> = new Map();
   arOcclusionMaterial = new ArOcclusionMaterial();
 
-  update(_timestamp: number, _frameDelta: number,
-    refsp: XRReferenceSpace, frame: XRFrame, _inputSources: XRInputSourceArray) {
+  update(world: World, refsp: XRReferenceSpace, frame: XRFrame) {
 
     // @ts-ignore
     const detectedMeshes = frame.detectedMeshes as (XRMeshSet | null);
@@ -50,48 +78,14 @@ export class ArMeshDetection extends Component {
     }
 
     this.newMap.clear();
-
     detectedMeshes.forEach(mesh => {
-
-      const pose = frame.getPose(mesh.meshSpace, refsp);
-      if (!pose) {
-        return;
-      }
-
-      const meshPrimitive = this.lastMap.get(mesh);
-      if (meshPrimitive) {
-        if (mesh.lastChangedTime > meshPrimitive.time) {
-          // create new
-          const node = this._createMeshNode(mesh, pose);
-          this.newMap.set(mesh, {
-            node,
-            time: mesh.lastChangedTime
-          });
-          this.dispatchEvent(new MeshUpdatedEvent(node));
-        }
-        else {
-          // keep same
-          this.lastMap.delete(mesh);
-          this.newMap.set(mesh, {
-            node: meshPrimitive.node,
-            time: mesh.lastChangedTime
-          });
-        }
-      }
-      else {
-        // create new
-        const node = this._createMeshNode(mesh, pose);
-        this.newMap.set(mesh, {
-          node,
-          time: mesh.lastChangedTime
-        });
-        this.dispatchEvent(new MeshDetectedEvent(node));
-      }
+      this._updateMesh(world, refsp, frame, mesh);
     });
 
     this.lastMap.forEach((c, _) => {
       // not found. remove
-      this.dispatchEvent(new MeshLostEvent(c.node));
+      console.log('destroy', c.entity);
+      world.destroy(c.entity);
     });
 
     const tmp = this.lastMap;
@@ -99,24 +93,49 @@ export class ArMeshDetection extends Component {
     this.newMap = tmp;
   }
 
-  private _createMeshNode(mesh: XRMesh, pose: XRPose): Node {
-    // new primitive
-    let vertexBuffer = new DataView(mesh.vertices.buffer, mesh.vertices.byteOffset, mesh.vertices.byteLength);
-    let attributes = [
-      new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
-    ];
-    // wrong d.ts ?
-    // @ts-ignore
-    const indices = mesh.indices as Uint32Array;
-    const primitive = new Primitive(this.arOcclusionMaterial, attributes, mesh.vertices.length / 3, indices);
+  _updateMesh(world: World, refsp: XRReferenceSpace, frame: XRFrame, mesh: XRMesh) {
+    const pose = frame.getPose(mesh.meshSpace, refsp);
+    if (!pose) {
+      return;
+    }
 
-    const node = new Node(`meshDetection: ${mesh.semanticLabel}`);
-    node.primitives.push(primitive);
+    const item = this.lastMap.get(mesh);
+    if (item) {
+      if (mesh.lastChangedTime > item.time) {
+        // create new
+        const primitive = createPrimitive(mesh, this.arOcclusionMaterial);
+        const transform = new Transform();
+        transform.matrix = new mat4(pose.transform.matrix);
+        const entity = world.create(transform, primitive);
 
-    node.local.matrix = new mat4(pose.transform.matrix);
+        console.log('update mesh', entity, mesh.semanticLabel,
+          mesh.lastChangedTime, item.time)
+        this.newMap.set(mesh, {
+          entity,
+          time: mesh.lastChangedTime
+        });
+      }
+      else {
+        // keep same
+        this.lastMap.delete(mesh);
+        this.newMap.set(mesh, {
+          entity: item.entity,
+          time: mesh.lastChangedTime
+        });
+      }
+    }
+    else {
+      // create new
+      const primitive = createPrimitive(mesh, this.arOcclusionMaterial);
+      const transform = new Transform();
+      transform.matrix = new mat4(pose.transform.matrix);
+      const entity = world.create(transform, primitive);
 
-    console.log('new node', node)
-    return node;
+      console.log('new mesh', entity, mesh.semanticLabel)
+      this.newMap.set(mesh, {
+        entity,
+        time: mesh.lastChangedTime
+      });
+    }
   }
 }
-
