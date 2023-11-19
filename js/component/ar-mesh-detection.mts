@@ -1,48 +1,11 @@
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
 import { mat4, Transform } from '../math/gl-matrix.mjs';
-import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { ArOcclusionMaterial, ArOcclusionMaterialDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../materials/material.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
-
-
-class ArOcclusionMaterial extends Material {
-  constructor() {
-    super();
-  }
-
-  get materialName() {
-    return 'ArOcclusion';
-  }
-
-  get vertexSource() {
-    return `
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-in vec3 POSITION;
-
-void main() {
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
-}`;
-  }
-
-  get fragmentSource() {
-    return `
-precision mediump float;
-out vec4 _Color;
-
-void main() {
-  _Color = vec4(0, 0, 0, 0);
-  // _Color = vec4(0, 0, 0, 1);
-}`;
-  }
-}
-
-
-type MeshItem = {
-  entity: Entity,
-  time: number,
-}
 
 
 function createPrimitive(mesh: XRMesh, material: Material): Primitive {
@@ -64,8 +27,8 @@ export class ArMeshDetection {
     return 'mesh-detection';
   }
 
-  lastMap: Map<XRMesh, MeshItem> = new Map();
-  newMap: Map<XRMesh, MeshItem> = new Map();
+  lastMap: Map<XRMesh, DetectedItem> = new Map();
+  newMap: Map<XRMesh, DetectedItem> = new Map();
   arOcclusionMaterial = new ArOcclusionMaterial();
 
   update(world: World, refsp: XRReferenceSpace, frame: XRFrame) {
@@ -102,18 +65,15 @@ export class ArMeshDetection {
     const item = this.lastMap.get(mesh);
     if (item) {
       if (mesh.lastChangedTime > item.time) {
-        // create new
-        const primitive = createPrimitive(mesh, this.arOcclusionMaterial);
-        const transform = new Transform();
-        transform.matrix = new mat4(pose.transform.matrix);
-        const entity = world.create(transform, primitive);
-
-        console.log('update mesh', entity, mesh.semanticLabel,
-          mesh.lastChangedTime, item.time)
-        this.newMap.set(mesh, {
-          entity,
-          time: mesh.lastChangedTime
-        });
+        // pose update ?
+        const transform = world.get(item.entity, Transform);
+        if (transform) {
+          transform.matrix = new mat4(pose.transform.matrix);
+        }
+        else {
+          console.warn('transform not found', item)
+        }
+        item.time = mesh.lastChangedTime;
       }
       else {
         // keep same

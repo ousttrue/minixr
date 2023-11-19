@@ -1,6 +1,7 @@
 import { Renderer } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { ArMeshDetection, } from './js/component/ar-mesh-detection.mjs';
+import { ArPlaneDetection } from './js/component/ar-plane-detection.mjs';
 import { StatsViewer } from './js/component/stats-viewer.mjs';
 import { StatsGraph } from './js/component/stats-graph.mjs';
 import { SevenSegmentText } from './js/component/seven-segment-text.mjs';
@@ -29,6 +30,7 @@ class AppSession {
   _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
   _meshDetection = new ArMeshDetection();
+  _planeDetection = new ArPlaneDetection();
 
   term: XRTerm;
   xrGLFactory: XRWebGLBinding;
@@ -108,6 +110,7 @@ class AppSession {
     HandTracking.system(
       this.world, time, frameDelta, this.localSpace, frame, session.inputSources);
 
+    this._planeDetection.update(this.world, this.localSpace, frame);
     this._meshDetection.update(this.world, this.localSpace, frame);
 
     hoverSystem(this.world);

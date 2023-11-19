@@ -3,6 +3,7 @@ import App from './app.mjs';
 import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
 import { HandTracking } from './js/component/hand-tracking.mjs';
 import { ArMeshDetection } from './js/component/ar-mesh-detection.mjs';
+import { ArPlaneDetection } from './js/component/ar-plane-detection.mjs';
 
 
 let g_app = new App();
@@ -22,6 +23,7 @@ document.addEventListener("DOMContentLoaded", _ => {
     requiredFeatures: [
       HandTracking.requiredFeature,
       ArMeshDetection.requiredFeature,
+      ArPlaneDetection.requiredFeature,
       'local-floor',
     ],
     optionalFeatures: [
