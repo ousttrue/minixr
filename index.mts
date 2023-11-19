@@ -1,5 +1,8 @@
 import { WebXRButton, WebXRSessionStartEvent } from './js/util/webxr-button.mjs';
 import App from './app.mjs';
+import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
+import { HandTracking } from './js/component/hand-tracking.mjs';
+import { ArMeshDetection } from './js/component/ar-mesh-detection.mjs';
 
 
 let g_app = new App();
@@ -17,13 +20,13 @@ document.addEventListener("DOMContentLoaded", _ => {
   const xrButton = new WebXRButton({
     domElement: element,
     requiredFeatures: [
-      'hand-tracking',
-      'mesh-detection',
+      HandTracking.requiredFeature,
+      ArMeshDetection.requiredFeature,
     ],
     optionalFeatures: [
+      BoundsRenderer.requiredFeature,
       // 'layers',
       // 'local-floor',
-      // 'bounded-floor',
       // 'high-fixed-foveation-level',
     ],
   });

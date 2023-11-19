@@ -32,7 +32,6 @@ import { Transform } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
-const BOUNDS_HEIGHT = 0.5; // Meters
 
 
 class BoundsMaterial extends Material {
@@ -53,64 +52,100 @@ class BoundsMaterial extends Material {
 
   get vertexSource() {
     return `
-    attribute vec3 POSITION;
-    varying vec3 v_pos;
-    vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
-      v_pos = POSITION;
-      return proj * view * model * vec4(POSITION, 1.0);
-    }`;
+in vec3 POSITION;
+
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+
+void main() {
+  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+}`;
   }
 
   get fragmentSource() {
     return `
-    precision mediump float;
-    varying vec3 v_pos;
-    vec4 fragment_main() {
-      return vec4(0.25, 1.0, 0.5, (${BOUNDS_HEIGHT} - v_pos.y) / ${BOUNDS_HEIGHT});
-    }`;
+precision mediump float;
+out vec4 _Color;
+
+void main() {
+  _Color = vec4(0.4, 0.4, 0.4, 1);
+}`;
   }
+}
+
+// 0 1
+// 3 2
+function createQuads(geometry: DOMPointReadOnly[]): [Float32Array, Uint16Array] {
+  const vertices = new Float32Array([
+    geometry[0].x, 0, geometry[0].y,
+    geometry[1].x, 0, geometry[1].y,
+    geometry[2].x, 0, geometry[2].y,
+    geometry[3].x, 0, geometry[3].y,
+  ]);
+  const indices = new Uint16Array([0, 3, 2, 2, 1, 0])
+  return [vertices, indices];
+}
+
+function createConvex(geometry: DOMPointReadOnly[]): [Float32Array, Uint16Array] {
+  const verts = [];
+  const indices = [];
+  const BOUNDS_HEIGHT = 0.5;
+
+  // Tessellate the bounding points from XRStageBounds and connect
+  // each point to a neighbor and 0,0,0.
+  let lastIndex = -1;
+  for (const point of geometry) {
+    lastIndex += 2;
+    if (verts.length > 0) {
+      indices.push(lastIndex, lastIndex - 1, lastIndex - 2);
+      indices.push(lastIndex - 2, lastIndex - 1, lastIndex - 3);
+    }
+
+    verts.push(point.x, 0, point.z);
+    verts.push(point.x, BOUNDS_HEIGHT, point.z);
+  }
+
+  const pointCount = geometry.length;
+  if (pointCount > 1) {
+    indices.push(1, 0, lastIndex);
+    indices.push(lastIndex, 0, lastIndex - 1);
+  }
+
+  const vertexBuffer = new Float32Array(verts);
+  const indexBuffer = new Uint16Array(indices);
+  return [vertexBuffer, indexBuffer];
 }
 
 export class BoundsRenderer {
 
-  static async factory(world: World): Promise<void> {
+  static get requiredFeature(): string {
+    return 'bounded-floor';
+  }
 
-    // @ts-ignore
-    const geometry = refSpace.boundsGeometry as DOMPointReadOnly[];
-    if (!geometry || geometry.length === 0) {
+  static async factory(world: World, space: XRBoundedReferenceSpace): Promise<void> {
+
+    const geometry = space.boundsGeometry;
+    if (!geometry) {
       return;
     }
 
-    const verts = [];
-    const indices = [];
-
-    // Tessellate the bounding points from XRStageBounds and connect
-    // each point to a neighbor and 0,0,0.
-    let lastIndex = -1;
-    for (const point of geometry) {
-      lastIndex += 2;
-      if (verts.length > 0) {
-        indices.push(lastIndex, lastIndex - 1, lastIndex - 2);
-        indices.push(lastIndex - 2, lastIndex - 1, lastIndex - 3);
-      }
-
-      verts.push(point.x, 0, point.z);
-      verts.push(point.x, BOUNDS_HEIGHT, point.z);
+    if (geometry.length == 0) {
+      console.warn('empty boundsGeometry');
+      return;
     }
 
-    const pointCount = geometry.length;
-    if (pointCount > 1) {
-      indices.push(1, 0, lastIndex);
-      indices.push(lastIndex, 0, lastIndex - 1);
-    }
+    console.log(`BoundsRenderer: create:`, geometry);
+    // geometry is clockwise 2d points
 
-    let vertexBuffer = new DataView(new Float32Array(verts).buffer);
-    let indexBuffer = new Uint16Array(indices);
+    const [vertices, indices] = (geometry.length == 4)
+      ? createQuads(geometry)
+      : createConvex(geometry)
+      ;
+
     let primitive = new Primitive(
       new BoundsMaterial(), [
-      new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0)],
-      verts.length / 3,
-      indexBuffer);
+      new PrimitiveAttribute('POSITION', new DataView(vertices.buffer), 3, GL.FLOAT, 12, 0)],
+      vertices.length / 3,
+      indices);
 
     world.create(new Transform(), primitive);
 

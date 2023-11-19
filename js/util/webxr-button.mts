@@ -122,6 +122,16 @@ const generateInnerHTML = (cssPrefix: string, height: number): string => {
         </button>`;
 };
 
+const createFeatureHtml = (name: string, features: string[]): HTMLElement => {
+  const div = document.createElement('div')!;
+  div.innerHTML = `<div>
+<h2>${name}</h2>
+${features.map(x => '<span class="feature">' + x + '</span>').join('')}
+</div>`;
+  return div;
+}
+
+
 /**
  * Inject the CSS string to the head of the document
  *
@@ -598,6 +608,11 @@ export class WebXRButton extends EventTarget {
       this.dispatchEvent(new WebXRSessionStartEvent('immersive-vr', session));
       return session;
     };
+
+    this.options.domElement.appendChild(
+      createFeatureHtml('requiredFeatures', this.options.requiredFeatures));
+    this.options.domElement.appendChild(
+      createFeatureHtml('optionalFeatures', this.options.optionalFeatures));
 
     // inline
     this.buttonInline = new InnerButton('inline', this.options, onClick);

@@ -35,12 +35,12 @@ void main() {
 
   get fragmentSource() {
     return `
-      precision mediump float;
-      in vec3 vLight;
-      out vec4 _Color;
+precision mediump float;
+in vec3 vLight;
+out vec4 _Color;
 
-      void main() {
-        _Color = vec4(vLight, 1.0);
-      }`;
+void main() {
+  _Color = vec4(vLight, 1.0);
+}`;
   }
 }

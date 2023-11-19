@@ -31,6 +31,10 @@ export class MeshLostEvent extends Event {
 
 export class ArMeshDetection extends Component {
 
+  static get requiredFeature(): string {
+    return 'mesh-detection';
+  }
+
   lastMap: Map<XRMesh, MeshPrimitive> = new Map();
   newMap: Map<XRMesh, MeshPrimitive> = new Map();
   arOcclusionMaterial = new ArOcclusionMaterial();

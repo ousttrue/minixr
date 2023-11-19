@@ -98,6 +98,10 @@ export class HandTracking {
   private _positions = new Float32Array(16 * 25);
   private _indexPinch = new PinchStatus();
 
+  static get requiredFeature(): string {
+    return 'hand-tracking';
+  }
+
   constructor(public readonly hand: 'left' | 'right',
     public joints: Transform[]) {
   }
