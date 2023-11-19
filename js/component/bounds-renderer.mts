@@ -25,59 +25,80 @@ The bounds `geometry` is a series of DOMPointReadOnlys in
 clockwise-order.
 */
 
-import { Material, RENDER_ORDER } from '../material.mjs';
-import { Node } from '../node.mjs';
+import { Material, RENDER_ORDER } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { Transform } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
+const BOUNDS_HEIGHT = 0.5; // Meters
 
-export class BoundsRenderer extends Node {
-  private _boundedRefSpace: any;
-  constructor(boundedRefSpace: XRReferenceSpace) {
-    super("BoundsRenderer");
 
-    this._boundedRefSpace = boundedRefSpace;
+class BoundsMaterial extends Material {
+  constructor() {
+    super();
+
+    this.renderOrder = RENDER_ORDER.ADDITIVE;
+    this.state.blend = true;
+    this.state.blendFuncSrc = GL.SRC_ALPHA;
+    this.state.blendFuncDst = GL.ONE;
+    this.state.depthTest = false;
+    this.state.cullFace = false;
   }
 
-  get boundedRefSpace() {
-    return this._boundedRefSpace;
+  get materialName() {
+    return 'BOUNDS_RENDERER';
   }
 
-  set boundedRefSpace(refSpace: XRReferenceSpace) {
-    if (this._boundedRefSpace) {
-      this.primitives = [];
-    }
-    this._boundedRefSpace = refSpace;
-    if (!refSpace) {
-      return;
-    }
+  get vertexSource() {
+    return `
+    attribute vec3 POSITION;
+    varying vec3 v_pos;
+    vec4 vertex_main(mat4 proj, mat4 view, mat4 model) {
+      v_pos = POSITION;
+      return proj * view * model * vec4(POSITION, 1.0);
+    }`;
+  }
+
+  get fragmentSource() {
+    return `
+    precision mediump float;
+    varying vec3 v_pos;
+    vec4 fragment_main() {
+      return vec4(0.25, 1.0, 0.5, (${BOUNDS_HEIGHT} - v_pos.y) / ${BOUNDS_HEIGHT});
+    }`;
+  }
+}
+
+export class BoundsRenderer {
+
+  static async factory(world: World): Promise<void> {
 
     // @ts-ignore
     const geometry = refSpace.boundsGeometry as DOMPointReadOnly[];
-    if (geometry.length === 0) {
+    if (!geometry || geometry.length === 0) {
       return;
     }
 
-    let verts = [];
-    let indices = [];
+    const verts = [];
+    const indices = [];
 
     // Tessellate the bounding points from XRStageBounds and connect
     // each point to a neighbor and 0,0,0.
-    const pointCount = geometry.length;
     let lastIndex = -1;
-    for (let i = 0; i < pointCount; i++) {
-      const point = geometry[i];
-      verts.push(point.x, 0, point.z);
-      verts.push(point.x, BOUNDS_HEIGHT, point.z);
-
+    for (const point of geometry) {
       lastIndex += 2;
-      if (i > 0) {
+      if (verts.length > 0) {
         indices.push(lastIndex, lastIndex - 1, lastIndex - 2);
         indices.push(lastIndex - 2, lastIndex - 1, lastIndex - 3);
       }
+
+      verts.push(point.x, 0, point.z);
+      verts.push(point.x, BOUNDS_HEIGHT, point.z);
     }
 
+    const pointCount = geometry.length;
     if (pointCount > 1) {
       indices.push(1, 0, lastIndex);
       indices.push(lastIndex, 0, lastIndex - 1);
@@ -90,6 +111,9 @@ export class BoundsRenderer extends Node {
       new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0)],
       verts.length / 3,
       indexBuffer);
-    this.primitives.push(primitive);
+
+    world.create(new Transform(), primitive);
+
+    return Promise.resolve();
   }
 }
