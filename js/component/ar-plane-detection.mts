@@ -1,6 +1,6 @@
 // https://immersive-web.github.io/real-world-geometry/plane-detection.html
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { mat4, Transform } from '../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 import { ArOcclusionMaterial, ArOcclusionMaterialDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
@@ -76,12 +76,12 @@ export class ArPlaneDetection {
     if (item) {
       if (plane.lastChangedTime > item.time) {
         // pose update ?
-        const transform = world.get(item.entity, Transform);
-        if (transform) {
-          transform.matrix = new mat4(pose.transform.matrix);
+        const matrix = world.get(item.entity, mat4);
+        if (matrix) {
+          matrix.array.set(pose.transform.matrix);
         }
         else {
-          console.warn('transform not found', item)
+          console.warn('mat4 not found', item)
         }
         item.time = plane.lastChangedTime;
       }
@@ -97,9 +97,9 @@ export class ArPlaneDetection {
     else {
       // create new
       const primitive = createPrimitive(plane, this.arOcclusionMaterial);
-      const transform = new Transform();
-      transform.matrix = new mat4(pose.transform.matrix);
-      const entity = world.create(transform, primitive);
+      const matrix = new mat4();
+      matrix.array.set(pose.transform.matrix);
+      const entity = world.create(matrix, primitive);
 
       console.log('new plane', entity, plane)
       this.newMap.set(plane, {

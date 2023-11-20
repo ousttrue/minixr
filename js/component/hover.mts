@@ -1,4 +1,4 @@
-import { mat4, Transform } from '../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
 import { Primitive } from '../geometry/primitive.mjs';
 
@@ -43,17 +43,17 @@ export class HoverPassive {
 }
 
 export function hoverSystem(world: World) {
-  const actives = world.view(HoverActive, Transform);
-  const passives = world.view(HoverPassive, Transform);
+  const actives = world.view(HoverActive, mat4);
+  const passives = world.view(HoverPassive, mat4);
 
   const _toLocal = new mat4();
 
-  actives.each((activeEntity, active, activeTransform) => {
-    const worldPoint = activeTransform.matrix.getTranslation();
+  actives.each((activeEntity, active, activeMatrix) => {
+    const worldPoint = activeMatrix.getTranslation();
     const hitList: Entity[] = []
 
-    passives.each((passiveEntity, passive, passiveTransform) => {
-      passiveTransform.matrix.invert({ out: _toLocal });
+    passives.each((passiveEntity, passive, passiveMatrix) => {
+      passiveMatrix.invert({ out: _toLocal });
       const local = worldPoint.transformMat4(_toLocal);
 
       const prim = world.get(passiveEntity, Primitive);

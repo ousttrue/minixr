@@ -27,7 +27,7 @@ your scene.
 
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
-import { vec3, BoundingBox, Transform } from '../math/gl-matrix.mjs';
+import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 
@@ -223,10 +223,10 @@ export class StatsGraph {
     this.primitive.vertexUpdated = true;
   }
 
-  static async factory(world: World, transform: Transform): Promise<void> {
+  static async factory(world: World, matrix: mat4): Promise<void> {
     const graph = new StatsGraph();
 
-    world.create(transform, graph.primitive, new Stats((time, stats) => {
+    world.create(matrix, graph.primitive, new Stats((time, stats) => {
       return graph.updateStats(time, stats);
     }));
 

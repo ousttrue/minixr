@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { BoxBuilder } from '../geometry/box-builder.mjs';
-import { vec3, Transform } from '../math/gl-matrix.mjs';
+import { vec3, mat4 } from '../math/gl-matrix.mjs';
 import { HoverMaterial } from '../materials/hover.mjs';
 import { Rotater } from '../component/rotater.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -53,7 +53,7 @@ export async function cubeSeaFactory(
         material.color.value.set(1, 1, 1, 1);;
       },
     )
-    world.create(new Transform(), heroPrimitive, new Rotater(), hover);
+    world.create(new mat4(), heroPrimitive, new Rotater(), hover);
   }
 
   {
@@ -88,9 +88,8 @@ export async function cubeSeaFactory(
             },
           );
 
-          const transform = new Transform()
-          transform.translation = vec3.fromValues(pos[0], pos[1], pos[2]);
-          world.create(transform, cubeSeaPrimitive, hover);
+          const matrix = mat4.fromTranslation(pos[0], pos[1], pos[2]);
+          world.create(matrix, cubeSeaPrimitive, hover);
         }
       }
     }

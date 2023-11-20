@@ -23,7 +23,7 @@ import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import * as GLTF2 from './GLTF.js';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { vec3, quat, mat4, Transform } from '../math/gl-matrix.mjs';
+import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -431,8 +431,8 @@ export class Gltf2Loader {
     }
   }
 
-  private _processNodes(world: World, glNode: GLTF2.Node, parent?: Transform) {
-    const transform = new Transform();
+  private _processNodes(world: World, glNode: GLTF2.Node, parent?: mat4) {
+    const matrix = mat4.identity();
     // if (glNode.matrix) {
     //   transform.matrix = new mat4(new Float32Array(glNode.matrix));
     // } else if (glNode.translation || glNode.rotation || glNode.scale) {
@@ -454,7 +454,7 @@ export class Gltf2Loader {
       const mesh = this.meshes[glNode.mesh];
       for (const primitive of mesh.primitives) {
 
-        world.create(transform, primitive);
+        world.create(matrix, primitive);
         ++prims;
       }
     }
@@ -462,7 +462,7 @@ export class Gltf2Loader {
     if (glNode.children && this.json.nodes) {
       for (const nodeId of glNode.children) {
         const glChildNode = this.json.nodes[nodeId];
-        this._processNodes(world, glChildNode, transform);
+        this._processNodes(world, glChildNode, matrix);
       }
     }
   }

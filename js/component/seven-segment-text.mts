@@ -28,7 +28,7 @@ import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Stats, now } from './stats-viewer.mjs';
-import { Transform } from '../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -292,12 +292,12 @@ class SevenSegment {
 
 export class SevenSegmentText {
 
-  static async factory(world: World, transform: Transform): Promise<void> {
+  static async factory(world: World, matrix: mat4): Promise<void> {
 
     const segment = new SevenSegment();
     segment.puts(0, 0, '0123456789')
 
-    world.create(transform, segment.primitive, new Stats((time, stats) => {
+    world.create(matrix, segment.primitive, new Stats((time, stats) => {
       return segment.updateStats(time, stats);
     }));
 

@@ -13,7 +13,6 @@ import { interactionFactory } from './js/factory/interaction.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';
 import { bitmapFontFactory } from './js/factory/bitmap-font.mjs';
 import { World } from './js/third-party/uecs-0.4.2/index.mjs';
-import { Transform } from './js/math/gl-matrix.mjs';
 import { Primitive } from './js/geometry/primitive.mjs';
 import { Rotater } from './js/component/rotater.mjs';
 import { Spinner } from './js/component/spinner.mjs';
@@ -65,12 +64,13 @@ class AppSession {
 
   async _setupScene() {
     {
-      const transform = new Transform();
-      transform.translation = vec3.fromValues(0, -0.3, -0.5);
-      transform.rotation = quat.fromEuler(-45.0, 0.0, 0.0);
-      transform.scale = vec3.fromValues(0.3, 0.3, 0.3);
-      await StatsGraph.factory(this.world, transform);
-      await SevenSegmentText.factory(this.world, transform);
+      const matrix = mat4.fromTRS(
+        vec3.fromValues(0, -0.3, -0.5),
+        quat.fromEuler(-45.0, 0.0, 0.0),
+        vec3.fromValues(0.3, 0.3, 0.3),
+      );
+      await StatsGraph.factory(this.world, matrix);
+      await SevenSegmentText.factory(this.world, matrix);
     }
 
     await HandTracking.factory(this.world, "left");
@@ -144,7 +144,7 @@ class AppSession {
       // into the corresponding viewport.
       const viewports = pose.views.map(view => glLayer.getViewport(view)!);
 
-      const renderList = this.world.view(Transform, Primitive);
+      const renderList = this.world.view(mat4, Primitive);
 
       {
         // left eye
@@ -156,8 +156,8 @@ class AppSession {
           prevVao: null,
         }
         const view = pose.views[0];
-        renderList.each((entity, transform, primitive) => {
-          this.renderer.drawPrimitive(view, 0, transform.matrix, primitive, state);
+        renderList.each((entity, matrix, primitive) => {
+          this.renderer.drawPrimitive(view, 0, matrix, primitive, state);
         });
       }
       {
@@ -170,8 +170,8 @@ class AppSession {
           prevVao: null,
         }
         const view = pose.views[1];
-        renderList.each((entity, transform, primitive) => {
-          this.renderer.drawPrimitive(view, 1, transform.matrix, primitive, state);
+        renderList.each((entity, matrix, primitive) => {
+          this.renderer.drawPrimitive(view, 1, matrix, primitive, state);
         });
       }
 

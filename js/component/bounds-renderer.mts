@@ -28,7 +28,7 @@ clockwise-order.
 import { Material, RENDER_ORDER } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { Transform } from '../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -147,7 +147,7 @@ export class BoundsRenderer {
       vertices.length / 3,
       indices);
 
-    world.create(new Transform(), primitive);
+    world.create(new mat4(), primitive);
 
     return Promise.resolve();
   }

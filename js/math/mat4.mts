@@ -768,59 +768,56 @@ export class mat4 {
   //   out[15] = 1;
   //   return out;
   // }
-  //
-  // /**
-  //  * Creates a matrix from a quaternion rotation and vector translation
-  //  * This is equivalent to (but much faster than):
-  //  *
-  //  *     mat4.identity(dest);
-  //  *     mat4.translate(dest, vec);
-  //  *     let quatMat = mat4.create();
-  //  *     quat4.toMat4(quat, quatMat);
-  //  *     mat4.multiply(dest, quatMat);
-  //  *
-  //  * @param {mat4} out mat4 receiving operation result
-  //  * @param {quat4} q Rotation quaternion
-  //  * @param {vec3} v Translation vector
-  //  * @returns {mat4} out
-  //  */
-  // export function fromRotationTranslation(out: mat4, q: quat4, v: vec3): mat4 {
-  //   // Quaternion math
-  //   let x = q[0], y = q[1], z = q[2], w = q[3];
-  //   let x2 = x + x;
-  //   let y2 = y + y;
-  //   let z2 = z + z;
-  //
-  //   let xx = x * x2;
-  //   let xy = x * y2;
-  //   let xz = x * z2;
-  //   let yy = y * y2;
-  //   let yz = y * z2;
-  //   let zz = z * z2;
-  //   let wx = w * x2;
-  //   let wy = w * y2;
-  //   let wz = w * z2;
-  //
-  //   out[0] = 1 - (yy + zz);
-  //   out[1] = xy + wz;
-  //   out[2] = xz - wy;
-  //   out[3] = 0;
-  //   out[4] = xy - wz;
-  //   out[5] = 1 - (xx + zz);
-  //   out[6] = yz + wx;
-  //   out[7] = 0;
-  //   out[8] = xz + wy;
-  //   out[9] = yz - wx;
-  //   out[10] = 1 - (xx + yy);
-  //   out[11] = 0;
-  //   out[12] = v[0];
-  //   out[13] = v[1];
-  //   out[14] = v[2];
-  //   out[15] = 1;
-  //
-  //   return out;
-  // }
-  //
+
+  /**
+   * Creates a matrix from a quaternion rotation and vector translation
+   * This is equivalent to (but much faster than):
+   *
+   *     mat4.identity(dest);
+   *     mat4.translate(dest, vec);
+   *     let quatMat = mat4.create();
+   *     quat4.toMat4(quat, quatMat);
+   *     mat4.multiply(dest, quatMat);
+   */
+  static fromRotationTranslation(q: quat, v: vec3, option?: { out: mat4 }): mat4 {
+    // Quaternion math
+    const dst = option?.out ?? new mat4();
+    let x = q.x, y = q.y, z = q.z, w = q.w;
+    let x2 = x + x;
+    let y2 = y + y;
+    let z2 = z + z;
+
+    let xx = x * x2;
+    let xy = x * y2;
+    let xz = x * z2;
+    let yy = y * y2;
+    let yz = y * z2;
+    let zz = z * z2;
+    let wx = w * x2;
+    let wy = w * y2;
+    let wz = w * z2;
+
+    const out = dst.array;
+    out[0] = 1 - (yy + zz);
+    out[1] = xy + wz;
+    out[2] = xz - wy;
+    out[3] = 0;
+    out[4] = xy - wz;
+    out[5] = 1 - (xx + zz);
+    out[6] = yz + wx;
+    out[7] = 0;
+    out[8] = xz + wy;
+    out[9] = yz - wx;
+    out[10] = 1 - (xx + yy);
+    out[11] = 0;
+    out[12] = v.x;
+    out[13] = v.y;
+    out[14] = v.z;
+    out[15] = 1;
+
+    return dst;
+  }
+
   // /**
   //  * Creates a new mat4 from a dual quat.
   //  *
@@ -942,16 +939,9 @@ export class mat4 {
   /**
    * Creates a matrix from a quaternion rotation, vector translation and vector scale
    * This is equivalent to (but much faster than):
-   *
-   *     mat4.identity(dest);
-   *     mat4.translate(dest, vec);
-   *     let quatMat = mat4.create();
-   *     quat4.toMat4(quat, quatMat);
-   *     mat4.multiply(dest, quatMat);
-   *     mat4.scale(dest, scale)
-   *
    */
-  fromRotationTranslationScale(q: quat, v: vec3, s: vec3) {
+  static fromTRS(v: vec3, q: quat, s: vec3, option?: { out: mat4 }) {
+    const dst = option?.out ?? new mat4();
     // Quaternion math
     const x = q.x;
     const y = q.y;
@@ -974,7 +964,7 @@ export class mat4 {
     const sy = s.y;
     const sz = s.z;
 
-    const out = this.array;
+    const out = dst.array;
     out[0] = (1 - (yy + zz)) * sx;
     out[1] = (xy + wz) * sx;
     out[2] = (xz - wy) * sx;
@@ -991,6 +981,7 @@ export class mat4 {
     out[13] = v.y;
     out[14] = v.z;
     out[15] = 1;
+    return dst;
   }
 
   // /**
@@ -1005,15 +996,8 @@ export class mat4 {
   //  *     mat4.multiply(dest, quatMat);
   //  *     mat4.scale(dest, scale)
   //  *     mat4.translate(dest, negativeOrigin);
-  //  *
-  //  * @param {mat4} out mat4 receiving operation result
-  //  * @param {quat4} q Rotation quaternion
-  //  * @param {vec3} v Translation vector
-  //  * @param {vec3} s Scaling vector
-  //  * @param {vec3} o The origin vector around which to scale and rotate
-  //  * @returns {mat4} out
   //  */
-  // export function fromRotationTranslationScaleOrigin(out: mat4, q: quat4, v: vec3, s: vec3, o: vec3): mat4 {
+  // static fromRotationTranslationScaleOrigin(out: mat4, q: quat4, v: vec3, s: vec3, o: vec3): mat4 {
   //   // Quaternion math
   //   let x = q[0], y = q[1], z = q[2], w = q[3];
   //   let x2 = x + x;
@@ -1067,7 +1051,7 @@ export class mat4 {
   //
   //   return out;
   // }
-  //
+
   // /**
   //  * Calculates a 4x4 matrix from the given quaternion
   //  *

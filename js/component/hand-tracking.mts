@@ -1,7 +1,7 @@
 /**
  * https://immersive-web.github.io/webxr-hand-input/
  */
-import { mat4, Transform } from '../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
 import { SimpleMaterial } from '../materials/simple.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
@@ -13,14 +13,14 @@ const PINCH_END_DISTANCE = 0.03;
 class Pinch {
   delta: mat4;
   constructor(
-    public readonly mover: Transform,
-    public readonly target: Transform) {
+    public readonly mover: mat4,
+    public readonly target: mat4) {
 
     console.log('Pinch', mover, target);
 
-    this.delta = this.mover.matrix.copy()
+    this.delta = this.mover.copy()
     this.delta.invert({ out: this.delta });
-    this.delta.mul(this.target.matrix, { out: this.delta });
+    this.delta.mul(this.target, { out: this.delta });
   }
 
   end() {
@@ -28,8 +28,7 @@ class Pinch {
   }
 
   update() {
-    this.mover.matrix.mul(this.delta, { out: this.target.matrix });
-    this.target.invalidate();
+    this.mover.mul(this.delta, { out: this.target });
   }
 }
 
@@ -38,13 +37,13 @@ class PinchStatus {
   isPinch = false;
   pinches: Pinch[] = []
 
-  enable(world: World, tip: Transform) {
+  enable(world: World, tip: mat4) {
     this.isPinch = true;
 
-    world.view(Transform, HoverActive).each((_, hoverTransform, hover) => {
+    world.view(mat4, HoverActive).each((_, hoverTransform, hover) => {
       if (hoverTransform == tip) {
         hover.status._last.forEach((passive: Entity) => {
-          const passiveTransform = world.get(passive, Transform);
+          const passiveTransform = world.get(passive, mat4);
           if (passiveTransform) {
             this.pinches.push(new Pinch(tip, passiveTransform));
           }
@@ -61,9 +60,8 @@ class PinchStatus {
     this.pinches = [];
   }
 
-  update(world: World, thumbTip: Transform, indexTip: Transform) {
-    const distance = indexTip.matrix.getTranslation().distance(
-      thumbTip.matrix.getTranslation());
+  update(world: World, thumbTip: mat4, indexTip: mat4) {
+    const distance = indexTip.getTranslation().distance(thumbTip.getTranslation());
     if (!this.isPinch) {
       if (distance < PINCH_START_DISTANCE) {
         this.enable(world, indexTip);
@@ -103,7 +101,7 @@ export class HandTracking {
   }
 
   constructor(public readonly hand: 'left' | 'right',
-    public joints: Transform[]) {
+    public joints: mat4[]) {
   }
 
   static async factory(world: World,
@@ -116,16 +114,16 @@ export class HandTracking {
     boxBuilder.pushCube([0, 0, 0], 0.01);
     const primitive = boxBuilder.finishPrimitive(material);
 
-    const joints: Transform[] = [];
+    const joints: mat4[] = [];
     for (let i = 0; i < 24; i++) {
-      const transform = new Transform();
+      const matrix = new mat4();
       if (i == 9) {
-        world.create(transform, primitive, new HoverActive());
+        world.create(matrix, primitive, new HoverActive());
       }
       else {
-        world.create(transform, primitive);
+        world.create(matrix, primitive);
       }
-      joints.push(transform);
+      joints.push(matrix);
     }
 
     world.create(new HandTracking(hand, joints));
@@ -172,9 +170,8 @@ export class HandTracking {
     }
 
     let offset = 0;
-    for (const transform of this.joints) {
-      let matrix = new mat4(this._positions.slice(offset, offset + 16));
-      transform.matrix = matrix;
+    for (const matrix of this.joints) {
+      matrix.array.set(this._positions.slice(offset, offset + 16));
       offset += 16;
     }
   }

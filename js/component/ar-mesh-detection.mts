@@ -1,5 +1,5 @@
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
-import { mat4, Transform } from '../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { ArOcclusionMaterial, ArOcclusionMaterialDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../materials/material.mjs';
@@ -66,12 +66,12 @@ export class ArMeshDetection {
     if (item) {
       if (mesh.lastChangedTime > item.time) {
         // pose update ?
-        const transform = world.get(item.entity, Transform);
-        if (transform) {
-          transform.matrix = new mat4(pose.transform.matrix);
+        const matrix = world.get(item.entity, mat4);
+        if (matrix) {
+          matrix.array.set(pose.transform.matrix);
         }
         else {
-          console.warn('transform not found', item)
+          console.warn('mat4 not found', item)
         }
         item.time = mesh.lastChangedTime;
       }
@@ -87,9 +87,9 @@ export class ArMeshDetection {
     else {
       // create new
       const primitive = createPrimitive(mesh, this.arOcclusionMaterial);
-      const transform = new Transform();
-      transform.matrix = new mat4(pose.transform.matrix);
-      const entity = world.create(transform, primitive);
+      const matrix = new mat4();
+      matrix.array.set(pose.transform.matrix);
+      const entity = world.create(matrix, primitive);
 
       console.log('new mesh', entity, mesh.semanticLabel)
       this.newMap.set(mesh, {
