@@ -97,9 +97,9 @@ function validateOption(_options: WebXRButtonOptions)
     cssprefix: _options.cssprefix || 'webvr-ui',
 
     // This reads VR as none of the samples are designed for other formats as of yet.
-    textEnterXRTitle: _options.textEnterXRTitle || 'ENTER VR',
+    textEnterXRTitle: _options.textEnterXRTitle || 'ENTER',
     textXRNotFoundTitle: _options.textXRNotFoundTitle || 'VR NOT FOUND',
-    textExitXRTitle: _options.textExitXRTitle || 'EXIT VR',
+    textExitXRTitle: _options.textExitXRTitle || 'EXIT',
     injectCSS: _options.injectCSS !== false,
   }
 }
@@ -124,8 +124,9 @@ const generateInnerHTML = (cssPrefix: string, height: number): string => {
 
 const createFeatureHtml = (name: string, features: string[]): HTMLElement => {
   const div = document.createElement('div')!;
-  div.innerHTML = `<div>
+  div.innerHTML = `
 <h2>${name}</h2>
+<div class="features">
 ${features.map(x => '<span class="feature">' + x + '</span>').join('')}
 </div>`;
   return div;
