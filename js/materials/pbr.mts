@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Material, MaterialSampler, MaterialUniform, ProgramDefine } from './material.mjs';
+import { Shader, ProgramDefine, RENDER_ORDER } from '../materials/shader.mjs';
 import { ATTRIB_MASK } from '../geometry/primitive.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 
@@ -219,44 +219,21 @@ void main() {
   _Color = vec4(color, baseColor.a);
 }`;
 
-export class PbrMaterial extends Material {
-  baseColor: MaterialSampler;
-  metallicRoughness: MaterialSampler;
-  normal: MaterialSampler;
-  occlusion: MaterialSampler;
-  emissive: MaterialSampler;
-  baseColorFactor: MaterialUniform;
-  occlusionStrength: MaterialUniform;
-  emissiveFactor: MaterialUniform;
-  metallicRoughnessFactor: MaterialUniform;
-  constructor() {
-    super();
+export const PbrShader: Shader = {
+  name: 'PBR',
 
-    this.baseColor = this.defineSampler('baseColorTex');
-    this.metallicRoughness = this.defineSampler('metallicRoughnessTex');
-    this.normal = this.defineSampler('normalTex');
-    this.occlusion = this.defineSampler('occlusionTex');
-    this.emissive = this.defineSampler('emissiveTex');
+  vertexSource: VERTEX_SOURCE,
 
-    this.baseColorFactor = this.defineUniform('baseColorFactor', vec4.fromValues(1.0, 1.0, 1.0, 1.0));
-    this.metallicRoughnessFactor = this.defineUniform('metallicRoughnessFactor', vec2.fromValues(1.0, 1.0));
-    this.occlusionStrength = this.defineUniform('occlusionStrength', 1.0);
-    this.emissiveFactor = this.defineUniform('emissiveFactor', vec3.fromValues(0, 0, 0));
-  }
+  fragmentSource: FRAGMENT_SOURCE,
 
-  get materialName() {
-    return 'PBR';
-  }
+  uniforms: [
+    ['baseColorFactor', vec4.fromValues(1.0, 1.0, 1.0, 1.0)],
+    ['metallicRoughnessFactor', vec2.fromValues(1.0, 1.0)],
+    ['occlusionStrength', 1.0],
+    ['emissiveFactor', vec3.fromValues(0, 0, 0)],
+  ],
 
-  get vertexSource() {
-    return VERTEX_SOURCE;
-  }
-
-  get fragmentSource() {
-    return FRAGMENT_SOURCE;
-  }
-
-  getProgramDefines(attributeMask: number): ProgramDefine[] {
+  getProgramDefines: (attributeMask: number): ProgramDefine[] => {
     const programDefines: ProgramDefine[] = [];
 
     if (attributeMask & ATTRIB_MASK.COLOR_0) {

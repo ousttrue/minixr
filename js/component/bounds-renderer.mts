@@ -25,51 +25,43 @@ The bounds `geometry` is a series of DOMPointReadOnlys in
 clockwise-order.
 */
 
-import { Material, RENDER_ORDER } from '../materials/material.mjs';
+import { Shader } from '../materials/shader.mjs';
+import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { MaterialState } from '../materials/materialstate.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
 
-const GL = WebGLRenderingContext; // For enums
+
+const GL = WebGL2RenderingContext; // For enums
+
+const state = new MaterialState();
+state.blend = true;
+state.blendFuncSrc = GL.SRC_ALPHA;
+state.blendFuncDst = GL.ONE;
+state.depthTest = false;
+state.cullFace = false;
 
 
+const BoundsShader: Shader = {
+  name: 'BOUNDS_RENDERER',
 
-class BoundsMaterial extends Material {
-  constructor() {
-    super();
-
-    this.renderOrder = RENDER_ORDER.ADDITIVE;
-    this.state.blend = true;
-    this.state.blendFuncSrc = GL.SRC_ALPHA;
-    this.state.blendFuncDst = GL.ONE;
-    this.state.depthTest = false;
-    this.state.cullFace = false;
-  }
-
-  get materialName() {
-    return 'BOUNDS_RENDERER';
-  }
-
-  get vertexSource() {
-    return `
+  vertexSource: `
 in vec3 POSITION;
 
 uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 
 void main() {
   gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
-}`;
-  }
+}`,
 
-  get fragmentSource() {
-    return `
+  fragmentSource: `
 precision mediump float;
 out vec4 _Color;
 
 void main() {
   _Color = vec4(0.4, 0.4, 0.4, 1);
-}`;
-  }
+}`,
 }
 
 // 0 1
@@ -142,7 +134,7 @@ export class BoundsRenderer {
       ;
 
     let primitive = new Primitive(
-      new BoundsMaterial(), [
+      new Material('bounds', BoundsShader), [
       new PrimitiveAttribute('POSITION', new DataView(vertices.buffer), 3, GL.FLOAT, 12, 0)],
       vertices.length / 3,
       indices);

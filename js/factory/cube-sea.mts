@@ -20,10 +20,10 @@
 
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, mat4 } from '../math/gl-matrix.mjs';
-import { HoverMaterial } from '../materials/hover.mjs';
 import { Rotater } from '../component/rotater.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { HoverPassive } from '../component/hover.mjs';
+import { HoverPassive, HoverMaterial } from '../component/hover.mjs';
+import { Material } from '../materials/material.mjs';
 
 
 export async function cubeSeaFactory(
@@ -47,10 +47,10 @@ export async function cubeSeaFactory(
     let heroPrimitive = boxBuilder.finishPrimitive(material);
     const hover = new HoverPassive(
       () => {
-        material.color.value.set(1, 0, 0, 1);;
+        material.setColor(1, 0, 0, 1);
       },
       () => {
-        material.color.value.set(1, 1, 1, 1);;
+        material.setColor(1, 1, 1, 1);
       },
     )
     world.create(new mat4(), heroPrimitive, new Rotater(), hover);
@@ -81,10 +81,10 @@ export async function cubeSeaFactory(
           let cubeSeaPrimitive = boxBuilder.finishPrimitive(material);
           const hover = new HoverPassive(
             () => {
-              material.color.value.set(1, 0, 0, 1);;
+              material.setColor(1, 0, 0, 1);;
             },
             () => {
-              material.color.value.set(1, 1, 1, 1);;
+              material.setColor(1, 1, 1, 1);;
             },
           );
 

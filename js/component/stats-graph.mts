@@ -25,6 +25,7 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
+import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
@@ -36,13 +37,11 @@ const GL = WebGLRenderingContext; // For enums
 const SEGMENTS = 30;
 const MAX_FPS = 90;
 
-class StatsMaterial extends Material {
-  get materialName() {
-    return 'STATS_VIEWER';
-  }
 
-  get vertexSource() {
-    return `
+const StatsShader: Shader = {
+  name: 'STATS_VIEWER',
+
+  vertexSource: `
 uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 in vec3 POSITION;
 in vec3 COLOR_0;
@@ -51,20 +50,18 @@ out vec4 vColor;
 void main() {
   vColor = vec4(COLOR_0, 1.0);
   gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
-}`;
-  }
+}`,
 
-  get fragmentSource() {
-    return `
+  fragmentSource: `
 precision mediump float;
 in vec4 vColor;
 out vec4 _Color;
 
 void main() {
   _Color = vColor;
-}`;
-  }
+}`,
 }
+
 
 function segmentToX(i: number): number {
   return ((0.9 / SEGMENTS) * i) - 0.45;
@@ -147,7 +144,7 @@ export class StatsGraph {
       new PrimitiveAttribute('POSITION', fpsVertexBuffer, 3, GL.FLOAT, 24, 0),
       new PrimitiveAttribute('COLOR_0', fpsVertexBuffer, 3, GL.FLOAT, 24, 12),
     ];
-    const material = new StatsMaterial()
+    const material = new Material('StatsMaterial', StatsShader)
     this.primitive = new Primitive(material,
       fpsAttribs, this.fpsVertexBuffer.length / 6, this.fpsIndexBuffer,
       { attributesUsage: GL.DYNAMIC_DRAW });

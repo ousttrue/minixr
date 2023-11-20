@@ -1,7 +1,7 @@
 import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { ArOcclusionMaterial, ArOcclusionMaterialDebug, DetectedItem } from './ar-detection.mjs';
+import { ArOcclusionShader, ArOcclusionShaderDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../materials/material.mjs';
 
 
@@ -33,10 +33,10 @@ export class ArMeshDetection {
 
   constructor(mode: XRSessionMode) {
     if (mode == 'immersive-ar') {
-      this.arOcclusionMaterial = new ArOcclusionMaterial();
+      this.arOcclusionMaterial = new Material('ArOcclusionMaterial', ArOcclusionShader);
     }
     else {
-      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
+      this.arOcclusionMaterial = new Material('ArOcclusionMaterialDebug', ArOcclusionShaderDebug);
     }
   }
 

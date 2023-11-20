@@ -18,14 +18,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { PbrMaterial } from '../materials/pbr.mjs';
+import { PbrShader } from '../materials/pbr.mjs';
+import { Material } from '../materials/material.mjs';
+import { MaterialState } from '../materials/materialstate.mjs';
 import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import * as GLTF2 from './GLTF.js';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
+import { vec2, vec3, vec4, quat, mat4 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
+
+const DEFAULT_MATERIAL = new Material('glTF-default-material', PbrShader)
 
 const GLB_MAGIC = 0x46546C67;
 const CHUNK_TYPE = {
@@ -88,7 +92,7 @@ class Gltf2Mesh {
 export class Gltf2Loader {
   images: HTMLImageElement[] = [];
   textures: ImageTexture[] = [];
-  materials: PbrMaterial[] = [];
+  materials: Material[] = [];
   meshes: Gltf2Mesh[] = [];
   urlBytesMap: { [key: string]: Uint8Array } = {}
 
@@ -319,24 +323,25 @@ export class Gltf2Loader {
 
     if (this.json.materials) {
       for (const glMaterial of this.json.materials) {
-        const pbr = new PbrMaterial();
+        const pbr = new Material(glMaterial.name, PbrShader);
         const metallicROughness = glMaterial.pbrMetallicRoughness || {};
 
-        pbr.baseColorFactor.value = metallicROughness.baseColorFactor || [1, 1, 1, 1];
-        pbr.baseColor.texture = this._getTexture(metallicROughness.baseColorTexture);
-        pbr.metallicRoughnessFactor.value = [
-          metallicROughness.metallicFactor || 1.0,
-          metallicROughness.roughnessFactor || 1.0,
-        ];
-        pbr.metallicRoughness.texture = this._getTexture(metallicROughness.metallicRoughnessTexture);
-        pbr.normal.texture = this._getTexture(glMaterial.normalTexture);
-        pbr.occlusion.texture = this._getTexture(glMaterial.occlusionTexture);
-        pbr.occlusionStrength.value = (glMaterial.occlusionTexture && glMaterial.occlusionTexture.strength) ?
-          glMaterial.occlusionTexture.strength : 1.0;
-        pbr.emissiveFactor.value = glMaterial.emissiveFactor || [0, 0, 0];
-        pbr.emissive.texture = this._getTexture(glMaterial.emissiveTexture);
-        if (pbr.emissive.texture == null && glMaterial.emissiveFactor) {
-          pbr.emissive.texture = new ColorTexture(1.0, 1.0, 1.0, 1.0);
+        pbr.setUniform('baseColorFactor',
+          metallicROughness.baseColorFactor ?? [1, 1, 1, 1]);
+        pbr.setTexture('baseColor', this._getTexture(metallicROughness.baseColorTexture));
+        pbr.setUniform('metallicFactor', metallicROughness.metallicFactor ?? 1.0)
+        pbr.setUniform('roughnessFactor', metallicROughness.roughnessFactor ?? 1.0)
+        pbr.setTexture('metallicRoughness', this._getTexture(metallicROughness.metallicRoughnessTexture));
+        pbr.setTexture('normal', this._getTexture(glMaterial.normalTexture));
+        pbr.setTexture('occlusion', this._getTexture(glMaterial.occlusionTexture));
+        pbr.setUniform('occlusionStrength',
+          (glMaterial.occlusionTexture && glMaterial.occlusionTexture.strength)
+            ? glMaterial.occlusionTexture.strength
+            : 1.0);
+        pbr.setUniform('emissiveFactor', glMaterial.emissiveFactor ?? [0, 0, 0]);
+        pbr.setTexture('emissive', this._getTexture(glMaterial.emissiveTexture));
+        if (!pbr._textureMap.emissive && glMaterial.emissiveFactor) {
+          pbr.setTexture('emissive', new ColorTexture(1.0, 1.0, 1.0, 1.0));
         }
 
         switch (glMaterial.alphaMode) {
@@ -368,7 +373,7 @@ export class Gltf2Loader {
           const material = (glPrimitive.material != null)
             ? this.materials[glPrimitive.material]
             // Create a "default" material if the primitive has none.
-            : new PbrMaterial();
+            : DEFAULT_MATERIAL;
           ;
 
           // let min = null;

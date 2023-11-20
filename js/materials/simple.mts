@@ -1,16 +1,9 @@
-import { Material, MaterialSampler } from './material.mjs';
+import { Shader } from './shader.mjs';
 
-export class SimpleMaterial extends Material {
-  constructor() {
-    super();
-  }
+export const SimpleShader: Shader = {
+  name: 'simple',
 
-  get materialName() {
-    return 'simple';
-  }
-
-  get vertexSource() {
-    return `
+  vertexSource: `
 uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 
 in vec3 POSITION;
@@ -28,17 +21,14 @@ void main() {
   vLight = ambientColor + (lightColor * lightFactor);
   gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
 }
-`;
-  }
+`,
 
-  get fragmentSource() {
-    return `
+  fragmentSource: `
 precision mediump float;
 in vec3 vLight;
 out vec4 _Color;
 
 void main() {
   _Color = vec4(vLight, 1.0);
-}`;
-  }
+}`,
 }

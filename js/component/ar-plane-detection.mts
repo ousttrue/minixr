@@ -1,7 +1,7 @@
 // https://immersive-web.github.io/real-world-geometry/plane-detection.html
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
-import { ArOcclusionMaterial, ArOcclusionMaterialDebug, DetectedItem } from './ar-detection.mjs';
+import { ArOcclusionShader, ArOcclusionShaderDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 
@@ -42,10 +42,10 @@ export class ArPlaneDetection {
 
   constructor(mode: XRSessionMode) {
     if (mode == 'immersive-ar') {
-      this.arOcclusionMaterial = new ArOcclusionMaterial();
+      this.arOcclusionMaterial = new Material('ArOcclusionMaterial', ArOcclusionShader);
     }
     else {
-      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
+      this.arOcclusionMaterial = new Material('ArOcclusionMaterialDebug', ArOcclusionShaderDebug);
     }
   }
 

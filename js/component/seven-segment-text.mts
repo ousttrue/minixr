@@ -23,6 +23,7 @@ Renders simple text using a seven-segment LED style pattern. Only really good
 for numbers and a limited number of other characters.
 */
 
+import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
@@ -32,15 +33,11 @@ import { mat4 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
-class SevenSegmentMaterial extends Material {
-  ascii: Int32Array | null = null;
+const SevenSegmentShader: Shader = {
 
-  get materialName() {
-    return 'SEVEN_SEGMENT_TEXT';
-  }
+  name: 'SEVEN_SEGMENT_TEXT',
 
-  get vertexSource() {
-    return `
+  vertexSource: `
 in vec3 a_Position;
 in vec4 i_Cell;
 in vec2 i_Char_Color;
@@ -82,26 +79,17 @@ void main() {
     ;
   f_Color = extractUint32(i_Char_Color.y);
   // f_Color = vec4(1,1,1,1);
-}`;
-  }
+}`,
 
-  get fragmentSource() {
-    return `
+  fragmentSource: `
 precision mediump float;
 in vec4 f_Color;
 out vec4 _Color;
 void main() {
   _Color=f_Color;
-}`;
-  }
-
-  bind(gl: WebGL2RenderingContext,
-    uniformMap: { [key: string]: WebGLUniformLocation }) {
-    if (this.ascii) {
-      gl.uniform1iv(uniformMap.ascii, this.ascii);
-    }
-  }
+}`,
 }
+
 
 /* Segment layout is as follows:
 
@@ -166,8 +154,8 @@ class SevenSegment {
       this.defineAscii(key.codePointAt(0)!, SevenSegmentDefinition[key]);
     }
 
-    const material = new SevenSegmentMaterial();
-    material.ascii = this.ascii;
+    const material = new Material('SevenSegmentShader', SevenSegmentShader);
+    material.setUniform('ascii', this.ascii);
 
     // in vec2 a_Position;
     const vertexBuffer = new DataView(this.vertices.buffer);

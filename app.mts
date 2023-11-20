@@ -84,14 +84,14 @@ class AppSession {
     await cubeSeaFactory(this.world, 6, 0.5)
     await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
 
-    // await this._loadGltf('assets', 'garage');
+    await this._loadGltf('assets', 'garage');
 
     // await this._loadGltf('glTF-Sample-Models', 'CesiumMan');
-    await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
-      vec3.fromValues(0, 1, -3),
-      new quat(),
-      vec3.fromValues(1, 1, 1)
-    ));
+    // await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
+    //   vec3.fromValues(0, 1, -3),
+    //   new quat(),
+    //   vec3.fromValues(1, 1, 1)
+    // ));
   }
 
   private async _loadGltf(dir: string, name: string, origin?: mat4) {

@@ -17,7 +17,9 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-import { Material, ProgramDefine, MaterialUniform } from '../materials/material.mjs';
+import { Shader } from '../materials/shader.mjs';
+import { Material, MaterialUniform } from '../materials/material.mjs';
+import { ProgramDefine } from '../materials/shader.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { Texture } from '../materials/texture.mjs';
 
@@ -34,7 +36,7 @@ export const ATTRIB = {
   COLOR_0: 6,
 };
 
-export const ATTRIB_MASK = {
+export const ATTRIB_MASK: { [key: string]: number } = {
   POSITION: 0x0001,
   NORMAL: 0x0002,
   TANGENT: 0x0004,
@@ -61,10 +63,14 @@ export class Program {
   private _nextUseCallbacks: Function[] = [];
   constructor(public readonly gl: WebGL2RenderingContext,
     public readonly name: string,
-    vertSrc: string, fragSrc: string,
+    shader: Shader,
     defines: ProgramDefine[]) {
     this.program = gl.createProgram()!;
     console.log('create', name, this.program);
+
+    if(!shader){
+      throw new Error('no shader');
+    }
 
     let definesString = '#version 300 es\n';
     if (defines) {
@@ -75,17 +81,17 @@ export class Program {
     }
 
     const vertShader = gl.createShader(GL.VERTEX_SHADER)!;
-    gl.shaderSource(vertShader, definesString + vertSrc);
+    gl.shaderSource(vertShader, definesString + shader.vertexSource);
     gl.compileShader(vertShader);
     if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
-      console.error(`[${name}] Vertex shader compile error: ${gl.getShaderInfoLog(vertShader)}: ${definesString + vertSrc}`);
+      console.error(`[${name}] Vertex shader compile error: ${gl.getShaderInfoLog(vertShader)}: ${definesString + shader.vertexSource}`);
     }
 
     const fragShader = gl.createShader(GL.FRAGMENT_SHADER)!;
-    gl.shaderSource(fragShader, definesString + fragSrc);
+    gl.shaderSource(fragShader, definesString + shader.fragmentSource);
     gl.compileShader(fragShader);
     if (!gl.getShaderParameter(fragShader, GL.COMPILE_STATUS)) {
-      console.error(`[${name}] Fragment shader compile error: ${gl.getShaderInfoLog(fragShader)}: ${definesString + fragSrc}`);
+      console.error(`[${name}] Fragment shader compile error: ${gl.getShaderInfoLog(fragShader)}: ${definesString + shader.fragmentSource}`);
     }
 
     gl.attachShader(this.program, fragShader);
@@ -137,14 +143,14 @@ export class Program {
 
   bindMaterial(material: Material, getTexture: (src: Texture) => WebGLTexture | null) {
     const gl = this.gl;
-    for (let i = 0; i < material._samplers.length; ++i) {
-      const sampler = material._samplers[i];
-      const unit = this.textureUnitMap[sampler.name];
+    for (const name in material._textureMap) {
+      const texture = material._textureMap[name];
+      const unit = this.textureUnitMap[name];
       if (unit != null) {
         gl.activeTexture(gl.TEXTURE0 + unit);
-        if (sampler.texture) {
-          const texture = getTexture(sampler.texture);
-          gl.bindTexture(gl.TEXTURE_2D, texture);
+        if (texture) {
+          const handle = getTexture(texture);
+          gl.bindTexture(gl.TEXTURE_2D, handle);
         }
         else {
           gl.bindTexture(gl.TEXTURE_2D, null);
@@ -155,24 +161,11 @@ export class Program {
       }
     }
 
-    for (let src of material._uniforms) {
-      const dst = this.uniformMap[src.name];
+    for (const name in material._uniformMap) {
+      const dst = this.uniformMap[name];
       if (dst) {
-        this.setTo(gl, src, dst);
+        material._uniformMap[name].setTo(gl, dst);
       }
-    }
-
-    material.bind(gl, this.uniformMap);
-  }
-
-  setTo(gl: WebGL2RenderingContext, src: MaterialUniform, dst: WebGLUniformLocation) {
-    switch (src.length) {
-      case 1:
-        gl.uniform1fv(dst, [src.value]);
-        break;
-      case 2: gl.uniform2fv(dst, src.value); break;
-      case 3: gl.uniform3fv(dst, src.value); break;
-      case 4: gl.uniform4fv(dst, src.value); break;
     }
   }
 }
@@ -189,17 +182,17 @@ export class ProgramFactory {
 
     // determine shader defines by material & primitive combination 
     const attributeMask = getAttributeMask(primitive.attributes);
-    const defines = material.getProgramDefines(attributeMask);
+    // const defines = material.getProgramDefines(attributeMask);
+    const defines: ProgramDefine[] = [];
 
-    let key = this._getProgramKey(material.materialName, defines);
+    let key = this._getProgramKey(material.name, defines);
     let program = this._programCache[key];
     if (program) {
       return program;
     }
 
     program = new Program(this.gl,
-      key,
-      material.vertexSource, material.fragmentSource, defines);
+      key, material.shader, defines);
     this._programCache[key] = program;
 
     return program;

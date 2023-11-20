@@ -19,7 +19,8 @@
 // SOFTWARE.
 
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
-import { Material, MaterialState, CAP } from '../materials/material.mjs';
+import { Shader } from '../materials/shader.mjs';
+import { MaterialState, CAP } from '../materials/materialstate.mjs';
 import { Primitive } from '../geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program, ProgramFactory } from './program.mjs';

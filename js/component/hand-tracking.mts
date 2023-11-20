@@ -3,7 +3,8 @@
  */
 import { mat4 } from '../math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
-import { SimpleMaterial } from '../materials/simple.mjs';
+import { Material } from '../materials/material.mjs';
+import { SimpleShader } from '../materials/simple.mjs';
 import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { HoverActive } from './hover.mjs';
 
@@ -108,7 +109,7 @@ export class HandTracking {
     hand: 'left' | 'right'
   ): Promise<void> {
 
-    const material = new SimpleMaterial();
+    const material = new Material('SimpleMaterial', SimpleShader);
 
     const boxBuilder = new BoxBuilder();
     boxBuilder.pushCube([0, 0, 0], 0.01);

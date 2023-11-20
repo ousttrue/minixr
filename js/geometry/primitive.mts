@@ -21,7 +21,7 @@
 import { vec3, BoundingBox } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
 
-const GL = WebGLRenderingContext; // For enums
+const GL = WebGL2RenderingContext; // For enums
 
 export const ATTRIB: { [key: string]: number } = {
   POSITION: 1,
@@ -40,6 +40,7 @@ export const ATTRIB_MASK: { [key: string]: number } = {
   TEXCOORD_1: 0x0010,
   COLOR_0: 0x0020,
 };
+
 
 function getComponentSize(componentType: GL.FLOAT | GL.UNSIGNED_INT) {
   switch (componentType) {

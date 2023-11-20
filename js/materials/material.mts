@@ -17,299 +17,97 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+import { Shader } from './shader.mjs';
 import { Texture } from './texture.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
+import { MaterialState } from './materialstate.mjs';
 
-const GL = WebGLRenderingContext; // For enums
 
-export const VS_UNIFORMS = 'uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;'
+abstract class MaterialUniform {
+  abstract setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation): void;
+}
 
-export const CAP = {
-  // Enable caps
-  CULL_FACE: 0x001,
-  BLEND: 0x002,
-  DEPTH_TEST: 0x004,
-  STENCIL_TEST: 0x008,
-  COLOR_MASK: 0x010,
-  DEPTH_MASK: 0x020,
-  STENCIL_MASK: 0x040,
-};
+export class MaterialUniform1f {
+  constructor(public value: number) { }
 
-export const MAT_STATE = {
-  CAPS_RANGE: 0x000000FF,
-  BLEND_SRC_SHIFT: 8,
-  BLEND_SRC_RANGE: 0x00000F00,
-  BLEND_DST_SHIFT: 12,
-  BLEND_DST_RANGE: 0x0000F000,
-  BLEND_FUNC_RANGE: 0x0000FF00,
-  DEPTH_FUNC_SHIFT: 16,
-  DEPTH_FUNC_RANGE: 0x000F0000,
-};
-
-export const RENDER_ORDER = {
-  // Render opaque objects first.
-  OPAQUE: 0,
-
-  // Render the sky after all opaque object to save fill rate.
-  SKY: 1,
-
-  // Render transparent objects next so that the opaqe objects show through.
-  TRANSPARENT: 2,
-
-  // Finally render purely additive effects like pointer rays so that they
-  // can render without depth mask.
-  ADDITIVE: 3,
-
-  // Render order will be picked based on the material properties.
-  DEFAULT: 4,
-};
-
-export function stateToBlendFunc(state: number, mask: number, shift: number) {
-  let value = (state & mask) >> shift;
-  switch (value) {
-    case 0:
-    case 1:
-      return value;
-    default:
-      return (value - 2) + GL.SRC_COLOR;
+  setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation) {
+    gl.uniform1fv(dst, [this.value]);
+  }
+}
+export class MaterialUniform2f {
+  constructor(public value: vec2) { }
+  setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation) {
+    gl.uniform2fv(dst, this.value.array);
+  }
+}
+export class MaterialUniform3f {
+  constructor(public value: vec3) { }
+  setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation) {
+    gl.uniform3fv(dst, this.value.array);
+  }
+}
+export class MaterialUniform4f {
+  constructor(public value: vec4) { }
+  setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation) {
+    gl.uniform4fv(dst, this.value.array);
+  }
+}
+export class MaterialUniformInt32Array {
+  constructor(public value: Int32Array) { }
+  setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation) {
+    gl.uniform1iv(dst, this.value);
   }
 }
 
-export class MaterialState {
-  private _state = CAP.CULL_FACE |
-    CAP.DEPTH_TEST |
-    CAP.COLOR_MASK |
-    CAP.DEPTH_MASK;
-  get state(): number { return this._state; }
 
-  constructor() {
+export class Material {
+  state = new MaterialState();
+  _uniformMap: { [key: string]: MaterialUniform } = {}
+  _textureMap: { [key: string]: Texture } = {}
 
-    // Use a fairly commonly desired blend func as the default.
-    this.blendFuncSrc = GL.SRC_ALPHA;
-    this.blendFuncDst = GL.ONE_MINUS_SRC_ALPHA;
-
-    this.depthFunc = GL.LESS;
-  }
-
-  get cullFace() {
-    return !!(this._state & CAP.CULL_FACE);
-  }
-  set cullFace(value) {
-    if (value) {
-      this._state |= CAP.CULL_FACE;
-    } else {
-      this._state &= ~CAP.CULL_FACE;
-    }
-  }
-
-  get blend() {
-    return !!(this._state & CAP.BLEND);
-  }
-  set blend(value) {
-    if (value) {
-      this._state |= CAP.BLEND;
-    } else {
-      this._state &= ~CAP.BLEND;
-    }
-  }
-
-  get depthTest() {
-    return !!(this._state & CAP.DEPTH_TEST);
-  }
-  set depthTest(value) {
-    if (value) {
-      this._state |= CAP.DEPTH_TEST;
-    } else {
-      this._state &= ~CAP.DEPTH_TEST;
-    }
-  }
-
-  get stencilTest() {
-    return !!(this._state & CAP.STENCIL_TEST);
-  }
-  set stencilTest(value) {
-    if (value) {
-      this._state |= CAP.STENCIL_TEST;
-    } else {
-      this._state &= ~CAP.STENCIL_TEST;
-    }
-  }
-
-  get colorMask() {
-    return !!(this._state & CAP.COLOR_MASK);
-  }
-  set colorMask(value) {
-    if (value) {
-      this._state |= CAP.COLOR_MASK;
-    } else {
-      this._state &= ~CAP.COLOR_MASK;
-    }
-  }
-
-  get depthMask() {
-    return !!(this._state & CAP.DEPTH_MASK);
-  }
-  set depthMask(value) {
-    if (value) {
-      this._state |= CAP.DEPTH_MASK;
-    } else {
-      this._state &= ~CAP.DEPTH_MASK;
-    }
-  }
-
-  get depthFunc() {
-    return ((this._state & MAT_STATE.DEPTH_FUNC_RANGE) >> MAT_STATE.DEPTH_FUNC_SHIFT) + GL.NEVER;
-  }
-  set depthFunc(value) {
-    value = value - GL.NEVER;
-    this._state &= ~MAT_STATE.DEPTH_FUNC_RANGE;
-    this._state |= (value << MAT_STATE.DEPTH_FUNC_SHIFT);
-  }
-
-  get stencilMask() {
-    return !!(this._state & CAP.STENCIL_MASK);
-  }
-  set stencilMask(value) {
-    if (value) {
-      this._state |= CAP.STENCIL_MASK;
-    } else {
-      this._state &= ~CAP.STENCIL_MASK;
-    }
-  }
-
-  get blendFuncSrc() {
-    return stateToBlendFunc(this._state, MAT_STATE.BLEND_SRC_RANGE, MAT_STATE.BLEND_SRC_SHIFT);
-  }
-  set blendFuncSrc(value) {
-    switch (value) {
-      case 0:
-      case 1:
-        break;
-      default:
-        value = (value - GL.SRC_COLOR) + 2;
-    }
-    this._state &= ~MAT_STATE.BLEND_SRC_RANGE;
-    this._state |= (value << MAT_STATE.BLEND_SRC_SHIFT);
-  }
-
-  get blendFuncDst() {
-    return stateToBlendFunc(this._state, MAT_STATE.BLEND_DST_RANGE, MAT_STATE.BLEND_DST_SHIFT);
-  }
-  set blendFuncDst(value) {
-    switch (value) {
-      case 0:
-      case 1:
-        break;
-      default:
-        value = (value - GL.SRC_COLOR) + 2;
-    }
-    this._state &= ~MAT_STATE.BLEND_DST_RANGE;
-    this._state |= (value << MAT_STATE.BLEND_DST_SHIFT);
-  }
-
-  // Only really for use from the renderer
-  _capsDiff(otherState: number) {
-    return (otherState & MAT_STATE.CAPS_RANGE) ^ (this._state & MAT_STATE.CAPS_RANGE);
-  }
-
-  _blendDiff(otherState: number) {
-    if (!(this._state & CAP.BLEND)) {
-      return 0;
-    }
-    return (otherState & MAT_STATE.BLEND_FUNC_RANGE) ^ (this._state & MAT_STATE.BLEND_FUNC_RANGE);
-  }
-
-  _depthFuncDiff(otherState: number) {
-    if (!(this._state & CAP.DEPTH_TEST)) {
-      return 0;
-    }
-    return (otherState & MAT_STATE.DEPTH_FUNC_RANGE) ^ (this._state & MAT_STATE.DEPTH_FUNC_RANGE);
-  }
-}
-
-export class MaterialSampler {
-  private _texture: Texture | null = null;
-  constructor(public name: string) {
-  }
-
-  get texture(): Texture | null {
-    return this._texture;
-  }
-
-  set texture(value: Texture | null) {
-    this._texture = value;
-  }
-}
-
-export type UnifromVariableType = number | vec2 | vec3 | vec4;
-
-export class MaterialUniform {
-  private _value: any;
-  readonly length: number;
   constructor(
-    public name: string,
-    defaultValue: UnifromVariableType) {
-    if (typeof (defaultValue) == "number") {
-      this.length = 1;
-      this._value = defaultValue;
+    public readonly name: string,
+    public readonly shader: Shader) {
+    if (shader.uniforms) {
+      for (const [name, value] of shader.uniforms) {
+        this.setUniform(name, value);
+      }
     }
-    else if (defaultValue instanceof vec2) {
-      this.length = 2;
-      this._value = defaultValue.array;
+  }
+
+  setUniform(name: string, value: number | vec2 | vec3 | vec4 | number[] | Int32Array) {
+    if (typeof (value) == 'number') {
+      this._uniformMap[name] = new MaterialUniform1f(value);
     }
-    else if (defaultValue instanceof vec3) {
-      this.length = 3;
-      this._value = defaultValue.array;
+    else if (value instanceof Array) {
+      switch (value.length) {
+        case 1: this._uniformMap[name] = new MaterialUniform1f(value[0]); break;
+        case 2: this._uniformMap[name] = new MaterialUniform2f(vec2.fromValues(...value)); break;
+        case 3: this._uniformMap[name] = new MaterialUniform3f(vec3.fromValues(...value)); break;
+        case 4: this._uniformMap[name] = new MaterialUniform4f(vec4.fromValues(...value)); break;
+        default: throw new Error(`unknown type: ${value}`);
+      }
     }
-    else if (defaultValue instanceof vec4) {
-      this.length = 4;
-      this._value = defaultValue.array;
+    else if (value instanceof vec2) {
+      this._uniformMap[name] = new MaterialUniform2f(value);
+    }
+    else if (value instanceof vec3) {
+      this._uniformMap[name] = new MaterialUniform3f(value);
+    }
+    else if (value instanceof vec4) {
+      this._uniformMap[name] = new MaterialUniform4f(value);
+    }
+    else if (value instanceof Int32Array) {
+      this._uniformMap[name] = new MaterialUniformInt32Array(value);
     }
     else {
-      throw new Error(`invalid type: ${defaultValue}`);
+      throw new Error(`unknown type: ${value}`);
     }
   }
 
-  get value() {
-    return this._value;
-  }
-
-  set value(value) {
-    this._value = value;
-  }
-}
-
-
-export type ProgramDefine = [string, number];
-
-
-export abstract class Material {
-  state = new MaterialState();
-  renderOrder = RENDER_ORDER.DEFAULT;
-
-  _samplers: MaterialSampler[] = [];
-  defineSampler(uniformName: string): MaterialSampler {
-    let sampler = new MaterialSampler(uniformName);
-    this._samplers.push(sampler);
-    return sampler;
-  }
-
-  _uniforms: MaterialUniform[] = [];
-  defineUniform(uniformName: string, defaultValue: UnifromVariableType): MaterialUniform {
-    let uniform = new MaterialUniform(uniformName, defaultValue);
-    this._uniforms.push(uniform);
-    return uniform;
-  }
-
-  abstract get materialName(): string;
-  abstract get vertexSource(): string;
-  abstract get fragmentSource(): string;
-
-  bind(gl: WebGL2RenderingContext,
-    uniformMap: { [key: string]: WebGLUniformLocation }) {
-  }
-
-  getProgramDefines(attributeMask: number): ProgramDefine[] {
-    return [];
+  setTexture(name: string, texture: Texture | null) {
+    if (texture) {
+      this._textureMap[name] = texture;
+    }
   }
 }
