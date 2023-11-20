@@ -17,43 +17,74 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-import { Material } from '../scene/materials/material.mjs';
-import { Primitive, ATTRIB } from '../scene/geometry/primitive.mjs';
-import { Texture } from '../scene/materials/texture.mjs';
+import { Material, ProgramDefine, MaterialUniform } from '../materials/material.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Texture } from '../materials/texture.mjs';
 
+
+const GL = WebGL2RenderingContext;
+
+
+export const ATTRIB = {
+  POSITION: 1,
+  NORMAL: 2,
+  TANGENT: 3,
+  TEXCOORD_0: 4,
+  TEXCOORD_1: 5,
+  COLOR_0: 6,
+};
+
+export const ATTRIB_MASK = {
+  POSITION: 0x0001,
+  NORMAL: 0x0002,
+  TANGENT: 0x0004,
+  TEXCOORD_0: 0x0008,
+  TEXCOORD_1: 0x0010,
+  COLOR_0: 0x0020,
+};
+
+
+function getAttributeMask(attributes: PrimitiveAttribute[]): number {
+  let attributeMask = 0;
+  for (const attribute of attributes) {
+    attributeMask |= ATTRIB_MASK[attribute.name];
+  }
+  return attributeMask;
+}
 
 export class Program {
   program: WebGLProgram;
   attrib: { [key: string]: number } = {};
   uniformMap: { [key: string]: WebGLUniformLocation } = {};
+  textureUnitMap: { [key: string]: number } = {};
   defines: { [key: string]: number } = {};
   private _nextUseCallbacks: Function[] = [];
   constructor(public readonly gl: WebGL2RenderingContext,
-    name: string,
+    public readonly name: string,
     vertSrc: string, fragSrc: string,
-    defines: { [key: string]: number }) {
+    defines: ProgramDefine[]) {
     this.program = gl.createProgram()!;
-    // console.log('create', this.program);
+    console.log('create', name, this.program);
 
     let definesString = '#version 300 es\n';
     if (defines) {
-      for (let define in defines) {
-        this.defines[define] = defines[define];
-        definesString += `#define ${define} ${defines[define]}\n`;
+      for (let [key, value] of defines) {
+        this.defines[key] = value;
+        definesString += `#define ${key} ${value}\n`;
       }
     }
 
-    const vertShader = gl.createShader(gl.VERTEX_SHADER)!;
+    const vertShader = gl.createShader(GL.VERTEX_SHADER)!;
     gl.shaderSource(vertShader, definesString + vertSrc);
     gl.compileShader(vertShader);
     if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
       console.error(`[${name}] Vertex shader compile error: ${gl.getShaderInfoLog(vertShader)}: ${definesString + vertSrc}`);
     }
 
-    const fragShader = gl.createShader(gl.FRAGMENT_SHADER)!;
+    const fragShader = gl.createShader(GL.FRAGMENT_SHADER)!;
     gl.shaderSource(fragShader, definesString + fragSrc);
     gl.compileShader(fragShader);
-    if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
+    if (!gl.getShaderParameter(fragShader, GL.COMPILE_STATUS)) {
       console.error(`[${name}] Fragment shader compile error: ${gl.getShaderInfoLog(fragShader)}: ${definesString + fragSrc}`);
     }
 
@@ -62,7 +93,7 @@ export class Program {
     gl.linkProgram(this.program);
     gl.deleteShader(vertShader);
     gl.deleteShader(fragShader);
-    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+    if (!gl.getProgramParameter(this.program, GL.LINK_STATUS)) {
       console.error(`[${name}] Program link error: ${gl.getProgramInfoLog(this.program)}`);
     }
 
@@ -81,14 +112,16 @@ export class Program {
         const uniformName = uniformInfo.name.replace('[0]', '');
         const location = gl.getUniformLocation(this.program, uniformName);
         if (location) {
-          this.uniformMap[uniformName] = location;
+          if (uniformInfo.type == GL.SAMPLER_2D) {
+            const v = gl.getUniform(this.program, location);
+            this.textureUnitMap[uniformName] = v;
+          }
+          else {
+            this.uniformMap[uniformName] = location;
+          }
         }
       }
     }
-  }
-
-  onNextUse(callback: Function) {
-    this._nextUseCallbacks.push(callback);
   }
 
   use() {
@@ -104,27 +137,43 @@ export class Program {
 
   bindMaterial(material: Material, getTexture: (src: Texture) => WebGLTexture | null) {
     const gl = this.gl;
-    for (let i = 0; i < material.samplers.length; ++i) {
-      const sampler = material.samplers[i];
-      gl.activeTexture(gl.TEXTURE0 + i);
-
-      if (sampler.texture) {
-        const texture = getTexture(sampler.texture);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
+    for (let i = 0; i < material._samplers.length; ++i) {
+      const sampler = material._samplers[i];
+      const unit = this.textureUnitMap[sampler.name];
+      if (unit != null) {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        if (sampler.texture) {
+          const texture = getTexture(sampler.texture);
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+        }
+        else {
+          gl.bindTexture(gl.TEXTURE_2D, null);
+        }
       }
       else {
-        gl.bindTexture(gl.TEXTURE_2D, null);
+        // console.warn(`${sampler.name}: unit not found`);
       }
     }
 
-    for (let src of material.uniforms) {
+    for (let src of material._uniforms) {
       const dst = this.uniformMap[src.name];
       if (dst) {
-        src.setTo(gl, dst);
+        this.setTo(gl, src, dst);
       }
     }
 
     material.bind(gl, this.uniformMap);
+  }
+
+  setTo(gl: WebGL2RenderingContext, src: MaterialUniform, dst: WebGLUniformLocation) {
+    switch (src.length) {
+      case 1:
+        gl.uniform1fv(dst, [src.value]);
+        break;
+      case 2: gl.uniform2fv(dst, src.value); break;
+      case 3: gl.uniform3fv(dst, src.value); break;
+      case 4: gl.uniform4fv(dst, src.value); break;
+    }
   }
 }
 
@@ -137,40 +186,33 @@ export class ProgramFactory {
 
   getOrCreateProgram(primitive: Primitive): Program {
     const material = primitive.material;
-    let key = this._getProgramKey(material.materialName, {});
+
+    // determine shader defines by material & primitive combination 
+    const attributeMask = getAttributeMask(primitive.attributes);
+    const defines = material.getProgramDefines(attributeMask);
+
+    let key = this._getProgramKey(material.materialName, defines);
     let program = this._programCache[key];
     if (program) {
       return program;
     }
 
     program = new Program(this.gl,
-      material.materialName,
-      material.vertexSource, material.fragmentSource, {});
+      key,
+      material.vertexSource, material.fragmentSource, defines);
     this._programCache[key] = program;
-
-    program.onNextUse((program: Program) => {
-      // Bind the samplers to the right texture index. This is constant for
-      // the lifetime of the program.
-      for (let i = 0; i < material.samplers.length; ++i) {
-        const sampler = material.samplers[i];
-        let uniform = program.uniformMap[sampler.name];
-        if (uniform) {
-          this.gl.uniform1i(uniform, i);
-        }
-      }
-    });
 
     return program;
   }
 
-  private _getProgramKey(name: string, defines: any) {
+  private _getProgramKey(name: string, defines: ProgramDefine[]) {
     if (!name) {
       throw new Error('no material name');
     }
-    let key = `${name}:`;
-    for (let define in defines) {
-      key += `${define}=${defines[define]},`;
+    let str = `${name}:`;
+    for (const [key, value] of defines) {
+      str += `${key}=${value},`;
     }
-    return key;
+    return str;
   }
 }

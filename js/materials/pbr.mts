@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Material, MaterialSampler, MaterialUniform, ProgramDefines } from './material.mjs';
+import { Material, MaterialSampler, MaterialUniform, ProgramDefine } from './material.mjs';
 import { ATTRIB_MASK } from '../geometry/primitive.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 
@@ -145,7 +145,7 @@ ${EPIC_PBR_FUNCTIONS}
 
 void main() {
 #ifdef USE_BASE_COLOR_MAP
-  vec4 baseColor = texture2D(baseColorTex, vTex) * baseColorFactor;
+  vec4 baseColor = texture(baseColorTex, vTex) * baseColorFactor;
 #else
   vec4 baseColor = baseColorFactor;
 #endif
@@ -155,7 +155,7 @@ void main() {
 #endif
 
 #ifdef USE_NORMAL_MAP
-  vec3 n = texture2D(normalTex, vTex).rgb;
+  vec3 n = texture(normalTex, vTex).rgb;
   n = normalize(vTBN * (2.0 * n - 1.0));
 #else
   vec3 n = normalize(vNorm);
@@ -170,7 +170,7 @@ void main() {
   float roughness = metallicRoughnessFactor.y;
 
 #ifdef USE_METAL_ROUGH_MAP
-  vec4 metallicRoughness = texture2D(metallicRoughnessTex, vTex);
+  vec4 metallicRoughness = texture(metallicRoughnessTex, vTex);
   metallic *= metallicRoughness.b;
   roughness *= metallicRoughness.g;
 #endif
@@ -203,13 +203,13 @@ void main() {
   vec3 color = (halfLambert * LIGHT_COLOR * lambertDiffuse(cDiff)) + specular;
 
 #ifdef USE_OCCLUSION
-  float occlusion = texture2D(occlusionTex, vTex).r;
+  float occlusion = texture(occlusionTex, vTex).r;
   color = mix(color, color * occlusion, occlusionStrength);
 #endif
   
   vec3 emissive = emissiveFactor;
 #ifdef USE_EMISSIVE_TEXTURE
-  emissive *= texture2D(emissiveTex, vTex).rgb;
+  emissive *= texture(emissiveTex, vTex).rgb;
 #endif
   color += emissive;
 
@@ -256,42 +256,42 @@ export class PbrMaterial extends Material {
     return FRAGMENT_SOURCE;
   }
 
-  getProgramDefines(attributeMask: number): ProgramDefines {
-    let programDefines: ProgramDefines = {};
+  getProgramDefines(attributeMask: number): ProgramDefine[] {
+    const programDefines: ProgramDefine[] = [];
 
     if (attributeMask & ATTRIB_MASK.COLOR_0) {
-      programDefines['USE_VERTEX_COLOR'] = 1;
+      programDefines.push(['USE_VERTEX_COLOR', 1]);
     }
 
     if (attributeMask & ATTRIB_MASK.TEXCOORD_0) {
       if (this.baseColor.texture) {
-        programDefines['USE_BASE_COLOR_MAP'] = 1;
+        programDefines.push(['USE_BASE_COLOR_MAP', 1]);
       }
 
       if (this.normal.texture && (attributeMask & ATTRIB_MASK.TANGENT)) {
-        programDefines['USE_NORMAL_MAP'] = 1;
+        programDefines.push(['USE_NORMAL_MAP', 1]);
       }
 
       if (this.metallicRoughness.texture) {
-        programDefines['USE_METAL_ROUGH_MAP'] = 1;
+        programDefines.push(['USE_METAL_ROUGH_MAP', 1]);
       }
 
       if (this.occlusion.texture) {
-        programDefines['USE_OCCLUSION'] = 1;
+        programDefines.push(['USE_OCCLUSION', 1]);
       }
 
       if (this.emissive.texture) {
-        programDefines['USE_EMISSIVE_TEXTURE'] = 1;
+        programDefines.push(['USE_EMISSIVE_TEXTURE', 1]);
       }
     }
 
     if ((!this.metallicRoughness.texture ||
       !(attributeMask & ATTRIB_MASK.TEXCOORD_0)) &&
       this.metallicRoughnessFactor.value[1] == 1.0) {
-      programDefines['FULLY_ROUGH'] = 1;
+      programDefines.push(['FULLY_ROUGH', 1]);
     }
 
     // console.log(attributeMask, programDefines);
-    return programDefines as ProgramDefines;
+    return programDefines;
   }
 }

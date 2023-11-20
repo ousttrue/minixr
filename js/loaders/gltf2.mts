@@ -371,18 +371,6 @@ export class Gltf2Loader {
             : new PbrMaterial();
           ;
 
-          // TODO:
-          // determine shader defines by material & primitive combination 
-          // const attributeMask = primitive.getAttributeMask();
-          // getProgramDefines(attributeMask);
-          // getAttributeMask(): number {
-          //   let attributeMask = 0;
-          //   for (let attribute of this.attributes) {
-          //     attributeMask |= ATTRIB_MASK[attribute.name];
-          //   }
-          //   return attributeMask;
-          // }
-
           // let min = null;
           // let max = null;
 

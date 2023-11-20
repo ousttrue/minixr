@@ -277,32 +277,27 @@ export class MaterialUniform {
   set value(value) {
     this._value = value;
   }
-
-  setTo(gl: WebGL2RenderingContext, dst: WebGLUniformLocation) {
-    switch (this.length) {
-      case 1: gl.uniform1fv(dst, this.value); break;
-      case 2: gl.uniform2fv(dst, this.value); break;
-      case 3: gl.uniform3fv(dst, this.value); break;
-      case 4: gl.uniform4fv(dst, this.value); break;
-    }
-  }
 }
+
+
+export type ProgramDefine = [string, number];
+
 
 export abstract class Material {
   state = new MaterialState();
   renderOrder = RENDER_ORDER.DEFAULT;
 
-  samplers: MaterialSampler[] = [];
+  _samplers: MaterialSampler[] = [];
   defineSampler(uniformName: string): MaterialSampler {
     let sampler = new MaterialSampler(uniformName);
-    this.samplers.push(sampler);
+    this._samplers.push(sampler);
     return sampler;
   }
 
-  uniforms: MaterialUniform[] = [];
+  _uniforms: MaterialUniform[] = [];
   defineUniform(uniformName: string, defaultValue: UnifromVariableType): MaterialUniform {
     let uniform = new MaterialUniform(uniformName, defaultValue);
-    this.uniforms.push(uniform);
+    this._uniforms.push(uniform);
     return uniform;
   }
 
@@ -312,5 +307,9 @@ export abstract class Material {
 
   bind(gl: WebGL2RenderingContext,
     uniformMap: { [key: string]: WebGLUniformLocation }) {
+  }
+
+  getProgramDefines(attributeMask: number): ProgramDefine[] {
+    return [];
   }
 }

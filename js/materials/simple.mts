@@ -1,10 +1,8 @@
 import { Material, MaterialSampler } from './material.mjs';
 
 export class SimpleMaterial extends Material {
-  baseColor: MaterialSampler;
   constructor() {
     super();
-    this.baseColor = this.defineSampler('baseColor');
   }
 
   get materialName() {

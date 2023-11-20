@@ -84,11 +84,9 @@ class AppSession {
     await cubeSeaFactory(this.world, 6, 0.5)
     await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
 
-    // await this._loadGltf('space');
-    await this._loadGltf('asets', 'garage');
-    // await this._loadGltf('home-theater');
+    // await this._loadGltf('assets', 'garage');
 
-    await this._loadGltf('glTF-Sample-Models', 'CesiumMan');
+    // await this._loadGltf('glTF-Sample-Models', 'CesiumMan');
     await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
       vec3.fromValues(0, 1, -3),
       new quat(),
@@ -108,8 +106,6 @@ class AppSession {
 
   onXRFrame(time: number, frame: XRFrame) {
     const session = frame.session;
-    // Inform the session that we're ready for the next frame.
-    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
 
     const xrRefSpace = this._inlineViewerHelper
       ? this._inlineViewerHelper.referenceSpace
@@ -218,6 +214,9 @@ class AppSession {
     }
 
     this._stats.end(this.world);
+
+    // Inform the session that we're ready for the next frame.
+    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
   }
 }
 
