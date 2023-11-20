@@ -41,22 +41,21 @@ class AppSession {
   constructor(
     public readonly mode: XRSessionMode,
     public readonly session: XRSession,
-    public readonly localSpace: XRReferenceSpace,
+    public readonly space: XRReferenceSpace,
     public readonly gl: WebGL2RenderingContext,
-    public readonly floorSpace?: XRReferenceSpace | XRBoundedReferenceSpace,
     private readonly _inlineViewerHelper: InlineViewerHelper | null = null
   ) {
     // Create a renderer with that GL context (this is just for the samples
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(gl);
     // this.term = new XRTerm(gl);
-    this._meshDetection = new ArMeshDetection(mode == 'inline');
-    this._planeDetection = new ArPlaneDetection(mode == 'inline');
+    this._meshDetection = new ArMeshDetection(mode);
+    this._planeDetection = new ArPlaneDetection(mode);
   }
 
   async start() {
-    if (this.floorSpace instanceof XRBoundedReferenceSpace) {
-      await BoundsRenderer.factory(this.world, this.floorSpace);
+    if (this.space instanceof XRBoundedReferenceSpace) {
+      await BoundsRenderer.factory(this.world, this.space);
     }
 
     await this._setupScene();
@@ -71,12 +70,12 @@ class AppSession {
   async _setupScene() {
     {
       const matrix = mat4.fromTRS(
-        vec3.fromValues(0, -0.3, -0.5),
+        vec3.fromValues(0, 1.3, -0.5),
         quat.fromEuler(-45.0, 0.0, 0.0),
         vec3.fromValues(0.3, 0.3, 0.3),
       );
-      await StatsGraph.factory(this.world, matrix, this.mode == 'inline');
-      await SevenSegmentText.factory(this.world, matrix, this.mode == 'inline');
+      await StatsGraph.factory(this.world, matrix);
+      await SevenSegmentText.factory(this.world, matrix);
     }
 
     await HandTracking.factory(this.world, "left");
@@ -85,7 +84,26 @@ class AppSession {
     await cubeSeaFactory(this.world, 6, 0.5)
     await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
 
-    await Gltf2Loader.loadFromUrl(this.world, './assets/gltf/space/space.gltf');
+    // await this._loadGltf('space');
+    await this._loadGltf('asets', 'garage');
+    // await this._loadGltf('home-theater');
+
+    await this._loadGltf('glTF-Sample-Models', 'CesiumMan');
+    await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
+      vec3.fromValues(0, 1, -3),
+      new quat(),
+      vec3.fromValues(1, 1, 1)
+    ));
+  }
+
+  private async _loadGltf(dir: string, name: string, origin?: mat4) {
+    if (dir == 'assets') {
+      await Gltf2Loader.loadFromUrl(this.world, `./assets/gltf/${name}/${name}.gltf`);
+    }
+    else if (dir == 'glTF-Sample-Models') {
+      await Gltf2Loader.loadFromUrl(this.world,
+        `./glTF-Sample-Models/2.0/${name}/glTF-Binary/${name}.glb`, origin);
+    }
   }
 
   onXRFrame(time: number, frame: XRFrame) {
@@ -95,7 +113,7 @@ class AppSession {
 
     const xrRefSpace = this._inlineViewerHelper
       ? this._inlineViewerHelper.referenceSpace
-      : this.localSpace;
+      : this.space;
 
     // Per-frame scene setup. Nothing WebXR specific here.
     this._stats.begin(this.world);
@@ -246,11 +264,26 @@ export default class App {
     // Get a frame of reference, which is required for querying poses. In
     // this case an 'local' frame of reference means that all poses will
     // be relative to the location where the XRDevice was first detected.
-    let localSpace = await session.requestReferenceSpace(mode == 'inline' ? 'viewer' : 'local');
+    // let localSpace = await session.requestReferenceSpace(mode == 'inline' ? 'viewer' : 'local');
+
+    let space: XRReferenceSpace | undefined = undefined;
+    try {
+      space = await session.requestReferenceSpace('bounded-floor');
+    }
+    catch (err) {
+    }
+
+    if (!space) {
+      try {
+        space = await session.requestReferenceSpace('local-floor');
+      }
+      catch (err) {
+      }
+    }
 
     let inlineViewerHelper: InlineViewerHelper | null = null;
     if (mode == 'inline') {
-      inlineViewerHelper = new InlineViewerHelper(canvas, localSpace);
+      inlineViewerHelper = new InlineViewerHelper(canvas, space!);
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       document.body.appendChild(canvas);
@@ -263,22 +296,7 @@ export default class App {
     window.addEventListener('resize', onResize);
     onResize();
 
-    let floorSpace: XRReferenceSpace | undefined = undefined;
-    try {
-      floorSpace = await session.requestReferenceSpace('bounded-floor');
-    }
-    catch (err) {
-    }
-
-    if (!floorSpace) {
-      try {
-        floorSpace = await session.requestReferenceSpace('local-floor');
-      }
-      catch (err) {
-      }
-    }
-
-    this.appSession = new AppSession(mode, session, localSpace, gl, floorSpace, inlineViewerHelper);
+    this.appSession = new AppSession(mode, session, space, gl, inlineViewerHelper);
     this.appSession.start();
   }
 }

@@ -31,12 +31,12 @@ export class ArMeshDetection {
   newMap: Map<XRMesh, DetectedItem> = new Map();
   arOcclusionMaterial: Material;
 
-  constructor(isDebug = false) {
-    if (isDebug) {
-      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
+  constructor(mode: XRSessionMode) {
+    if (mode == 'immersive-ar') {
+      this.arOcclusionMaterial = new ArOcclusionMaterial();
     }
     else {
-      this.arOcclusionMaterial = new ArOcclusionMaterial();
+      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
     }
   }
 

@@ -139,21 +139,25 @@ export class Gltf2Loader {
     return new Gltf2Loader(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
   }
 
-  static async loadFromUrl(world: World, url: string): Promise<Gltf2Loader> {
-    const response = await fetch(url);
+  static async loadFromUrl(world: World, url: string, origin?: mat4): Promise<Gltf2Loader> {
+    const response =
+      url.startsWith('http://')
+        ? await fetch(url, { mode: "cors" })
+        : await fetch(url)
+      ;
     const i = url.lastIndexOf('/');
     const baseUrl = (i !== 0) ? url.substring(0, i + 1) : '';
     if (url.endsWith('.gltf')) {
       const json = await response.json();
       const loader = new Gltf2Loader(json, baseUrl);
       await loader.load();
-      loader.build(world);
+      loader.build(world, origin);
       return loader;
     } else if (url.endsWith('.glb')) {
       const arrayBuffer = await response.arrayBuffer()
       const loader = Gltf2Loader.loadFromBinary(arrayBuffer, baseUrl);
       await loader.load();
-      loader.build(world);
+      loader.build(world, origin);
       return loader;
     } else {
       throw new Error('Unrecognized file extension');
@@ -418,14 +422,14 @@ export class Gltf2Loader {
     }
   }
 
-  build(world: World) {
+  build(world: World, origin?: mat4) {
     // const sceneNode = new Node('gltf.scene');
     if (this.json.nodes && this.json.scenes) {
       const scene = this.json.scenes[this.json.scene ?? 0];
       if (scene.nodes) {
         for (const nodeId of scene.nodes) {
           const glNode = this.json.nodes[nodeId];
-          this._processNodes(world, glNode);
+          this._processNodes(world, glNode, origin);
         }
       }
     }

@@ -40,12 +40,12 @@ export class ArPlaneDetection {
   newMap: Map<XRPlane, DetectedItem> = new Map();
   arOcclusionMaterial: Material;
 
-  constructor(isDebug = false) {
-    if (isDebug) {
-      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
+  constructor(mode: XRSessionMode) {
+    if (mode == 'immersive-ar') {
+      this.arOcclusionMaterial = new ArOcclusionMaterial();
     }
     else {
-      this.arOcclusionMaterial = new ArOcclusionMaterial();
+      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
     }
   }
 
@@ -110,7 +110,7 @@ export class ArPlaneDetection {
       matrix.array.set(pose.transform.matrix);
       const entity = world.create(matrix, primitive);
 
-      console.log('new plane', entity, plane)
+      // console.log('new plane', entity, plane)
       this.newMap.set(plane, {
         entity,
         time: plane.lastChangedTime
