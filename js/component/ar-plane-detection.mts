@@ -38,7 +38,16 @@ export class ArPlaneDetection {
 
   lastMap: Map<XRPlane, DetectedItem> = new Map();
   newMap: Map<XRPlane, DetectedItem> = new Map();
-  arOcclusionMaterial = new ArOcclusionMaterial();
+  arOcclusionMaterial: Material;
+
+  constructor(isDebug = false) {
+    if (isDebug) {
+      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
+    }
+    else {
+      this.arOcclusionMaterial = new ArOcclusionMaterial();
+    }
+  }
 
   update(world: World, refsp: XRReferenceSpace, frame: XRFrame) {
 

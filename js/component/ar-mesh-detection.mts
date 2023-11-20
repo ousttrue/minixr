@@ -29,7 +29,16 @@ export class ArMeshDetection {
 
   lastMap: Map<XRMesh, DetectedItem> = new Map();
   newMap: Map<XRMesh, DetectedItem> = new Map();
-  arOcclusionMaterial = new ArOcclusionMaterial();
+  arOcclusionMaterial: Material;
+
+  constructor(isDebug = false) {
+    if (isDebug) {
+      this.arOcclusionMaterial = new ArOcclusionMaterialDebug();
+    }
+    else {
+      this.arOcclusionMaterial = new ArOcclusionMaterial();
+    }
+  }
 
   update(world: World, refsp: XRReferenceSpace, frame: XRFrame) {
 

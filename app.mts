@@ -30,8 +30,8 @@ class AppSession {
 
   _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
-  _meshDetection = new ArMeshDetection();
-  _planeDetection = new ArPlaneDetection();
+  _meshDetection: ArMeshDetection;
+  _planeDetection: ArPlaneDetection;
 
   // term: XRTerm;
   // xrGLFactory: XRWebGLBinding;
@@ -50,6 +50,8 @@ class AppSession {
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(gl);
     // this.term = new XRTerm(gl);
+    this._meshDetection = new ArMeshDetection(mode == 'inline');
+    this._planeDetection = new ArPlaneDetection(mode == 'inline');
   }
 
   async start() {
@@ -73,8 +75,8 @@ class AppSession {
         quat.fromEuler(-45.0, 0.0, 0.0),
         vec3.fromValues(0.3, 0.3, 0.3),
       );
-      await StatsGraph.factory(this.world, matrix);
-      await SevenSegmentText.factory(this.world, matrix);
+      await StatsGraph.factory(this.world, matrix, this.mode == 'inline');
+      await SevenSegmentText.factory(this.world, matrix, this.mode == 'inline');
     }
 
     await HandTracking.factory(this.world, "left");
