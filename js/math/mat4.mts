@@ -845,6 +845,45 @@ export class mat4 {
   //   return out;
   // }
 
+  getX(option?: { out: vec3 }): vec3 {
+    if (option?.out) {
+      const dst = option?.out;
+      // copy
+      dst.array.set(this.array.subarray(0, 3));
+      return dst;
+    }
+    else {
+      // reference
+      return new vec3(this.array.subarray(0, 3));
+    }
+  }
+
+  getY(option?: { out: vec3 }): vec3 {
+    if (option?.out) {
+      const dst = option?.out;
+      // copy
+      dst.array.set(this.array.subarray(4, 7));
+      return dst;
+    }
+    else {
+      // reference
+      return new vec3(this.array.subarray(4, 7));
+    }
+  }
+
+  getZ(option?: { out: vec3 }): vec3 {
+    if (option?.out) {
+      const dst = option?.out;
+      // copy
+      dst.array.set(this.array.subarray(8, 11));
+      return dst;
+    }
+    else {
+      // reference
+      return new vec3(this.array.subarray(8, 11));
+    }
+  }
+
   /**
    * Returns the translation vector component of a transformation
    *  matrix. If a matrix is built with fromRotationTranslation,

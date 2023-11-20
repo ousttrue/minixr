@@ -24,15 +24,14 @@ which XRSession. Also handles the necessary logic for enabling mouse/touch-based
 view rotation for inline sessions if desired.
 */
 
-import { quat } from '../math/gl-matrix.mjs';
+import { vec3, mat4 } from '../math/gl-matrix.mjs';
 
-const LOOK_SPEED = 0.0025;
+const toOrigin = mat4.fromTranslation(0, 1.6, 0)
+const restorOrigin = mat4.fromTranslation(0, -1.6, 0)
 
 export class InlineViewerHelper {
-  lookYaw = 0;
-  lookPitch = 0;
-  viewerHeight = 0;
-  dirty = false;
+  matrix = mat4.identity();
+  xform = new XRRigidTransform();
 
   baseRefSpace: XRReferenceSpace;
   refSpace: XRReferenceSpace;
@@ -40,6 +39,7 @@ export class InlineViewerHelper {
   // Keep track of touch-related state so that users can touch and drag on
   // the canvas to adjust the viewer pose in an inline session.
   primaryTouch: number | null = null;
+  middleTouch: number | null = null;
   prevTouchX: number = 0;
   prevTouchY: number = 0;
 
@@ -51,95 +51,139 @@ export class InlineViewerHelper {
     this.baseRefSpace = referenceSpace;
     this.refSpace = referenceSpace;
 
-    canvas.style.cursor = 'grab';
+    // canvas.style.cursor = 'grab';
 
     canvas.addEventListener('mousemove', (event) => {
       // Only rotate when the left button is pressed
       if (event.buttons & 1) {
         this.rotateView(event.movementX, event.movementY);
       }
-    });
-
-    canvas.addEventListener("touchstart", (event) => {
-      if (this.primaryTouch == null) {
-        let touch = event.changedTouches[0];
-        this.primaryTouch = touch.identifier;
-        this.prevTouchX = touch.pageX;
-        this.prevTouchY = touch.pageY;
+      if (event.buttons & 4) {
+        this.shiftView(event.movementX, event.movementY);
       }
     });
 
-    canvas.addEventListener("touchend", (event) => {
-      for (let touch of event.changedTouches) {
-        if (this.primaryTouch == touch.identifier) {
-          this.primaryTouch = null;
-          this.rotateView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
-        }
-      }
-    });
+    // canvas.addEventListener("touchstart", (event) => {
+    //   if (this.primaryTouch == null) {
+    //     let touch = event.changedTouches[0];
+    //     this.primaryTouch = touch.identifier;
+    //     this.prevTouchX = touch.pageX;
+    //     this.prevTouchY = touch.pageY;
+    //   }
+    //   if (this.middleTouch == null) {
+    //     let touch = event.changedTouches[2];
+    //     this.middleTouch = touch.identifier;
+    //     this.prevTouchX = touch.pageX;
+    //     this.prevTouchY = touch.pageY;
+    //   }
+    // });
+    //
+    // canvas.addEventListener("touchend", (event) => {
+    //   for (let touch of event.changedTouches) {
+    //     if (this.primaryTouch == touch.identifier) {
+    //       this.primaryTouch = null;
+    //       this.rotateView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
+    //     }
+    //     if (this.middleTouch == touch.identifier) {
+    //       this.middleTouch = null;
+    //       this.rotateView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
+    //     }
+    //   }
+    // });
+    //
+    // canvas.addEventListener("touchcancel", (event) => {
+    //   for (let touch of event.changedTouches) {
+    //     if (this.primaryTouch == touch.identifier) {
+    //       this.primaryTouch = null;
+    //     }
+    //     if (this.middleTouch == touch.identifier) {
+    //       this.middleTouch = null;
+    //     }
+    //   }
+    // });
+    //
+    // canvas.addEventListener("touchmove", (event) => {
+    //   for (let touch of event.changedTouches) {
+    //     if (this.primaryTouch == touch.identifier) {
+    //       this.rotateView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
+    //       this.prevTouchX = touch.pageX;
+    //       this.prevTouchY = touch.pageY;
+    //     }
+    //     if (this.middleTouch == touch.identifier) {
+    //       this.shiftView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
+    //       this.prevTouchX = touch.pageX;
+    //       this.prevTouchY = touch.pageY;
+    //     }
+    //   }
+    // });
 
-    canvas.addEventListener("touchcancel", (event) => {
-      for (let touch of event.changedTouches) {
-        if (this.primaryTouch == touch.identifier) {
-          this.primaryTouch = null;
-        }
-      }
-    });
-
-    canvas.addEventListener("touchmove", (event) => {
-      for (let touch of event.changedTouches) {
-        if (this.primaryTouch == touch.identifier) {
-          this.rotateView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
-          this.prevTouchX = touch.pageX;
-          this.prevTouchY = touch.pageY;
-        }
-      }
+    document.addEventListener("wheel", (event: WheelEvent) => {
+      this.dollyView(event.deltaY);
     });
   }
 
-  setHeight(value: number) {
-    if (this.viewerHeight != value) {
-      this.viewerHeight = value;
-    }
-    this.dirty = true;
-  }
+  // setHeight(value: number) {
+  //   if (this.viewerHeight != value) {
+  //     this.viewerHeight = value;
+  //   }
+  //   this.dirty = true;
+  // }
 
   rotateView(dx: number, dy: number) {
-    this.lookYaw += dx * LOOK_SPEED;
-    this.lookPitch += dy * LOOK_SPEED;
-    if (this.lookPitch < -Math.PI * 0.5) {
-      this.lookPitch = -Math.PI * 0.5;
+    const LOOK_SPEED = -0.004;
+    this.matrix.rotateY(dx * LOOK_SPEED);
+    this.matrix.rotateX(dy * LOOK_SPEED);
+  }
+
+  shiftView(dx: number, dy: number) {
+    const d = -0.005;
+    {
+      const dir = this.matrix.getX();
+      this.matrix.m30 += dir.x * dx * d;
+      this.matrix.m31 += dir.y * dx * d;
+      this.matrix.m32 += dir.z * dx * d;
     }
-    if (this.lookPitch > Math.PI * 0.5) {
-      this.lookPitch = Math.PI * 0.5;
+    {
+      const dir = this.matrix.getY();
+      this.matrix.m30 -= dir.x * dy * d;
+      this.matrix.m31 -= dir.y * dy * d;
+      this.matrix.m32 -= dir.z * dy * d;
     }
-    this.dirty = true;
+  }
+
+  dollyView(delta: number) {
+
+    let d = 0.1;
+    if (delta > 0) {
+      d = -d;
+    }
+    else if (delta < 0) {
+    }
+    else {
+      // 0
+      return;
+    }
+
+    const dir = this.matrix.getZ();
+    this.matrix.m30 -= dir.x * d;
+    this.matrix.m31 -= dir.y * d;
+    this.matrix.m32 -= dir.z * d;
   }
 
   reset() {
-    this.lookYaw = 0;
-    this.lookPitch = 0;
     this.refSpace = this.baseRefSpace;
-    this.dirty = false;
   }
 
   // XRReferenceSpace offset is immutable, so return a new reference space
   // that has an updated orientation.
   get referenceSpace(): XRReferenceSpace {
-    if (this.dirty) {
-      // Represent the rotational component of the reference space as a
-      // quaternion.
-      let invOrient = new quat();
-      invOrient.rotateX(-this.lookPitch, { out: invOrient });
-      invOrient.rotateY(-this.lookYaw, { out: invOrient });
-      let xform = new XRRigidTransform(
-        {},
-        { x: invOrient.x, y: invOrient.y, z: invOrient.z, w: invOrient.w });
-      this.refSpace = this.baseRefSpace.getOffsetReferenceSpace(xform);
-      xform = new XRRigidTransform({ y: -this.viewerHeight });
-      this.refSpace = this.refSpace.getOffsetReferenceSpace(xform);
-      this.dirty = false;
-    }
+    // tmp.mul(this.matrix, {out: tmp});
+    const dst = new mat4(this.xform.matrix);
+    this.matrix.invert({ out: dst });
+    toOrigin.mul(dst, { out: dst });
+    dst.mul(restorOrigin, { out: dst });
+    // dst.mul(tmp, { out: dst });
+    this.refSpace = this.baseRefSpace.getOffsetReferenceSpace(this.xform);
     return this.refSpace;
   }
 }

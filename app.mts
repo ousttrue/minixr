@@ -268,6 +268,7 @@ export default class App {
     let space: XRReferenceSpace | undefined = undefined;
     try {
       space = await session.requestReferenceSpace('bounded-floor');
+      console.log('bounded-floor', space);
     }
     catch (err) {
     }
@@ -275,6 +276,7 @@ export default class App {
     if (!space) {
       try {
         space = await session.requestReferenceSpace('local-floor');
+        console.log('local-floor', space);
       }
       catch (err) {
       }
@@ -295,7 +297,7 @@ export default class App {
     window.addEventListener('resize', onResize);
     onResize();
 
-    this.appSession = new AppSession(mode, session, space, gl, inlineViewerHelper);
+    this.appSession = new AppSession(mode, session, space!, gl, inlineViewerHelper);
     this.appSession.start();
   }
 }
