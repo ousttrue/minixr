@@ -24,21 +24,32 @@ which XRSession. Also handles the necessary logic for enabling mouse/touch-based
 view rotation for inline sessions if desired.
 */
 
-import {quat} from '../render/math/gl-matrix.mjs';
+import { quat } from '../math/gl-matrix.mjs';
 
 const LOOK_SPEED = 0.0025;
 
 export class InlineViewerHelper {
-  constructor(canvas, referenceSpace) {
-    this.lookYaw = 0;
-    this.lookPitch = 0;
-    this.viewerHeight = 0;
+  lookYaw = 0;
+  lookPitch = 0;
+  viewerHeight = 0;
+  dirty = false;
+
+  baseRefSpace: XRReferenceSpace;
+  refSpace: XRReferenceSpace;
+
+  // Keep track of touch-related state so that users can touch and drag on
+  // the canvas to adjust the viewer pose in an inline session.
+  primaryTouch: number | null = null;
+  prevTouchX: number = 0;
+  prevTouchY: number = 0;
+
+  constructor(
+    public readonly canvas: HTMLCanvasElement,
+    referenceSpace: XRReferenceSpace) {
 
     this.canvas = canvas;
     this.baseRefSpace = referenceSpace;
     this.refSpace = referenceSpace;
-
-    this.dirty = false;
 
     canvas.style.cursor = 'grab';
 
@@ -49,64 +60,58 @@ export class InlineViewerHelper {
       }
     });
 
-    // Keep track of touch-related state so that users can touch and drag on
-    // the canvas to adjust the viewer pose in an inline session.
-    let primaryTouch = undefined;
-    let prevTouchX = undefined;
-    let prevTouchY = undefined;
-
     canvas.addEventListener("touchstart", (event) => {
-      if (primaryTouch == undefined) {
+      if (this.primaryTouch == null) {
         let touch = event.changedTouches[0];
-        primaryTouch = touch.identifier;
-        prevTouchX = touch.pageX;
-        prevTouchY = touch.pageY;
+        this.primaryTouch = touch.identifier;
+        this.prevTouchX = touch.pageX;
+        this.prevTouchY = touch.pageY;
       }
     });
 
     canvas.addEventListener("touchend", (event) => {
       for (let touch of event.changedTouches) {
-        if (primaryTouch == touch.identifier) {
-          primaryTouch = undefined;
-          this.rotateView(touch.pageX - prevTouchX, touch.pageY - prevTouchY);
+        if (this.primaryTouch == touch.identifier) {
+          this.primaryTouch = null;
+          this.rotateView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
         }
       }
     });
 
     canvas.addEventListener("touchcancel", (event) => {
       for (let touch of event.changedTouches) {
-        if (primaryTouch == touch.identifier) {
-          primaryTouch = undefined;
+        if (this.primaryTouch == touch.identifier) {
+          this.primaryTouch = null;
         }
       }
     });
 
     canvas.addEventListener("touchmove", (event) => {
       for (let touch of event.changedTouches) {
-        if (primaryTouch == touch.identifier) {
-          this.rotateView(touch.pageX - prevTouchX, touch.pageY - prevTouchY);
-          prevTouchX = touch.pageX;
-          prevTouchY = touch.pageY;
+        if (this.primaryTouch == touch.identifier) {
+          this.rotateView(touch.pageX - this.prevTouchX, touch.pageY - this.prevTouchY);
+          this.prevTouchX = touch.pageX;
+          this.prevTouchY = touch.pageY;
         }
       }
     });
   }
 
-  setHeight(value) {
+  setHeight(value: number) {
     if (this.viewerHeight != value) {
       this.viewerHeight = value;
     }
     this.dirty = true;
   }
 
-  rotateView(dx, dy) {
+  rotateView(dx: number, dy: number) {
     this.lookYaw += dx * LOOK_SPEED;
     this.lookPitch += dy * LOOK_SPEED;
-    if (this.lookPitch < -Math.PI*0.5) {
-      this.lookPitch = -Math.PI*0.5;
+    if (this.lookPitch < -Math.PI * 0.5) {
+      this.lookPitch = -Math.PI * 0.5;
     }
-    if (this.lookPitch > Math.PI*0.5) {
-      this.lookPitch = Math.PI*0.5;
+    if (this.lookPitch > Math.PI * 0.5) {
+      this.lookPitch = Math.PI * 0.5;
     }
     this.dirty = true;
   }
@@ -120,18 +125,18 @@ export class InlineViewerHelper {
 
   // XRReferenceSpace offset is immutable, so return a new reference space
   // that has an updated orientation.
-  get referenceSpace() {
+  get referenceSpace(): XRReferenceSpace {
     if (this.dirty) {
       // Represent the rotational component of the reference space as a
       // quaternion.
-      let invOrient = quat.create();
-      quat.rotateX(invOrient, invOrient, -this.lookPitch);
-      quat.rotateY(invOrient, invOrient, -this.lookYaw);
+      let invOrient = new quat();
+      invOrient.rotateX(-this.lookPitch, { out: invOrient });
+      invOrient.rotateY(-this.lookYaw, { out: invOrient });
       let xform = new XRRigidTransform(
-          {},
-          {x: invOrient[0], y: invOrient[1], z: invOrient[2], w: invOrient[3]});
+        {},
+        { x: invOrient.x, y: invOrient.y, z: invOrient.z, w: invOrient.w });
       this.refSpace = this.baseRefSpace.getOffsetReferenceSpace(xform);
-      xform = new XRRigidTransform({y: -this.viewerHeight});
+      xform = new XRRigidTransform({ y: -this.viewerHeight });
       this.refSpace = this.refSpace.getOffsetReferenceSpace(xform);
       this.dirty = false;
     }

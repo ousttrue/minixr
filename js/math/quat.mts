@@ -120,49 +120,47 @@ export class quat {
   //   out[3] = aw * bw - ax * bx - ay * by - az * bz;
   //   return out;
   // }
-  //
-  // /**
-  //  * Rotates a quaternion by the given angle about the X axis
-  //  *
-  //  * @param {quat} out quat receiving operation result
-  //  * @param {quat} a quat to rotate
-  //  * @param {number} rad angle (in radians) to rotate
-  //  * @returns {quat} out
-  //  */
-  // export function rotateX(out: quat, a: quat, rad: number): quat {
-  //   rad *= 0.5;
-  //
-  //   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
-  //   let bx = Math.sin(rad), bw = Math.cos(rad);
-  //
-  //   out[0] = ax * bw + aw * bx;
-  //   out[1] = ay * bw + az * bx;
-  //   out[2] = az * bw - ay * bx;
-  //   out[3] = aw * bw - ax * bx;
-  //   return out;
-  // }
-  //
-  // /**
-  //  * Rotates a quaternion by the given angle about the Y axis
-  //  *
-  //  * @param {quat} out quat receiving operation result
-  //  * @param {quat} a quat to rotate
-  //  * @param {number} rad angle (in radians) to rotate
-  //  * @returns {quat} out
-  //  */
-  // export function rotateY(out: quat, a: quat, rad: number): quat {
-  //   rad *= 0.5;
-  //
-  //   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
-  //   let by = Math.sin(rad), bw = Math.cos(rad);
-  //
-  //   out[0] = ax * bw - az * by;
-  //   out[1] = ay * bw + aw * by;
-  //   out[2] = az * bw + ax * by;
-  //   out[3] = aw * bw - ay * by;
-  //   return out;
-  // }
-  //
+
+  /**
+   * Rotates a quaternion by the given angle about the X axis
+   *
+   * @param {number} rad angle (in radians) to rotate
+   */
+  rotateX(rad: number, option?: { out: quat }): quat {
+    rad *= 0.5;
+
+    let ax = this.x, ay = this.y, az = this.z, aw = this.w;
+    let bx = Math.sin(rad), bw = Math.cos(rad);
+
+    const dst = option?.out ?? new quat();
+    const out = dst.array;
+    out[0] = ax * bw + aw * bx;
+    out[1] = ay * bw + az * bx;
+    out[2] = az * bw - ay * bx;
+    out[3] = aw * bw - ax * bx;
+    return dst;
+  }
+
+  /**
+   * Rotates a quaternion by the given angle about the Y axis
+   *
+   * @param {number} rad angle (in radians) to rotate
+   */
+  rotateY(rad: number, option?: { out: quat }): quat {
+    rad *= 0.5;
+
+    let ax = this.x, ay = this.y, az = this.z, aw = this.w;
+    let by = Math.sin(rad), bw = Math.cos(rad);
+
+    const dst = option?.out ?? new quat();
+    const out = dst.array;
+    out[0] = ax * bw - az * by;
+    out[1] = ay * bw + aw * by;
+    out[2] = az * bw + ax * by;
+    out[3] = aw * bw - ay * by;
+    return dst;
+  }
+
   // /**
   //  * Rotates a quaternion by the given angle about the Z axis
   //  *

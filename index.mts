@@ -40,6 +40,9 @@ document.addEventListener("DOMContentLoaded", _ => {
 
     // Called when we've successfully acquired a XRSession. In response we
     // will set up the necessary session state and kick off the frame loop.
-    g_app.startSession(event.session);
+    g_app.startSession(event.mode, event.session);
   });
+
+  xrButton.onClick('inline');
+
 });

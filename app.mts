@@ -19,9 +19,11 @@ import { Spinner } from './js/component/spinner.mjs';
 import { HandTracking } from './js/component/hand-tracking.mjs';
 import { hoverSystem } from './js/component/hover.mjs';
 import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
+import { InlineViewerHelper } from './js/util/inline-viewer-helper.mjs';
 
 
 class AppSession {
+
   world = new World();
 
   renderer: Renderer;
@@ -31,21 +33,23 @@ class AppSession {
   _meshDetection = new ArMeshDetection();
   _planeDetection = new ArPlaneDetection();
 
-  term: XRTerm;
-  xrGLFactory: XRWebGLBinding;
-  quadLayer: XRQuadLayer;
-  meshDetection: ArMeshDetection;
+  // term: XRTerm;
+  // xrGLFactory: XRWebGLBinding;
+  // quadLayer: XRQuadLayer;
+  // meshDetection: ArMeshDetection;
 
   constructor(
+    public readonly mode: XRSessionMode,
     public readonly session: XRSession,
     public readonly localSpace: XRReferenceSpace,
-    public readonly floorSpace: XRReferenceSpace | XRBoundedReferenceSpace,
     public readonly gl: WebGL2RenderingContext,
+    public readonly floorSpace?: XRReferenceSpace | XRBoundedReferenceSpace,
+    private readonly _inlineViewerHelper: InlineViewerHelper | null = null
   ) {
     // Create a renderer with that GL context (this is just for the samples
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(gl);
-    this.term = new XRTerm(gl);
+    // this.term = new XRTerm(gl);
   }
 
   async start() {
@@ -87,6 +91,10 @@ class AppSession {
     // Inform the session that we're ready for the next frame.
     session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
 
+    const xrRefSpace = this._inlineViewerHelper
+      ? this._inlineViewerHelper.referenceSpace
+      : this.localSpace;
+
     // Per-frame scene setup. Nothing WebXR specific here.
     this._stats.begin(this.world);
 
@@ -99,15 +107,15 @@ class AppSession {
     }
     this._prevTime = time;
 
-    this.term.getTermTexture();
+    // this.term.getTermTexture();
 
     Rotater.system(this.world, time);
     Spinner.system(this.world, time, frameDelta);
     HandTracking.system(
-      this.world, time, frameDelta, this.localSpace, frame, session.inputSources);
+      this.world, time, frameDelta, xrRefSpace, frame, session.inputSources);
 
-    this._planeDetection.update(this.world, this.localSpace, frame);
-    this._meshDetection.update(this.world, this.localSpace, frame);
+    this._planeDetection.update(this.world, xrRefSpace, frame);
+    this._meshDetection.update(this.world, xrRefSpace, frame);
 
     hoverSystem(this.world);
 
@@ -120,7 +128,7 @@ class AppSession {
 
     // Get the XRDevice pose relative to the Frame of Reference we created
     // earlier.
-    let pose = frame.getViewerPose(this.localSpace);
+    let pose = frame.getViewerPose(xrRefSpace);
 
     // Getting the pose may fail if, for example, tracking is lost. So we
     // have to check to make sure that we got a valid pose before attempting
@@ -160,7 +168,7 @@ class AppSession {
           this.renderer.drawPrimitive(view, 0, matrix, primitive, state);
         });
       }
-      {
+      if (pose.views.length > 1) {
         // right eye
         const vp = viewports[1];
         gl.viewport(vp.x, vp.y, vp.width, vp.height);
@@ -207,7 +215,7 @@ export default class App {
     }
   }
 
-  async startSession(session: XRSession): Promise<void> {
+  async startSession(mode: XRSessionMode, session: XRSession): Promise<void> {
     console.log('App.startSession', session);
     session.addEventListener('end', _ => {
       this.endSession();
@@ -224,13 +232,6 @@ export default class App {
       throw new Error('fail to create WebGL2RenderingContext');
     }
 
-    function onResize() {
-      canvas.width = canvas.clientWidth * window.devicePixelRatio;
-      canvas.height = canvas.clientHeight * window.devicePixelRatio;
-    }
-    window.addEventListener('resize', onResize);
-    onResize();
-
     // Use the new WebGL context to create a XRWebGLLayer and set it as the
     // sessions baseLayer. This allows any content rendered to the layer to
     // be displayed on the XRDevice.
@@ -243,16 +244,39 @@ export default class App {
     // Get a frame of reference, which is required for querying poses. In
     // this case an 'local' frame of reference means that all poses will
     // be relative to the location where the XRDevice was first detected.
-    let localSpace = await session.requestReferenceSpace('local');
-    let floorSpace: XRReferenceSpace;
+    let localSpace = await session.requestReferenceSpace(mode == 'inline' ? 'viewer' : 'local');
+
+    let inlineViewerHelper: InlineViewerHelper | null = null;
+    if (mode == 'inline') {
+      inlineViewerHelper = new InlineViewerHelper(canvas, localSpace);
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      document.body.appendChild(canvas);
+    }
+
+    function onResize() {
+      canvas.width = canvas.clientWidth * window.devicePixelRatio;
+      canvas.height = canvas.clientHeight * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    let floorSpace: XRReferenceSpace | undefined = undefined;
     try {
       floorSpace = await session.requestReferenceSpace('bounded-floor');
     }
     catch (err) {
-      floorSpace = await session.requestReferenceSpace('local-floor');
     }
 
-    this.appSession = new AppSession(session, localSpace, floorSpace, gl);
+    if (!floorSpace) {
+      try {
+        floorSpace = await session.requestReferenceSpace('local-floor');
+      }
+      catch (err) {
+      }
+    }
+
+    this.appSession = new AppSession(mode, session, localSpace, gl, floorSpace, inlineViewerHelper);
     this.appSession.start();
   }
 }

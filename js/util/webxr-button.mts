@@ -583,9 +583,17 @@ class InnerButton {
 export class WebXRButton extends EventTarget {
   options: RequiredNotNull<WebXRButtonOptions>;
 
-  buttonInline: InnerButton;
   buttonVR: InnerButton;
   buttonAR: InnerButton;
+
+  async onClick(mode: XRSessionMode) {
+    const session = await navigator.xr!.requestSession(mode, {
+      requiredFeatures: this.options.requiredFeatures,
+      optionalFeatures: this.options.optionalFeatures,
+    });
+    this.dispatchEvent(new WebXRSessionStartEvent(mode, session));
+    return session;
+  };
 
   /**
    * Construct a new Enter XR Button
@@ -600,38 +608,22 @@ export class WebXRButton extends EventTarget {
 
     this.options = validateOption(_options);
 
-    const onClick = async (mode: XRSessionMode) => {
-      const session = await navigator.xr!.requestSession(mode, {
-        requiredFeatures: this.options.requiredFeatures,
-        optionalFeatures: this.options.optionalFeatures,
-      });
-      this.dispatchEvent(new WebXRSessionStartEvent('immersive-vr', session));
-      return session;
-    };
-
     this.options.domElement.appendChild(
       createFeatureHtml('requiredFeatures', this.options.requiredFeatures));
     this.options.domElement.appendChild(
       createFeatureHtml('optionalFeatures', this.options.optionalFeatures));
 
-    // inline
-    this.buttonInline = new InnerButton('inline', this.options, onClick);
-    this.options.domElement.appendChild(this.buttonInline.domElement);
-
     // vr
-    this.buttonVR = new InnerButton('immersive-vr', this.options, onClick);
+    this.buttonVR = new InnerButton('immersive-vr', this.options,
+      mode => this.onClick(mode));
     this.options.domElement.appendChild(this.buttonVR.domElement);
 
     // ar
-    this.buttonAR = new InnerButton('immersive-ar', this.options, onClick);
+    this.buttonAR = new InnerButton('immersive-ar', this.options,
+      mode => this.onClick(mode));
     this.options.domElement.appendChild(this.buttonAR.domElement);
 
     if (navigator.xr) {
-      navigator.xr.isSessionSupported('inline').then(isSupported => {
-        if (isSupported) {
-          this.buttonInline.enabled = true;
-        }
-      });
       navigator.xr.isSessionSupported('immersive-vr').then(isSupported => {
         if (isSupported) {
           this.buttonVR.enabled = true;
