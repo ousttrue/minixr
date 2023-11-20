@@ -38,7 +38,7 @@ void main() {
 }`,
 
   uniforms: [
-    ['uColor', vec4.fromValues(1, 1, 1, 1)],
+    ['uColor', [1, 1, 1, 1]],
   ],
 }
 
