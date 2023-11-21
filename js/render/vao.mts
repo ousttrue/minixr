@@ -1,4 +1,4 @@
-import { Primitive, BufferSource } from '../geometry/primitive.mjs';
+import { Primitive, BufferSource } from '../buffer/primitive.mjs';
 import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums

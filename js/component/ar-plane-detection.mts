@@ -3,7 +3,7 @@ import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
 import { ArOcclusionShader, ArOcclusionShaderDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../materials/material.mjs';
-import { BufferSource, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { BufferSource, Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums

@@ -1,4 +1,4 @@
-import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { BoxBuilder } from '../buffer/box-builder.mjs';
 import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
 import { Spinner } from '../component/spinner.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';

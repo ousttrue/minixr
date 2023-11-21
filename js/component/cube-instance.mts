@@ -1,7 +1,7 @@
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
-import { BufferSource, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { BufferSource, Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
 
 
 const GL = WebGL2RenderingContext;

@@ -20,7 +20,7 @@
 
 import { Material } from '../material.mjs';
 import { Node } from '../node.mjs';
-import { PrimitiveStream } from '../geometry/primitive-stream.mjs';
+import { PrimitiveStream } from '../buffer/primitive-stream.mjs';
 
 const BUTTON_SIZE = 0.1;
 const BUTTON_CORNER_RADIUS = 0.025;

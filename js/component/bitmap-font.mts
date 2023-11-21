@@ -1,4 +1,4 @@
-import { Primitive, PrimitiveAttribute, BufferSource } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute, BufferSource } from '../buffer/primitive.mjs';
 import { vec3, mat4 } from '../math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Shader, RENDER_ORDER } from '../materials/shader.mjs';

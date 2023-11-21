@@ -19,7 +19,7 @@
 // SOFTWARE.
 import { Shader } from '../materials/shader.mjs';
 import { Material, ProgramDefine } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
 import { Texture } from '../materials/texture.mjs';
 import { Ubo, UboMap } from './ubo.mjs';
 

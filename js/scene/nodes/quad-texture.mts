@@ -20,7 +20,7 @@
 
 import { Material } from "../core/material.mjs";
 import { Node } from "../core/node.mjs";
-import { PrimitiveStream } from "../geometry/primitive-stream.mjs";
+import { PrimitiveStream } from "../buffer/primitive-stream.mjs";
 import { UrlTexture } from "../core/texture.mjs";
 
 class ButtonIconMaterial extends Material {

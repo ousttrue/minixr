@@ -25,7 +25,7 @@ for numbers and a limited number of other characters.
 
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute, BufferSource } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute, BufferSource } from '../buffer/primitive.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Stats, now } from './stats-viewer.mjs';

@@ -21,7 +21,7 @@
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
 import { MaterialState, CAP } from '../materials/materialstate.mjs';
-import { Primitive, BufferSource } from '../geometry/primitive.mjs';
+import { Primitive, BufferSource } from '../buffer/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Ubo } from './ubo.mjs';
 import { Program, ProgramFactory } from './program.mjs';

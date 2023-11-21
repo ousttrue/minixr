@@ -5,7 +5,7 @@ import { mat4 } from '../math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
 import { Material } from '../materials/material.mjs';
 import { SimpleShader } from '../materials/simple.mjs';
-import { BoxBuilder } from '../geometry/box-builder.mjs';
+import { BoxBuilder } from '../buffer/box-builder.mjs';
 import { HoverActive } from './hover.mjs';
 
 const PINCH_START_DISTANCE = 0.015;
