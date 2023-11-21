@@ -111,8 +111,6 @@ export class PrimitiveAttribute {
 
 export class Primitive {
   bb = new BoundingBox();
-  vertexUpdated = false;
-  instanceUpdated = false;
   drawCount: number = 0;
   instanceCount: number = 0;
   constructor(

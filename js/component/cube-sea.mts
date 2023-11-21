@@ -17,17 +17,23 @@ export async function cubeSeaFactory(
   world.create(mat4.identity(), primitive)
   primitive.instanceCount = 0;
 
+  const faceInstance = primitive.options!.instanceAttributes[4].source;
+
   function setCubeColor(faceIndex: number, colorIndex: number) {
     faces[faceIndex] = colorIndex;
     faces[faceIndex + 1] = colorIndex;
     faces[faceIndex + 2] = colorIndex;
+
     faces[faceIndex + 4] = colorIndex;
     faces[faceIndex + 5] = colorIndex;
     faces[faceIndex + 6] = colorIndex;
+
+    faceInstance.dirty = true;
   }
 
   let matrixIndex = 0;
   let faceIndex = 0;
+
 
   const positions = [
     [0, 0.25, -0.8],
@@ -41,11 +47,9 @@ export async function cubeSeaFactory(
     const hover = new HoverPassive(
       () => {
         setCubeColor(faceIndex, hoverIndex);
-        primitive.instanceUpdated = true;
       },
       () => {
         setCubeColor(faceIndex, defaultIndex);
-        primitive.instanceUpdated = true;
       },
     )
     setCubeColor(faceIndex, defaultIndex);
@@ -57,7 +61,6 @@ export async function cubeSeaFactory(
     matrix.m32 = pos[2]
     matrix.m33 = 1
     world.create(matrix, new Rotater(() => {
-      primitive.instanceUpdated = true;
     }), hover);
 
     ++primitive.instanceCount;
@@ -82,17 +85,19 @@ export async function cubeSeaFactory(
             continue;
           }
 
+          const current = faceIndex;
           const hover = new HoverPassive(
             () => {
-              setCubeColor(faceIndex, hoverIndex);
-              primitive.instanceUpdated = true;
+              console.log('hover.start', current);
+              setCubeColor(current, hoverIndex);
+              primitive.options!.instanceAttributes[5].source.dirty = true;
             },
             () => {
-              setCubeColor(faceIndex, defaultIndex);
-              primitive.instanceUpdated = true;
+              console.log('hover.end', current);
+              setCubeColor(current, defaultIndex);
             },
           );
-          setCubeColor(faceIndex, defaultIndex);
+          setCubeColor(current, defaultIndex);
 
           let size = 0.4 * cubeScale;
           const matrix = new mat4(

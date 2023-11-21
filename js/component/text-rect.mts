@@ -156,7 +156,5 @@ export class TextRect extends Node {
     this.positions[index + 1] = y;
     this.positions[index + 2] = x + this.glyphWidth;
     this.positions[index + 3] = y + this.glyphHeight;
-
-    // this.primitives[0].vertexUpdated = true;
   }
 }

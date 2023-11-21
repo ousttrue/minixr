@@ -99,7 +99,7 @@ export class Renderer {
       return ibo;
     }
 
-    const indexBuffer = new Vbo(this.gl, GL.ELEMENT_ARRAY_BUFFER, 
+    const indexBuffer = new Vbo(this.gl, GL.ELEMENT_ARRAY_BUFFER,
       indices, usage);
 
     ibo = new Ibo(indexBuffer, indices);
@@ -107,31 +107,26 @@ export class Renderer {
     return ibo;
   }
 
-  _used = new Set();
   private _getOrCreatePrimtive(primitive: Primitive, program: Program) {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
-      if (primitive.vertexUpdated) {
-        primitive.vertexUpdated = false;
-        this._used.clear();
-        for (const attrib of primitive.attributes) {
+      for (const attrib of primitive.attributes) {
+        if (attrib.source.dirty) {
           const vbo = vao.vboMap.get(attrib.source);
           if (vbo) {
-            if (!this._used.has(vbo)) {
-              this._used.add(vbo);
-              vbo.updateRenderBuffer(this.gl, attrib.source);
-            }
+            this.gl.bindVertexArray(null);
+            attrib.source.dirty = false;
+            vbo.updateRenderBuffer(this.gl, attrib.source);
           }
         }
       }
-      if (primitive.instanceUpdated) {
-        primitive.instanceUpdated = false;
-        this._used.clear();
+      if (primitive.options?.instanceAttributes) {
         for (const attrib of primitive.options?.instanceAttributes!) {
-          const vbo = vao.vboMap.get(attrib.source);
-          if (vbo) {
-            if (!this._used.has(vbo)) {
-              this._used.add(vbo);
+          if (attrib.source.dirty) {
+            const vbo = vao.vboMap.get(attrib.source);
+            if (vbo) {
+              this.gl.bindVertexArray(null);
+              attrib.source.dirty = false;
               vbo.updateRenderBuffer(this.gl, attrib.source);
             }
           }

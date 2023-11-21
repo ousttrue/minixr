@@ -274,7 +274,8 @@ class SevenSegment {
       j += 2;
       ++this.primitive.instanceCount;
     }
-    this.primitive.instanceUpdated = true;
+    this.primitive.options!.instanceAttributes[0].source.dirty = true;
+    this.primitive.options!.instanceAttributes[1].source.dirty = true;
   }
 }
 
