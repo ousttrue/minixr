@@ -20,8 +20,25 @@
 
 import { Shader, RENDER_ORDER } from '../materials/shader.mjs';
 import { Material, ProgramDefine, MaterialUniform1f } from './material.mjs';
-import { ATTRIB_MASK } from '../geometry/primitive.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
+
+export const ATTRIB: { [key: string]: number } = {
+  POSITION: 1,
+  NORMAL: 2,
+  TANGENT: 3,
+  TEXCOORD_0: 4,
+  TEXCOORD_1: 5,
+  COLOR_0: 6,
+};
+
+export const ATTRIB_MASK: { [key: string]: number } = {
+  POSITION: 0x0001,
+  NORMAL: 0x0002,
+  TANGENT: 0x0004,
+  TEXCOORD_0: 0x0008,
+  TEXCOORD_1: 0x0010,
+  COLOR_0: 0x0020,
+};
 
 const VERTEX_SOURCE = `
 

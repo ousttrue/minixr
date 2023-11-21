@@ -17,32 +17,14 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-
 import { vec3, BoundingBox } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
 
+
 const GL = WebGL2RenderingContext; // For enums
 
-export const ATTRIB: { [key: string]: number } = {
-  POSITION: 1,
-  NORMAL: 2,
-  TANGENT: 3,
-  TEXCOORD_0: 4,
-  TEXCOORD_1: 5,
-  COLOR_0: 6,
-};
 
-export const ATTRIB_MASK: { [key: string]: number } = {
-  POSITION: 0x0001,
-  NORMAL: 0x0002,
-  TANGENT: 0x0004,
-  TEXCOORD_0: 0x0008,
-  TEXCOORD_1: 0x0010,
-  COLOR_0: 0x0020,
-};
-
-
-function getComponentSize(componentType: GL.FLOAT | GL.UNSIGNED_INT) {
+function getComponentSize(componentType: number) {
   switch (componentType) {
     case GL.FLOAT: return 4;
     case GL.UNSIGNED_INT: return 4;
