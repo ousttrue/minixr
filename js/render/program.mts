@@ -18,10 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { Shader } from '../materials/shader.mjs';
-import { Material, MaterialUniform } from '../materials/material.mjs';
+import { Material } from '../materials/material.mjs';
 import { ProgramDefine } from '../materials/shader.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { Texture } from '../materials/texture.mjs';
+import { Ubo, UboMap } from './ubo.mjs';
+
 
 const GL = WebGL2RenderingContext;
 
@@ -140,9 +142,11 @@ export class Program {
     for (let i = 0; i < uniformBlockCount; ++i) {
       const name = gl.getActiveUniformBlockName(this.program, i);
       if (name) {
-        console.log(`ubo: ${name}`);
-        const size = gl.getActiveUniformBlockParameter(this.program, i, gl.UNIFORM_BLOCK_DATA_SIZE);
-        this.uboIndexMap[name] = { index: i, byteLength: size };
+        var index = gl.getUniformBlockIndex(this.program, name);
+        const byteLength = gl.getActiveUniformBlockParameter(this.program, i, gl.UNIFORM_BLOCK_DATA_SIZE);
+        console.log(`ubo: ${name} => ${index}: ${byteLength}bytes`);
+        this.uboIndexMap[name] = { index, byteLength };
+        gl.uniformBlockBinding(this.program, index, index);
       }
       else {
         console.warn(`ubo: ${i}: no name`);
@@ -161,7 +165,7 @@ export class Program {
     }
   }
 
-  bindMaterial(material: Material, 
+  bindMaterial(material: Material,
     getTexture: (src: Texture) => WebGLTexture | null,
   ) {
     const gl = this.gl;
@@ -194,12 +198,32 @@ export class Program {
 
 export class ProgramFactory {
   private _programCache: { [key: string]: Program } = {};
+  private _uboMap: Map<Material, UboMap> = new Map();
+
   constructor(
     private readonly gl: WebGL2RenderingContext
   ) {
   }
 
-  getOrCreateProgram(primitive: Primitive): Program {
+  getOrCreateUbo(gl: WebGL2RenderingContext,
+    program: Program, material: Material): UboMap {
+    let uboMap = this._uboMap.get(material);
+    if (uboMap) {
+      return uboMap;
+    }
+
+    uboMap = {}
+    if (material.shader.ubos) {
+      for (const { name, byteLength } of material.shader.ubos) {
+        const ubo = new Ubo(gl, byteLength);
+        uboMap[name] = ubo;
+      }
+    }
+    this._uboMap.set(material, uboMap);
+    return uboMap;
+  }
+
+  getOrCreateProgram(gl: WebGL2RenderingContext, primitive: Primitive): [Program, UboMap] {
     const material = primitive.material;
 
     // determine shader defines by material & primitive combination 
@@ -207,17 +231,18 @@ export class ProgramFactory {
     // const defines = material.getProgramDefines(attributeMask);
     const defines: ProgramDefine[] = [];
 
-    let key = this._getProgramKey(material.name, defines);
+    let key = this._getProgramKey(material.shader.name, defines);
     let program = this._programCache[key];
-    if (program) {
-      return program;
+    if (!program) {
+
+      program = new Program(this.gl,
+        key, material.shader, defines);
+      this._programCache[key] = program;
     }
 
-    program = new Program(this.gl,
-      key, material.shader, defines);
-    this._programCache[key] = program;
+    const uboMap = this.getOrCreateUbo(gl, program, primitive.material);
 
-    return program;
+    return [program, uboMap];
   }
 
   private _getProgramKey(name: string, defines: ProgramDefine[]) {

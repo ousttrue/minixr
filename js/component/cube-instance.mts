@@ -11,7 +11,8 @@ const CubeInstanceShader: Shader = {
   vertexSource: `
 precision mediump float;
 
-uniform mat4 VP;
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+
 in vec4 vPosFace;
 in vec4 vUvBarycentric;
 in vec4 iRow0;
@@ -35,7 +36,7 @@ mat4 transform(vec4 r0, vec4 r1, vec4 r2, vec4 r3)
 
 void main()
 {
-    gl_Position = VP * transform(iRow0, iRow1, iRow2, iRow3) * vec4(vPosFace.xyz, 1);
+    gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * transform(iRow0, iRow1, iRow2, iRow3) * vec4(vPosFace.xyz, 1);
     oUvBarycentric = vUvBarycentric;
     if(vPosFace.w==0.0)
     {
@@ -111,15 +112,15 @@ void main()
 
     // float textureIndex=Palette.textures[index].x;
     // vec4 texel = texture(sampler, vec3(oUvBarycentric.xy, textureIndex));
-    vec4 texel = vec4(1,1,1,1);
+    // FragColor = texel * color * border;
 
-    FragColor = texel * color * border;
+    FragColor = vec4(1,1,1,1);
 }
 `,
 
   ubos: [
     {
-      name: 'Palette',
+      name: 'palette',
       byteLength: 4 * 4 * 64,
     }
   ],
@@ -296,7 +297,7 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
     new PrimitiveAttribute("iRow2",
       matrixArrayView, 4, GL.FLOAT, 64, 32),
     new PrimitiveAttribute("iRow3",
-      matrixArrayView, 4, GL.FLOAT, 64, 64),
+      matrixArrayView, 4, GL.FLOAT, 64, 48),
     //     //
     new PrimitiveAttribute("iPositive_xyz_flag",
       faceInfoArrayView, 4, GL.FLOAT, 32, 0),

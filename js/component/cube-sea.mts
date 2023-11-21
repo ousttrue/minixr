@@ -15,6 +15,7 @@ export async function cubeSeaFactory(
 
   const [primitive, matrices, faces] = cubeInstancePrimitive()
   world.create(mat4.identity(), primitive)
+  primitive.instanceCount = 0;
 
   let matrixIndex = 0;
   let faceIndex = 0;
@@ -51,8 +52,12 @@ export async function cubeSeaFactory(
     matrix.m30 = pos[0]
     matrix.m31 = pos[1]
     matrix.m32 = pos[2]
-    world.create(matrix, new Rotater(), hover);
+    matrix.m33 = 1
+    world.create(matrix, new Rotater(() => {
+      primitive.instanceUpdated = true;
+    }), hover);
 
+    ++primitive.instanceCount;
     matrixIndex += 16, faceIndex += 8
   }
 
@@ -100,8 +105,10 @@ export async function cubeSeaFactory(
           matrix.m30 = pos[0]
           matrix.m31 = pos[1]
           matrix.m32 = pos[2]
+          matrix.m33 = 1
           world.create(matrix, hover);
 
+          ++primitive.instanceCount;
           matrixIndex += 16, faceIndex += 8
         }
       }

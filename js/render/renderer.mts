@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
-import { Shader } from '../materials/shader.mjs';
+import { Material } from '../materials/material.mjs';
 import { MaterialState, CAP } from '../materials/materialstate.mjs';
 import { Primitive } from '../geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
@@ -192,7 +192,7 @@ export class Renderer {
     }) {
 
     let gl = this.gl;
-    const program = this._programFactory.getOrCreateProgram(primitive);
+    const [program, uboMap] = this._programFactory.getOrCreateProgram(gl, primitive);
     const vao = this._getOrCreatePrimtive(primitive, program);
     // Loop through every primitive known to the renderer.
     // Bind the primitive material's program if it's different than the one we
@@ -227,6 +227,11 @@ export class Renderer {
       program.bindMaterial(primitive.material,
         (src) => this._textureFactory.getOrCreateTexture(src));
       state.prevMaterial = primitive.material;
+
+      for (const key in uboMap) {
+        const ubo = uboMap[key];
+        ubo.bind(gl, program.uboIndexMap[key].index);
+      }
     }
 
     gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
@@ -241,7 +246,6 @@ export class Renderer {
   _colorMaskNeedsReset = false;
   _depthMaskNeedsReset = false;
   private _bindMaterialState(materialState: MaterialState, prevMaterialState?: MaterialState) {
-
     let state = materialState.state;
     let prevState: number = prevMaterialState ? prevMaterialState.state : ~state;
 
