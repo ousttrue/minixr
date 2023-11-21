@@ -20,6 +20,7 @@ import { HandTracking } from './js/component/hand-tracking.mjs';
 import { hoverSystem } from './js/component/hover.mjs';
 import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
 import { InlineViewerHelper } from './js/util/inline-viewer-helper.mjs';
+import { animationSystem } from './js/component/animation.mjs';
 
 
 class AppSession {
@@ -134,6 +135,7 @@ class AppSession {
     this._meshDetection.update(this.world, xrRefSpace, frame);
 
     hoverSystem(this.world);
+    animationSystem(this.world);
 
     //
     // render scene

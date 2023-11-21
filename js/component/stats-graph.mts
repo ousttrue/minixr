@@ -142,7 +142,7 @@ export class StatsGraph {
     this.vertices = new Float32Array(fpsVerts);
     this.indices = new Uint16Array(fpsIndices);
 
-    this.fpsVertexBuffer = new BufferSource(6, this.vertices);
+    this.fpsVertexBuffer = new BufferSource(6, this.vertices, GL.DYNAMIC_DRAW);
     const fpsAttribs = [
       new PrimitiveAttribute('POSITION',
         this.fpsVertexBuffer, 3, GL.FLOAT, 24, 0),
@@ -152,8 +152,7 @@ export class StatsGraph {
     const material = new Material('StatsMaterial', StatsShader)
     this.primitive = new Primitive(material,
       fpsAttribs, this.vertices.length / 6,
-      new BufferSource(1, this.indices),
-      { attributesUsage: GL.DYNAMIC_DRAW });
+      new BufferSource(1, this.indices));
     this.primitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
   }
 

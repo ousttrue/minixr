@@ -290,7 +290,7 @@ function position_uv(isCCW: boolean): [Float32Array, Uint16Array] {
 
 
 export function cubeInstancePrimitive(isCCW: boolean = true):
-  [Primitive, Float32Array, Float32Array] {
+  [Primitive, BufferSource, BufferSource] {
   const [vertices, indices] = position_uv(isCCW);
   const view = new BufferSource(8, vertices);
 
@@ -302,7 +302,7 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
   ];
 
   const matrixArray = new Float32Array(16 * 65535);
-  const matrixArrayView = new BufferSource(4, matrixArray);
+  const matrixArrayView = new BufferSource(4, matrixArray, GL.DYNAMIC_DRAW);
 
   const faceInfoArray = new Float32Array(8 * 65535);
   const faceInfoArrayView = new BufferSource(4, faceInfoArray);
@@ -354,5 +354,5 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
     new BufferSource(1, indices), {
     instanceAttributes
   });
-  return [primitive, matrixArray, faceInfoArray];
+  return [primitive, matrixArrayView, faceInfoArrayView];
 }

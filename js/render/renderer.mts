@@ -21,9 +21,9 @@
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
 import { MaterialState, CAP } from '../materials/materialstate.mjs';
-import { Primitive, BufferSource } from '../buffer/primitive.mjs';
+import { Primitive } from '../buffer/primitive.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
-import { Ubo } from './ubo.mjs';
 import { Program, ProgramFactory } from './program.mjs';
 import { TextureFactory } from './texturefactory.mjs';
 
@@ -80,30 +80,28 @@ export class Renderer {
     this._textureFactory = new TextureFactory(gl);
   }
 
-  private _getOrCreateVertexBuffer(
-    buffer: BufferSource, usage: number) {
-    let vbo = this._vboMap.get(buffer);
+  private _getOrCreateVertexBuffer(source: BufferSource) {
+    let vbo = this._vboMap.get(source);
     if (vbo) {
       return vbo;
     }
 
-    vbo = new Vbo(this.gl, GL.ARRAY_BUFFER, buffer, usage);
-    this._vboMap.set(buffer, vbo);
+    vbo = new Vbo(this.gl, GL.ARRAY_BUFFER, source, source.usage);
+    this._vboMap.set(source, vbo);
     return vbo;
   }
 
-  private _getOrCreateIndexBuffer(
-    indices: BufferSource, usage: number): Ibo {
-    let ibo = this._iboMap.get(indices);
+  private _getOrCreateIndexBuffer(source: BufferSource): Ibo {
+    let ibo = this._iboMap.get(source);
     if (ibo) {
       return ibo;
     }
 
-    const indexBuffer = new Vbo(this.gl, GL.ELEMENT_ARRAY_BUFFER,
-      indices, usage);
+    const indexBuffer = new Vbo(this.gl,
+      GL.ELEMENT_ARRAY_BUFFER, source, source.usage);
 
-    ibo = new Ibo(indexBuffer, indices);
-    this._iboMap.set(indices, ibo);
+    ibo = new Ibo(indexBuffer, source);
+    this._iboMap.set(source, ibo);
     return ibo;
   }
 
@@ -111,7 +109,7 @@ export class Renderer {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
       for (const attrib of primitive.attributes) {
-        if (attrib.source.dirty) {
+        if (attrib.source.dirty || attrib.source.usage == GL.STREAM_DRAW) {
           const vbo = vao.vboMap.get(attrib.source);
           if (vbo) {
             this.gl.bindVertexArray(null);
@@ -120,9 +118,15 @@ export class Renderer {
           }
         }
       }
+      if (primitive.indices && vao.ibo) {
+        if (primitive.indices.dirty || primitive.indices.usage == GL.STREAM_DRAW) {
+          primitive.indices.dirty = false;
+          vao.ibo.indexBuffer.updateRenderBuffer(this.gl, primitive.indices);
+        }
+      }
       if (primitive.options?.instanceAttributes) {
         for (const attrib of primitive.options?.instanceAttributes!) {
-          if (attrib.source.dirty) {
+          if (attrib.source.dirty || attrib.source.usage == GL.STREAM_DRAW) {
             const vbo = vao.vboMap.get(attrib.source);
             if (vbo) {
               this.gl.bindVertexArray(null);
@@ -140,21 +144,21 @@ export class Renderer {
     // VBO
     const vboList: Vbo[] = [];
     for (let attrib of primitive.attributes) {
-      const vbo = this._getOrCreateVertexBuffer(attrib.source, primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
+      const vbo = this._getOrCreateVertexBuffer(attrib.source);
       vboList.push(vbo);
     }
 
     // IBO
     let ibo: Ibo | undefined = undefined;
     if (primitive.indices) {
-      ibo = this._getOrCreateIndexBuffer(primitive.indices, primitive.options?.indicesUsage ?? GL.STATIC_DRAW);
+      ibo = this._getOrCreateIndexBuffer(primitive.indices);
     }
 
     // Instancing
     const instanceList: Vbo[] = [];
     if (primitive.options?.instanceAttributes) {
       for (let attrib of primitive.options?.instanceAttributes) {
-        const vbo = this._getOrCreateVertexBuffer(attrib.source, GL.STATIC_DRAW);
+        const vbo = this._getOrCreateVertexBuffer(attrib.source);
         instanceList.push(vbo);
       }
     }

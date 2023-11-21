@@ -1,4 +1,5 @@
-import { Primitive, BufferSource } from '../buffer/primitive.mjs';
+import { Primitive } from '../buffer/primitive.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
 import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums
@@ -12,7 +13,6 @@ export class Vbo {
     public readonly usage: number = GL.STATIC_DRAW) {
     this.buffer = gl.createBuffer()!;
     this.bind(gl);
-    // const bytes = new Uint8Array(src.buffer, src.byteOffset, src.byteLength);
     gl.bufferData(this.target, src.array, this.usage);
     this.unbind(gl);
     this._length = src.array.byteLength;
@@ -66,7 +66,7 @@ export class Vao {
     program: Program,
     primitive: Primitive,
     vboList: Vbo[],
-    ibo?: Ibo,
+    public readonly ibo?: Ibo,
     instanceList: Vbo[] = []) {
 
     this._mode = primitive.options?.mode ?? GL.TRIANGLES;

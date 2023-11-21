@@ -16,6 +16,7 @@ export class BufferSource {
   constructor(
     public readonly componentCount: number,
     public readonly array: BufferSourceArray,
+    public readonly usage: number = GL.STATIC_DRAW,
   ) {
   }
 

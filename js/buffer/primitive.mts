@@ -67,13 +67,7 @@ export class Primitive {
     public options?: {
       /** GL.TRIANGLES */
       mode?: number,
-      /** GL.STATIC_DRAW */
-      attributesUsage?: number,
-      /** GL.STATIC_DRAW */
-      indicesUsage?: number,
-
       instanceAttributes?: PrimitiveAttribute[],
-
       min?: any,
       max?: any,
     }
