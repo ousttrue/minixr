@@ -1,30 +1,11 @@
-// Copyright 2018 The Immersive Web Community Group
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-
-import { BoxBuilder } from '../geometry/box-builder.mjs';
 import { vec3, mat4 } from '../math/gl-matrix.mjs';
 import { Rotater } from '../component/rotater.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { HoverPassive, HoverMaterial } from '../component/hover.mjs';
-import { Material } from '../materials/material.mjs';
+import { cubeInstancePrimitive } from './cube-instance.mjs';
 
+const defaultIndex = 0;
+const hoverIndex = 1;
 
 export async function cubeSeaFactory(
   world: World,
@@ -32,28 +13,47 @@ export async function cubeSeaFactory(
   cubeScale: number = 1.0,
 ): Promise<void> {
 
+  const [primitive, matrices, faces] = cubeInstancePrimitive()
+  world.create(mat4.identity(), primitive)
+
+  let matrixIndex = 0;
+  let faceIndex = 0;
+
   const positions = [
     [0, 0.25, -0.8],
     [0.8, 0.25, 0],
     [0, 0.25, 0.8],
     [-0.8, 0.25, 0],
   ]
-
-  for (const pos of positions) {
-    let boxBuilder = new BoxBuilder();
-    // Build the spinning "hero" cubes
-    boxBuilder.pushCube(pos, 0.1);
-    const material = new HoverMaterial();
-    let heroPrimitive = boxBuilder.finishPrimitive(material);
+  for (let i = 0; i < positions.length; ++i
+  ) {
+    const pos = positions[i];
     const hover = new HoverPassive(
       () => {
-        material.setColor(1, 0, 0, 1);
+        faces[faceIndex] = hoverIndex;
+        faces[faceIndex + 1] = hoverIndex;
+        faces[faceIndex + 2] = hoverIndex;
+        faces[faceIndex + 4] = hoverIndex;
+        faces[faceIndex + 5] = hoverIndex;
+        faces[faceIndex + 6] = hoverIndex;
       },
       () => {
-        material.setColor(1, 1, 1, 1);
+        faces[faceIndex] = defaultIndex;
+        faces[faceIndex + 1] = defaultIndex;
+        faces[faceIndex + 2] = defaultIndex;
+        faces[faceIndex + 4] = defaultIndex;
+        faces[faceIndex + 5] = defaultIndex;
+        faces[faceIndex + 6] = defaultIndex;
       },
     )
-    world.create(new mat4(), heroPrimitive, new Rotater(), hover);
+    const matrix = new mat4(matrices.subarray(matrixIndex, matrixIndex + 16))
+    mat4.fromScaling(vec3.fromValues(0.1, 0.1, 0.1), { out: matrix })
+    matrix.m30 = pos[0]
+    matrix.m31 = pos[1]
+    matrix.m32 = pos[2]
+    world.create(matrix, new Rotater(), hover);
+
+    matrixIndex += 16, faceIndex += 8
   }
 
   {
@@ -74,22 +74,35 @@ export async function cubeSeaFactory(
             continue;
           }
 
-          let boxBuilder = new BoxBuilder();
-          let size = 0.4 * cubeScale;
-          boxBuilder.pushCube([0, 0, 0], size);
-          const material = new HoverMaterial();
-          let cubeSeaPrimitive = boxBuilder.finishPrimitive(material);
           const hover = new HoverPassive(
             () => {
-              material.setColor(1, 0, 0, 1);;
+              faces[faceIndex] = hoverIndex;
+              faces[faceIndex + 1] = hoverIndex;
+              faces[faceIndex + 2] = hoverIndex;
+              faces[faceIndex + 4] = hoverIndex;
+              faces[faceIndex + 5] = hoverIndex;
+              faces[faceIndex + 6] = hoverIndex;
             },
             () => {
-              material.setColor(1, 1, 1, 1);;
+              faces[faceIndex] = defaultIndex;
+              faces[faceIndex + 1] = defaultIndex;
+              faces[faceIndex + 2] = defaultIndex;
+              faces[faceIndex + 4] = defaultIndex;
+              faces[faceIndex + 5] = defaultIndex;
+              faces[faceIndex + 6] = defaultIndex;
             },
           );
 
-          const matrix = mat4.fromTranslation(pos[0], pos[1], pos[2]);
-          world.create(matrix, cubeSeaPrimitive, hover);
+          let size = 0.4 * cubeScale;
+          const matrix = new mat4(
+            matrices.subarray(matrixIndex, matrixIndex + 16))
+          mat4.fromScaling(vec3.fromValues(size, size, size), { out: matrix })
+          matrix.m30 = pos[0]
+          matrix.m31 = pos[1]
+          matrix.m32 = pos[2]
+          world.create(matrix, hover);
+
+          matrixIndex += 16, faceIndex += 8
         }
       }
     }
