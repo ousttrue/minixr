@@ -87,11 +87,11 @@ class AppSession {
     await this._loadGltf('assets', 'garage');
 
     // await this._loadGltf('glTF-Sample-Models', 'CesiumMan');
-    // await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
-    //   vec3.fromValues(0, 1, -3),
-    //   new quat(),
-    //   vec3.fromValues(1, 1, 1)
-    // ));
+    await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
+      vec3.fromValues(0, 1, -3),
+      new quat(),
+      vec3.fromValues(1, 1, 1)
+    ));
   }
 
   private async _loadGltf(dir: string, name: string, origin?: mat4) {

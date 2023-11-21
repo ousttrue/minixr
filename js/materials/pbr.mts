@@ -18,7 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Shader, ProgramDefine, RENDER_ORDER } from '../materials/shader.mjs';
+import { Shader, RENDER_ORDER } from '../materials/shader.mjs';
+import { Material, ProgramDefine, MaterialUniform1f } from './material.mjs';
 import { ATTRIB_MASK } from '../geometry/primitive.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 
@@ -219,7 +220,8 @@ void main() {
   _Color = vec4(color, baseColor.a);
 }`;
 
-export const PbrShader: Shader = {
+
+const PbrShader: Shader = {
   name: 'PBR',
 
   vertexSource: VERTEX_SOURCE,
@@ -232,39 +234,49 @@ export const PbrShader: Shader = {
     ['occlusionStrength', 1.0],
     ['emissiveFactor', vec3.fromValues(0, 0, 0)],
   ],
+}
 
-  getProgramDefines: (attributeMask: number): ProgramDefine[] => {
+
+export class PbrMaterial extends Material {
+  constructor(name: string) {
+    super(name, PbrShader);
+  }
+
+  getProgramDefines(attributeMask: number): ProgramDefine[] {
     const programDefines: ProgramDefine[] = [];
 
+    // vertex
     if (attributeMask & ATTRIB_MASK.COLOR_0) {
       programDefines.push(['USE_VERTEX_COLOR', 1]);
     }
 
+    // texture
     if (attributeMask & ATTRIB_MASK.TEXCOORD_0) {
-      if (this.baseColor.texture) {
+      if (this._textureMap.baseColorTex) {
         programDefines.push(['USE_BASE_COLOR_MAP', 1]);
       }
 
-      if (this.normal.texture && (attributeMask & ATTRIB_MASK.TANGENT)) {
+      if (this._textureMap.normalTex && (attributeMask & ATTRIB_MASK.TANGENT)) {
         programDefines.push(['USE_NORMAL_MAP', 1]);
       }
 
-      if (this.metallicRoughness.texture) {
+      if (this._textureMap.metallicRoughnessTex) {
         programDefines.push(['USE_METAL_ROUGH_MAP', 1]);
       }
 
-      if (this.occlusion.texture) {
+      if (this._textureMap.occlusionTex) {
         programDefines.push(['USE_OCCLUSION', 1]);
       }
 
-      if (this.emissive.texture) {
+      if (this._textureMap.emissiveTex) {
         programDefines.push(['USE_EMISSIVE_TEXTURE', 1]);
       }
     }
 
-    if ((!this.metallicRoughness.texture ||
-      !(attributeMask & ATTRIB_MASK.TEXCOORD_0)) &&
-      this.metallicRoughnessFactor.value[1] == 1.0) {
+    if ((!this._textureMap.metallicRoughnessTex ||
+      !(attributeMask & ATTRIB_MASK.TEXCOORD_0))
+      && (this._uniformMap.roughnessFactor as MaterialUniform1f)
+      && (this._uniformMap.roughnessFactor as MaterialUniform1f).value == 1.0) {
       programDefines.push(['FULLY_ROUGH', 1]);
     }
 

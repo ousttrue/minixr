@@ -18,8 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { Shader } from '../materials/shader.mjs';
-import { Material } from '../materials/material.mjs';
-import { ProgramDefine } from '../materials/shader.mjs';
+import { Material, ProgramDefine } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { Texture } from '../materials/texture.mjs';
 import { Ubo, UboMap } from './ubo.mjs';
@@ -121,7 +120,9 @@ export class Program {
         const location = gl.getUniformLocation(this.program, uniformName);
         if (location) {
           if (uniformInfo.type == GL.SAMPLER_2D) {
-            const v = gl.getUniform(this.program, location);
+            // const v = gl.getUniform(this.program, location);
+            const v = Object.keys(this.textureUnitMap).length;
+            console.log(`${uniformName}: ${location} ${v}`);
             this.textureUnitMap[uniformName] = v;
           }
           else if (uniformInfo.type == GL.SAMPLER_2D_ARRAY) {
@@ -228,13 +229,11 @@ export class ProgramFactory {
 
     // determine shader defines by material & primitive combination 
     const attributeMask = getAttributeMask(primitive.attributes);
-    // const defines = material.getProgramDefines(attributeMask);
-    const defines: ProgramDefine[] = [];
-
+    const defines = material.getProgramDefines(attributeMask);
     let key = this._getProgramKey(material.shader.name, defines);
+
     let program = this._programCache[key];
     if (!program) {
-
       program = new Program(this.gl,
         key, material.shader, defines);
       this._programCache[key] = program;

@@ -5,7 +5,7 @@ import { Shader } from '../materials/shader.mjs';
 import { Material, MaterialUniform4f } from '../materials/material.mjs';
 
 
-export const HoverShader: Shader = {
+const HoverShader: Shader = {
 
   name: 'Hover',
 

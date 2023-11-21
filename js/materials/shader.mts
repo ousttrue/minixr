@@ -20,7 +20,6 @@ export const RENDER_ORDER = {
 };
 
 
-export type ProgramDefine = [string, number];
 export type UniformDefaultValue = [string, any];
 export type UboDefinition = {
   name: string;
@@ -32,7 +31,6 @@ export type Shader = {
   name: string;
   vertexSource: string;
   fragmentSource: string;
-  getProgramDefines?: (attributeMask: number) => ProgramDefine[];
   uniforms?: UniformDefaultValue[];
   ubos?: UboDefinition[],
 }

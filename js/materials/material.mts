@@ -68,6 +68,9 @@ export class Ubo {
 }
 
 
+export type ProgramDefine = [string, number];
+
+
 export class Material {
   state = new MaterialState();
   _uniformMap: { [key: string]: MaterialUniform } = {}
@@ -126,5 +129,9 @@ export class Material {
     if (texture) {
       this._textureMap[name] = texture;
     }
+  }
+
+  getProgramDefines(attributeMask: number): ProgramDefine[] {
+    return [];
   }
 }

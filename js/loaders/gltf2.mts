@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { PbrShader } from '../materials/pbr.mjs';
+import { PbrMaterial } from '../materials/pbr.mjs';
 import { Material } from '../materials/material.mjs';
 import { MaterialState } from '../materials/materialstate.mjs';
 import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
@@ -29,7 +29,7 @@ import { vec2, vec3, vec4, quat, mat4 } from '../math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
-const DEFAULT_MATERIAL = new Material('glTF-default-material', PbrShader)
+const DEFAULT_MATERIAL = new PbrMaterial('glTF-default-material')
 
 const GLB_MAGIC = 0x46546C67;
 const CHUNK_TYPE = {
@@ -317,31 +317,32 @@ export class Gltf2Loader {
           glTexture.sampler.wrapS = sampler.wrapS!;
           glTexture.sampler.wrapT = sampler.wrapT!;
         }
+        await glTexture.waitForComplete();
         this.textures.push(glTexture);
       }
     }
 
     if (this.json.materials) {
       for (const glMaterial of this.json.materials) {
-        const pbr = new Material(glMaterial.name, PbrShader);
+        const pbr = new PbrMaterial(glMaterial.name);
         const metallicROughness = glMaterial.pbrMetallicRoughness || {};
 
         pbr.setUniform('baseColorFactor',
           metallicROughness.baseColorFactor ?? [1, 1, 1, 1]);
-        pbr.setTexture('baseColor', this._getTexture(metallicROughness.baseColorTexture));
+        pbr.setTexture('baseColorTex', this._getTexture(metallicROughness.baseColorTexture));
         pbr.setUniform('metallicFactor', metallicROughness.metallicFactor ?? 1.0)
         pbr.setUniform('roughnessFactor', metallicROughness.roughnessFactor ?? 1.0)
-        pbr.setTexture('metallicRoughness', this._getTexture(metallicROughness.metallicRoughnessTexture));
-        pbr.setTexture('normal', this._getTexture(glMaterial.normalTexture));
-        pbr.setTexture('occlusion', this._getTexture(glMaterial.occlusionTexture));
+        pbr.setTexture('metallicRoughnessTex', this._getTexture(metallicROughness.metallicRoughnessTexture));
+        pbr.setTexture('normalTex', this._getTexture(glMaterial.normalTexture));
+        pbr.setTexture('occlusionTex', this._getTexture(glMaterial.occlusionTexture));
         pbr.setUniform('occlusionStrength',
           (glMaterial.occlusionTexture && glMaterial.occlusionTexture.strength)
             ? glMaterial.occlusionTexture.strength
             : 1.0);
         pbr.setUniform('emissiveFactor', glMaterial.emissiveFactor ?? [0, 0, 0]);
-        pbr.setTexture('emissive', this._getTexture(glMaterial.emissiveTexture));
+        pbr.setTexture('emissiveTex', this._getTexture(glMaterial.emissiveTexture));
         if (!pbr._textureMap.emissive && glMaterial.emissiveFactor) {
-          pbr.setTexture('emissive', new ColorTexture(1.0, 1.0, 1.0, 1.0));
+          pbr.setTexture('emissiveTex', new ColorTexture(1.0, 1.0, 1.0, 1.0));
         }
 
         switch (glMaterial.alphaMode) {
