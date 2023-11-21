@@ -21,7 +21,7 @@
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
 import { MaterialState, CAP } from '../materials/materialstate.mjs';
-import { Primitive } from '../geometry/primitive.mjs';
+import { Primitive, BufferSource } from '../geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Ubo } from './ubo.mjs';
 import { Program, ProgramFactory } from './program.mjs';
@@ -70,8 +70,8 @@ export class Renderer {
   private _lighting = new Lighting();
   private _textureFactory: TextureFactory;
   private _programFactory: ProgramFactory;
-  private _iboMap: Map<Object, Ibo> = new Map();
-  private _vboMap: Map<DataView, Vbo> = new Map();
+  private _iboMap: Map<BufferSource, Ibo> = new Map();
+  private _vboMap: Map<BufferSource, Vbo> = new Map();
   private _primVaoMap: Map<Primitive, Vao> = new Map();
 
   constructor(
@@ -80,7 +80,8 @@ export class Renderer {
     this._textureFactory = new TextureFactory(gl);
   }
 
-  private _getOrCreateVertexBuffer(buffer: DataView, usage: number) {
+  private _getOrCreateVertexBuffer(
+    buffer: BufferSource, usage: number) {
     let vbo = this._vboMap.get(buffer);
     if (vbo) {
       return vbo;
@@ -91,30 +92,17 @@ export class Renderer {
     return vbo;
   }
 
-  private _getOrCreateIndexBuffer(indices: Uint8Array | Uint16Array | Uint32Array, usage: number): Ibo {
+  private _getOrCreateIndexBuffer(
+    indices: BufferSource, usage: number): Ibo {
     let ibo = this._iboMap.get(indices);
     if (ibo) {
       return ibo;
     }
 
-    const indexBuffer = new Vbo(this.gl, GL.ELEMENT_ARRAY_BUFFER,
-      new DataView(indices.buffer, indices.byteOffset, indices.byteLength),
-      usage);
-    let indexType = 0;
-    if (indices instanceof Uint16Array) {
-      indexType = GL.UNSIGNED_SHORT;
-    }
-    else if (indices instanceof Uint8Array) {
-      indexType = GL.UNSIGNED_BYTE;
-    }
-    else if (indices instanceof Uint32Array) {
-      indexType = GL.UNSIGNED_INT;
-    }
-    else {
-      throw new Error("unknown");
-    }
+    const indexBuffer = new Vbo(this.gl, GL.ELEMENT_ARRAY_BUFFER, 
+      indices, usage);
 
-    ibo = new Ibo(indexBuffer, indexType, indices.length);
+    ibo = new Ibo(indexBuffer, indices);
     this._iboMap.set(indices, ibo);
     return ibo;
   }
@@ -127,11 +115,11 @@ export class Renderer {
         primitive.vertexUpdated = false;
         this._used.clear();
         for (const attrib of primitive.attributes) {
-          const vbo = vao.vboMap.get(attrib.buffer);
+          const vbo = vao.vboMap.get(attrib.source);
           if (vbo) {
             if (!this._used.has(vbo)) {
               this._used.add(vbo);
-              vbo.updateRenderBuffer(this.gl, attrib.buffer);
+              vbo.updateRenderBuffer(this.gl, attrib.source);
             }
           }
         }
@@ -140,11 +128,11 @@ export class Renderer {
         primitive.instanceUpdated = false;
         this._used.clear();
         for (const attrib of primitive.options?.instanceAttributes!) {
-          const vbo = vao.vboMap.get(attrib.buffer);
+          const vbo = vao.vboMap.get(attrib.source);
           if (vbo) {
             if (!this._used.has(vbo)) {
               this._used.add(vbo);
-              vbo.updateRenderBuffer(this.gl, attrib.buffer);
+              vbo.updateRenderBuffer(this.gl, attrib.source);
             }
           }
         }
@@ -157,7 +145,7 @@ export class Renderer {
     // VBO
     const vboList: Vbo[] = [];
     for (let attrib of primitive.attributes) {
-      const vbo = this._getOrCreateVertexBuffer(attrib.buffer, primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
+      const vbo = this._getOrCreateVertexBuffer(attrib.source, primitive.options?.attributesUsage ?? GL.STATIC_DRAW);
       vboList.push(vbo);
     }
 
@@ -171,7 +159,7 @@ export class Renderer {
     const instanceList: Vbo[] = [];
     if (primitive.options?.instanceAttributes) {
       for (let attrib of primitive.options?.instanceAttributes) {
-        const vbo = this._getOrCreateVertexBuffer(attrib.buffer, GL.STATIC_DRAW);
+        const vbo = this._getOrCreateVertexBuffer(attrib.source, GL.STATIC_DRAW);
         instanceList.push(vbo);
       }
     }

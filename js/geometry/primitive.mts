@@ -24,6 +24,61 @@ import { Material } from '../materials/material.mjs';
 const GL = WebGL2RenderingContext; // For enums
 
 
+export type BufferSourceArray = (
+  Float32Array
+  | Uint8Array | Uint16Array | Uint32Array
+);
+
+
+export class BufferSource {
+  dirty = false;
+
+  constructor(
+    public readonly componentCount: number,
+    public readonly array: BufferSourceArray,
+  ) {
+  }
+
+  get glType(): number {
+    if (this.array instanceof Uint16Array) {
+      return GL.UNSIGNED_SHORT;
+    }
+    else if (this.array instanceof Uint8Array) {
+      return GL.UNSIGNED_BYTE;
+    }
+    else if (this.array instanceof Uint32Array) {
+      return GL.UNSIGNED_INT;
+    }
+    else {
+      throw new Error("unknown");
+    }
+  }
+
+  get length() {
+    return this.array.length / this.componentCount;
+  }
+
+  get stride() {
+    return this.array.byteLength / this.array.length * this.componentCount
+  }
+
+  updateBBFromPositions(bb: BoundingBox) {
+    const floats = this.array as Float32Array;
+    for (let i = 0; i < floats.length; i += this.componentCount) {
+      if (this.componentCount == 2) {
+        bb.expand(vec3.fromValues(floats[i], floats[i + 1], 0));
+      }
+      else {
+        bb.expand(new vec3(floats.subarray(i, i + 3)));
+      }
+    }
+    if (!bb.isFinite()) {
+      console.log(`${bb}`);
+    }
+  }
+}
+
+
 function getComponentSize(componentType: number) {
   switch (componentType) {
     case GL.FLOAT: return 4;
@@ -32,11 +87,12 @@ function getComponentSize(componentType: number) {
   }
 }
 
+
 export class PrimitiveAttribute {
   constructor(
     public readonly name: string,
     /** may sharing from multi PrimitiveAttributes */
-    public readonly buffer: DataView,
+    public readonly source: BufferSource,
     public readonly componentCount: number = 3,
     public readonly componentType: number = GL.FLOAT,
     public readonly stride: number = 0,
@@ -52,6 +108,7 @@ export class PrimitiveAttribute {
   }
 }
 
+
 export class Primitive {
   bb = new BoundingBox();
   vertexUpdated = false;
@@ -62,7 +119,7 @@ export class Primitive {
     public material: Material,
     public attributes: PrimitiveAttribute[],
     public vertexCount: number,
-    public indices?: Uint8Array | Uint16Array | Uint32Array,
+    public indices?: BufferSource,
     public options?: {
       /** GL.TRIANGLES */
       mode?: number,
@@ -72,11 +129,20 @@ export class Primitive {
       indicesUsage?: number,
 
       instanceAttributes?: PrimitiveAttribute[],
+
+      min?: any,
+      max?: any,
     }
   ) {
-    for (const attr of attributes) {
-      if (attr.name == 'POSITION') {
-        this.updateBBFromPositions(attr);
+    if (options?.min && options?.max) {
+      this.bb.expand(vec3.fromValues(...options.min));
+      this.bb.expand(vec3.fromValues(...options.max));
+    }
+    else {
+      for (const attr of attributes) {
+        if (attr.name == 'POSITION') {
+          attr.source.updateBBFromPositions(this.bb);
+        }
       }
     }
 
@@ -91,35 +157,18 @@ export class Primitive {
   calcStrideFor(attribute: PrimitiveAttribute) {
     let stride = 0;
     for (const a of this.attributes) {
-      if (a.buffer == attribute.buffer) {
+      if (a.source == attribute.source) {
         stride += a.calcStride();
       }
     }
     return stride;
   }
 
-  updateBBFromPositions(attribute: PrimitiveAttribute) {
-    const view = attribute.buffer;
-    const floats = new Float32Array(view.buffer, view.byteOffset, view.byteLength / 4);
-    const stride = this.calcStrideFor(attribute) / 4;
-    for (let i = 0; i < floats.length; i += stride) {
-      if (stride == 2) {
-        this.bb.expand(vec3.fromValues(floats[i], floats[i + 1], 0));
-      }
-      else {
-        this.bb.expand(new vec3(floats.subarray(i, i + 3)));
-      }
-    }
-    if (!this.bb.isFinite()) {
-      console.log(`${this.bb}`);
-    }
-  }
-
   hitTest(p: vec3): boolean {
     if (!this.bb.isFinite()) {
       for (const attr of this.attributes) {
         if (attr.name == 'POSITION') {
-          this.updateBBFromPositions(attr);
+          attr.source.updateBBFromPositions(this.bb);
         }
       }
     }

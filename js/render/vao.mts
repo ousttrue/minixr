@@ -1,4 +1,4 @@
-import { Primitive } from '../scene/geometry/primitive.mjs';
+import { Primitive, BufferSource } from '../geometry/primitive.mjs';
 import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums
@@ -8,22 +8,25 @@ export class Vbo {
   buffer: WebGLBuffer;
   private _length: number;
   constructor(gl: WebGL2RenderingContext,
-    public readonly target: number, src: DataView,
+    public readonly target: number, src: BufferSource,
     public readonly usage: number = GL.STATIC_DRAW) {
     this.buffer = gl.createBuffer()!;
     this.bind(gl);
-    const bytes = new Uint8Array(src.buffer, src.byteOffset, src.byteLength);
-    gl.bufferData(this.target, bytes, this.usage);
+    // const bytes = new Uint8Array(src.buffer, src.byteOffset, src.byteLength);
+    gl.bufferData(this.target, src.array, this.usage);
     this.unbind(gl);
-    this._length = src.byteLength;
+    this._length = src.array.byteLength;
   }
 
-  updateRenderBuffer(gl: WebGL2RenderingContext, data: DataView, offset = 0) {
+  updateRenderBuffer(
+    gl: WebGL2RenderingContext, data: BufferSource, offset = 0) {
     this.bind(gl);
-    if (offset == 0 && data.byteOffset == 0 && this._length == data.byteLength) {
-      gl.bufferData(this.target, data.buffer, this.usage);
+    if (offset == 0
+      && data.array.byteOffset == 0
+      && this._length == data.array.byteLength) {
+      gl.bufferData(this.target, data.array, this.usage);
     } else {
-      gl.bufferSubData(this.target, offset, data);
+      gl.bufferSubData(this.target, offset, data.array);
     }
     this.unbind(gl);
   }
@@ -38,16 +41,21 @@ export class Vbo {
 
 
 export class Ibo {
+  public readonly indexType: number;
+  public readonly indexCount: number;
   constructor(
     public readonly indexBuffer: Vbo,
-    public readonly indexType: number,
-    public readonly indexCount: number) { }
+    indices: BufferSource,
+  ) {
+    this.indexCount = indices.array.length;
+    this.indexType = indices.glType;
+  }
 }
 
 
 export class Vao {
   private _vao: WebGLVertexArrayObject;
-  vboMap: Map<DataView, Vbo> = new Map();
+  vboMap: Map<BufferSource, Vbo> = new Map();
   private _indexBuffer: Vbo | null = null;
   private _indexType: number = 0;
   private _indexOffset: number = 0;
@@ -72,7 +80,7 @@ export class Vao {
     for (let i = 0; i < primitive.attributes.length; ++i) {
       const attrib = primitive.attributes[i];
       const buffer = vboList[i];
-      this.vboMap.set(attrib.buffer, buffer);
+      this.vboMap.set(attrib.source, buffer);
       const location = program.attrib[attrib.name];
       if (location == null) {
         // console.warn(attrib);
@@ -95,9 +103,9 @@ export class Vao {
     }
 
     for (let i = 0; i < instanceList.length; ++i) {
-      const attrib = primitive.options?.instanceAttributes[i]!;
+      const attrib = primitive.options?.instanceAttributes![i]!;
       const buffer = instanceList[i]!;
-      this.vboMap.set(attrib.buffer, buffer);
+      this.vboMap.set(attrib.source, buffer);
       const location = program.attrib[attrib.name];
       if (location == null) {
         console.warn(attrib);

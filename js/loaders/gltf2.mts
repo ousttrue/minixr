@@ -20,9 +20,8 @@
 
 import { PbrMaterial } from '../materials/pbr.mjs';
 import { Material } from '../materials/material.mjs';
-import { MaterialState } from '../materials/materialstate.mjs';
 import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute, BufferSource } from '../geometry/primitive.mjs';
 import * as GLTF2 from './GLTF.js';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { vec2, vec3, vec4, quat, mat4 } from '../math/gl-matrix.mjs';
@@ -207,6 +206,53 @@ export class Gltf2Loader {
     return bytes.subarray(offset, offset + buffer.byteLength);
   }
 
+  private async _bufferSourceFromAccessor(accessor: GLTF2.Accessor):
+    Promise<BufferSource> {
+    if (!this.json.bufferViews) {
+      throw new Error("no bufferViews");
+    }
+    if (!accessor.bufferView) {
+      throw new Error("not impl");
+    }
+
+    const bufferView = this.json.bufferViews[accessor.bufferView];
+    if (bufferView.byteStride != null) {
+      if (bufferView.byteStride != getItemSize(accessor)) {
+        throw new Error("interleaved not impl");
+      }
+    }
+
+    let bytes = await this._bytesFromBufferView(bufferView);
+    bytes = bytes.subarray(accessor.byteOffset ?? 0);
+
+    const componentCount = getComponentCount(accessor.type)
+
+    switch (accessor.componentType) {
+      case GL.FLOAT:
+        return new BufferSource(componentCount, new Float32Array(
+          bytes.buffer, bytes.byteOffset, accessor.count * componentCount
+        ));
+
+      case GL.UNSIGNED_BYTE:
+        return new BufferSource(componentCount, new Uint8Array(
+          bytes.buffer, bytes.byteOffset, accessor.count * componentCount
+        ));
+
+      case GL.UNSIGNED_SHORT:
+        return new BufferSource(componentCount, new Uint16Array(
+          bytes.buffer, bytes.byteOffset, accessor.count * componentCount
+        ));
+
+      case GL.UNSIGNED_INT:
+        return new BufferSource(componentCount, new Uint32Array(
+          bytes.buffer, bytes.byteOffset, accessor.count * componentCount
+        ));
+
+      default:
+        throw new Error("not impl");
+    }
+  }
+
   private _getTexture(textureInfo?: GLTF2.TextureInfo | GLTF2.MaterialNormalTextureInfo): ImageTexture | null {
     if (!textureInfo) {
       return null;
@@ -219,24 +265,15 @@ export class Gltf2Loader {
       throw new Error('no accessors');
     }
     const accessor = this.json.accessors[accessorIndex];
-    if (accessor.bufferView == null) {
-      // spare ?
-      throw new Error('no bufferViewId');
-    }
-    if (!this.json.bufferViews) {
-      throw new Error('no bufferViews');
-    }
-    const bufferView = this.json.bufferViews[accessor.bufferView];
-    const bytes = await this._bytesFromBufferView(bufferView);
+    const bufferSource = await this._bufferSourceFromAccessor(accessor);
+
     return new PrimitiveAttribute(
       name,
-      new DataView(bytes.buffer,
-        bytes.byteOffset + (accessor.byteOffset ?? 0),
-        accessor.count * getItemSize(accessor)),
+      bufferSource,
       getComponentCount(accessor.type),
       accessor.componentType,
-      bufferView.byteStride ?? 0,
-      accessor.byteOffset ?? 0,
+      bufferSource.stride,
+      0,
       accessor.normalized ?? false
     );
   }
@@ -400,7 +437,8 @@ export class Gltf2Loader {
             attributes,
             // TODO:
             vertexCount,
-            indexBuffer, { mode: glPrimitive.mode ?? GL.TRIANGLES });
+            indexBuffer ? new BufferSource(1, indexBuffer) : undefined,
+            { mode: glPrimitive.mode ?? GL.TRIANGLES });
 
           // if (min && max) {
           //   glPrimitive.bb = new BoundingBox(

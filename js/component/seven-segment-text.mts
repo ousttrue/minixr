@@ -25,7 +25,7 @@ for numbers and a limited number of other characters.
 
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute, BufferSource } from '../geometry/primitive.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Stats, now } from './stats-viewer.mjs';
@@ -158,21 +158,21 @@ class SevenSegment {
     material.setUniform('ascii', this.ascii);
 
     // in vec2 a_Position;
-    const vertexBuffer = new DataView(this.vertices.buffer);
+    const vertexBuffer = new BufferSource(3, this.vertices);
     const vertexAttribs = [
       new PrimitiveAttribute('a_Position', vertexBuffer, 3, GL.FLOAT, 12, 0),
     ];
 
     const instanceAttribs = [
       new PrimitiveAttribute('i_Cell',
-        new DataView(this.cells.buffer), 4, GL.FLOAT, 16, 0),
+        new BufferSource(4, this.cells), 4, GL.FLOAT, 16, 0),
       new PrimitiveAttribute('i_Char_Color',
-        new DataView(this.charColors.buffer), 2, GL.FLOAT, 8, 0)
+        new BufferSource(2, this.charColors), 2, GL.FLOAT, 8, 0)
     ]
 
     this.primitive = new Primitive(material,
       vertexAttribs, this.vertices.length / 2,
-      this.indices, {
+      new BufferSource(1, this.indices), {
       instanceAttributes: instanceAttribs,
     });
   }

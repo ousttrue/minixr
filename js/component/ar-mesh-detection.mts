@@ -1,4 +1,4 @@
-import { PrimitiveAttribute, Primitive } from '../geometry/primitive.mjs';
+import { PrimitiveAttribute, Primitive, BufferSource } from '../geometry/primitive.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { ArOcclusionShader, ArOcclusionShaderDebug, DetectedItem } from './ar-detection.mjs';
@@ -9,15 +9,15 @@ const GL = WebGLRenderingContext; // For enums
 
 
 function createPrimitive(mesh: XRMesh, material: Material): Primitive {
-  let vertexBuffer = new DataView(
-    mesh.vertices.buffer, mesh.vertices.byteOffset, mesh.vertices.byteLength);
+  let vertexBuffer = new BufferSource(3, mesh.vertices);
   let attributes = [
     new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
   ];
   // wrong d.ts ?
   // @ts-ignore
   const indices = mesh.indices as Uint32Array;
-  const primitive = new Primitive(material, attributes, mesh.vertices.length / 3, indices);
+  const primitive = new Primitive(material, attributes, mesh.vertices.length / 3,
+    new BufferSource(1, indices));
   return primitive;
 }
 

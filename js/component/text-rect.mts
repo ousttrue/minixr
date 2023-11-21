@@ -1,20 +1,13 @@
-import { Node } from './node.mjs';
 import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Shader } from '../materials/shader.mjs';
+import { Primitive, PrimitiveAttribute, BufferSource } from '../geometry/primitive.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
-export class CozetteMatrial extends Material {
-  constructor() {
-    super();
-  }
+export const CozetteShader: Shader = {
+  name: "cozette",
 
-  get materialName() {
-    return 'cozette';
-  }
-
-  get vertexSource() {
-    return `
+  vertexSource: `
 precision mediump float;
 in vec2 a_Position;
 in vec2 a_Uv;
@@ -60,11 +53,9 @@ void main() {
   f_Fg = extractUint32(i_Unicode_FgBg.z);
   f_Bg = extractUint32(i_Unicode_FgBg.w);
 }
-`;
-  }
+`,
 
-  get fragmentSource() {
-    return `
+  fragmentSource: `
 precision mediump float;
 in vec2 f_Uv;
 in vec4 f_Fg;
@@ -77,8 +68,7 @@ void main() {
   // o_FragColor = texcel;
   o_FragColor = texcel.x<0.5 ? f_Fg : f_Bg;
 }
-`;
-  }
+`,
 }
 
 export class TextRect extends Node {
@@ -102,15 +92,15 @@ export class TextRect extends Node {
     this.glyphHeight = option.glyphHeight;
 
     // Build the spinning "hero" cubes
-    const material = new CozetteMatrial();
+    const material = new Material("cozzete", CozetteShader);
 
     // x, y, u, v
-    const vertices = new DataView(new Float32Array([
+    const vertices = new BufferSource(4, new Float32Array([
       0, 1, 0, 1,
       0, 0, 0, 0,
       1, 0, 1, 0,
       1, 1, 1, 1,
-    ]).buffer);
+    ]));
     const attributes: PrimitiveAttribute[] = [
       new PrimitiveAttribute(
         'a_Position',
@@ -134,17 +124,17 @@ export class TextRect extends Node {
     this.codepoints = new Uint32Array(cellCount * 4);
     const instanceAttributes = [
       new PrimitiveAttribute('i_Cell',
-        new DataView(this.positions.buffer), 4, GL.FLOAT, 16, 0),
+        new BufferSource(4, this.positions), 4, GL.FLOAT, 16, 0),
       new PrimitiveAttribute('i_Unicode_FgBg',
-        new DataView(this.codepoints.buffer), 4, GL.FLOAT, 32, 0),
+        new BufferSource(4, this.codepoints), 4, GL.FLOAT, 32, 0),
     ];
 
     const primitive = new Primitive(material, attributes, 4,
-      indices, {
+      new BufferSource(1, indices), {
       instanceAttributes,
     });
 
-    this.primitives.push(primitive);
+    // this.primitives.push(primitive);
 
     for (let y = 0; y < option.rows; ++y) {
       for (let x = 0; x < option.cols; ++x) {
@@ -167,6 +157,6 @@ export class TextRect extends Node {
     this.positions[index + 2] = x + this.glyphWidth;
     this.positions[index + 3] = y + this.glyphHeight;
 
-    this.primitives[0].vertexUpdated = true;
+    // this.primitives[0].vertexUpdated = true;
   }
 }

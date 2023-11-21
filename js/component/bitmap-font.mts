@@ -1,4 +1,4 @@
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute, BufferSource } from '../geometry/primitive.mjs';
 import { vec3, mat4 } from '../math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Shader, RENDER_ORDER } from '../materials/shader.mjs';
@@ -122,12 +122,12 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<void> 
   material.setTexture('color', await loadTextureAsync());
 
   // counter clock wise
-  const vertices = new DataView(new Float32Array([
+  const vertices = new BufferSource(4, new Float32Array([
     0, 1, 0, 0,
     0, 0, 0, 1,
     1, 0, 1, 1,
     1, 1, 1, 0,
-  ]).buffer);
+  ]));
   const attributes = [
     new PrimitiveAttribute(
       'a_Position', vertices, 2, GL.FLOAT,
@@ -141,8 +141,7 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<void> 
   const ibo = new Uint16Array([0, 1, 2, /**/ 2, 3, 0]);
 
   const instances = new Float32Array(65535);
-  const instancesView = new DataView(instances.buffer);
-  // this.instanceVbo = new Vbo(gl, this.instances, 32);
+  const instancesView = new BufferSource(1, instances);
   const instanceAttributes = [
     new PrimitiveAttribute(
       'i_Cell', instancesView, 4, GL.FLOAT,
@@ -160,7 +159,8 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<void> 
   grid.puts(0, 0.4, 'abcdefghijklmnopqrstuvwxyz');
 
   const primitive = new Primitive(material,
-    attributes, 4, ibo, { instanceAttributes });
+    attributes, 4, new BufferSource(1, ibo), 
+    { instanceAttributes });
   primitive.instanceCount = grid.length;
 
   const matrix = mat4.fromTranslation(pos.x, pos.y, pos.z);

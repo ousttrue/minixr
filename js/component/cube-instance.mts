@@ -1,7 +1,7 @@
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { BufferSource, Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -291,7 +291,7 @@ function position_uv(isCCW: boolean): [Float32Array, Uint16Array] {
 export function cubeInstancePrimitive(isCCW: boolean = true):
   [Primitive, Float32Array, Float32Array] {
   const [vertices, indices] = position_uv(isCCW);
-  const view = new DataView(vertices.buffer);
+  const view = new BufferSource(8, vertices);
 
   const attributes: PrimitiveAttribute[] = [
     new PrimitiveAttribute("vPosFace",
@@ -301,10 +301,10 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
   ];
 
   const matrixArray = new Float32Array(16 * 65535);
-  const matrixArrayView = new DataView(matrixArray.buffer);
+  const matrixArrayView = new BufferSource(4, matrixArray);
 
   const faceInfoArray = new Float32Array(8 * 65535);
-  const faceInfoArrayView = new DataView(faceInfoArray.buffer);
+  const faceInfoArrayView = new BufferSource(4, faceInfoArray);
 
   const instanceAttributes: PrimitiveAttribute[] = [
     new PrimitiveAttribute("iRow0",
@@ -349,7 +349,8 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
   material.setPaletteColor(8, Black);
 
   const primitive = new Primitive(material
-    , attributes, vertices.length / 8, indices, {
+    , attributes, vertices.length / 8,
+    new BufferSource(1, indices), {
     instanceAttributes
   });
   return [primitive, matrixArray, faceInfoArray];
