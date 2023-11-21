@@ -25,7 +25,8 @@ for numbers and a limited number of other characters.
 
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute, BufferSource } from '../buffer/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Stats, now } from './stats-viewer.mjs';
@@ -115,6 +116,8 @@ class SevenSegment {
   private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
   private _fpsAverage: number = 0;
   primitive: Primitive;
+  cellsBuffer: BufferSource;
+  charColorsBuffer: BufferSource;
 
   constructor(thickness = 0.1, margin = 0.05) {
     const l = 0 + margin
@@ -163,12 +166,15 @@ class SevenSegment {
       new PrimitiveAttribute('a_Position', vertexBuffer, 3, GL.FLOAT, 12, 0),
     ];
 
+    this.cellsBuffer = new BufferSource(4, this.cells);
+    this.charColorsBuffer = new BufferSource(2, this.charColors);
     const instanceAttribs = [
       new PrimitiveAttribute('i_Cell',
-        new BufferSource(4, this.cells), 4, GL.FLOAT, 16, 0),
+        this.cellsBuffer, 4, GL.FLOAT, 16, 0),
       new PrimitiveAttribute('i_Char_Color',
-        new BufferSource(2, this.charColors), 2, GL.FLOAT, 8, 0)
+        this.charColorsBuffer, 2, GL.FLOAT, 8, 0)
     ]
+
 
     this.primitive = new Primitive(material,
       vertexAttribs, this.vertices.length / 2,
@@ -274,8 +280,8 @@ class SevenSegment {
       j += 2;
       ++this.primitive.instanceCount;
     }
-    this.primitive.options!.instanceAttributes[0].source.dirty = true;
-    this.primitive.options!.instanceAttributes[1].source.dirty = true;
+    this.cellsBuffer.dirty = true;
+    this.charColorsBuffer.dirty = true;
   }
 }
 

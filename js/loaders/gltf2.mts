@@ -21,7 +21,8 @@
 import { PbrMaterial } from '../materials/pbr.mjs';
 import { Material } from '../materials/material.mjs';
 import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
-import { Primitive, PrimitiveAttribute, BufferSource } from '../buffer/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
 import * as GLTF2 from './GLTF.js';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { vec2, vec3, vec4, quat, mat4 } from '../math/gl-matrix.mjs';

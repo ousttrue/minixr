@@ -27,7 +27,8 @@ clockwise-order.
 
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
-import { BufferSource, Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
 import { MaterialState } from '../materials/materialstate.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';

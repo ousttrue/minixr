@@ -1,4 +1,5 @@
-import { PrimitiveAttribute, Primitive, BufferSource } from '../buffer/primitive.mjs';
+import { PrimitiveAttribute, Primitive } from '../buffer/primitive.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
 import { mat4 } from '../math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { ArOcclusionShader, ArOcclusionShaderDebug, DetectedItem } from './ar-detection.mjs';

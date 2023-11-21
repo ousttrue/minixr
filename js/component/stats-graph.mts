@@ -27,10 +27,12 @@ your scene.
 
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute, BufferSource } from '../buffer/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
 import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
+
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -71,7 +73,7 @@ function fpsToY(value: number): number {
   return (Math.min(value, MAX_FPS) * (0.7 / MAX_FPS)) - 0.45;
 }
 
-function fpsToRGB(value: number): { r: Number, g: Number, b: Number } {
+function fpsToRGB(value: number): { r: number, g: number, b: number } {
   return {
     r: Math.max(0.0, Math.min(1.0, 1.0 - (value / 60))),
     g: Math.max(0.0, Math.min(1.0, ((value - 15) / (MAX_FPS - 15)))),
@@ -81,8 +83,8 @@ function fpsToRGB(value: number): { r: Number, g: Number, b: Number } {
 
 
 export class StatsGraph {
-  fpsVertexBuffer: Float32Array;
-  fpsIndexBuffer: Uint16Array;
+  vertices: Float32Array;
+  indices: Uint16Array;
   primitive: Primitive;
 
   private _performanceMonitoring: boolean = false;
@@ -90,6 +92,7 @@ export class StatsGraph {
   private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
   private _lastSegment: number = 0;
   private _fpsAverage: number = 0;
+  fpsVertexBuffer: BufferSource;
 
   constructor() {
     let fpsVerts = [];
@@ -136,18 +139,20 @@ export class StatsGraph {
     // 60 FPS line
     addBGSquare(-0.45, fpsToY(60), 0.45, fpsToY(62), 0.015, 0.2, 0.0, 0.75);
 
-    this.fpsVertexBuffer = new Float32Array(fpsVerts);
-    this.fpsIndexBuffer = new Uint16Array(fpsIndices);
+    this.vertices = new Float32Array(fpsVerts);
+    this.indices = new Uint16Array(fpsIndices);
 
-    const fpsVertexBuffer = new BufferSource(6, this.fpsVertexBuffer);
+    this.fpsVertexBuffer = new BufferSource(6, this.vertices);
     const fpsAttribs = [
-      new PrimitiveAttribute('POSITION', fpsVertexBuffer, 3, GL.FLOAT, 24, 0),
-      new PrimitiveAttribute('COLOR_0', fpsVertexBuffer, 3, GL.FLOAT, 24, 12),
+      new PrimitiveAttribute('POSITION',
+        this.fpsVertexBuffer, 3, GL.FLOAT, 24, 0),
+      new PrimitiveAttribute('COLOR_0',
+        this.fpsVertexBuffer, 3, GL.FLOAT, 24, 12),
     ];
     const material = new Material('StatsMaterial', StatsShader)
     this.primitive = new Primitive(material,
-      fpsAttribs, this.fpsVertexBuffer.length / 6,
-      new BufferSource(1, this.fpsIndexBuffer),
+      fpsAttribs, this.vertices.length / 6,
+      new BufferSource(1, this.indices),
       { attributesUsage: GL.DYNAMIC_DRAW });
     this.primitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
   }
@@ -183,7 +188,7 @@ export class StatsGraph {
     let y1 = fpsToY(valueHigh + 1);
 
     // Update the current segment with the new FPS value
-    let updateVerts = [
+    let updateVerts: number[] = [
       segmentToX(this._lastSegment), y1, 0.02, color.r, color.g, color.b,
       segmentToX(this._lastSegment + 1), y1, 0.02, color.r, color.g, color.b,
       segmentToX(this._lastSegment), y0, 0.02, color.r, color.g, color.b,
@@ -198,14 +203,14 @@ export class StatsGraph {
     if (this._lastSegment == SEGMENTS - 1) {
       // If we're updating the last segment we need to do two bufferSubDatas
       // to update the segment and turn the first segment into the progress line.
-      this.fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
+      this.vertices.set(updateVerts, this._lastSegment * 24);
       updateVerts = [
         segmentToX(0), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
         segmentToX(.25), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
         segmentToX(0), fpsToY(0), 0.02, color.r, color.g, color.b,
         segmentToX(.25), fpsToY(0), 0.02, color.r, color.g, color.b,
       ];
-      this.fpsVertexBuffer.set(updateVerts);
+      this.vertices.set(updateVerts);
     } else {
       updateVerts.push(
         segmentToX(this._lastSegment + 1), fpsToY(MAX_FPS), 0.02, color.r, color.g, color.b,
@@ -213,12 +218,12 @@ export class StatsGraph {
         segmentToX(this._lastSegment + 1), fpsToY(0), 0.02, color.r, color.g, color.b,
         segmentToX(this._lastSegment + 1.25), fpsToY(0), 0.02, color.r, color.g, color.b
       );
-      this.fpsVertexBuffer.set(updateVerts, this._lastSegment * 24);
+      this.vertices.set(updateVerts, this._lastSegment * 24);
     }
 
     this._lastSegment = (this._lastSegment + 1) % SEGMENTS;
 
-    this.primitive.vertexUpdated = true;
+    this.fpsVertexBuffer.dirty = true;
   }
 
   static async factory(world: World, matrix: mat4): Promise<void> {

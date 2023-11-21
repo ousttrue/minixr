@@ -88,12 +88,10 @@ export async function cubeSeaFactory(
           const current = faceIndex;
           const hover = new HoverPassive(
             () => {
-              console.log('hover.start', current);
               setCubeColor(current, hoverIndex);
               primitive.options!.instanceAttributes[5].source.dirty = true;
             },
             () => {
-              console.log('hover.end', current);
               setCubeColor(current, defaultIndex);
             },
           );
