@@ -68,8 +68,12 @@ export class ArPlaneDetection {
     // flicker ?
     this.lastMap.forEach((c, _) => {
       // not found. remove
-      console.log('destroy', c.entity);
-      world.destroy(c.entity);
+      ++c.counter
+      if (c.counter > 4) {
+        // delay remove
+        console.log('destroy', c.entity);
+        world.destroy(c.entity);
+      }
     });
 
     const tmp = this.lastMap;
@@ -101,7 +105,8 @@ export class ArPlaneDetection {
         this.lastMap.delete(plane);
         this.newMap.set(plane, {
           entity: item.entity,
-          time: plane.lastChangedTime
+          time: plane.lastChangedTime,
+          counter: 0,
         });
       }
     }
@@ -115,7 +120,8 @@ export class ArPlaneDetection {
       // console.log('new plane', entity, plane)
       this.newMap.set(plane, {
         entity,
-        time: plane.lastChangedTime
+        time: plane.lastChangedTime,
+        counter: 0,
       });
     }
   }

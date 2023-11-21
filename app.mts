@@ -31,8 +31,8 @@ class AppSession {
 
   _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
-  _meshDetection: ArMeshDetection;
-  _planeDetection: ArPlaneDetection;
+
+  _detection: (refsp: XRReferenceSpace, frame: XRFrame) => void;
 
   // term: XRTerm;
   // xrGLFactory: XRWebGLBinding;
@@ -50,8 +50,19 @@ class AppSession {
     // framework and has nothing to do with WebXR specifically.)
     this.renderer = new Renderer(gl);
     // this.term = new XRTerm(gl);
-    this._meshDetection = new ArMeshDetection(mode);
-    this._planeDetection = new ArPlaneDetection(mode);
+
+    if (navigator.userAgent.includes('Quest 3')) {
+      const meshDetection = new ArMeshDetection(mode);
+      this._detection = (refsp: XRReferenceSpace, frame: XRFrame) => {
+        meshDetection.update(this.world, refsp, frame);
+      }
+    }
+    else {
+      const planeDetection = new ArPlaneDetection(mode);
+      this._detection = (refsp: XRReferenceSpace, frame: XRFrame) => {
+        planeDetection.update(this.world, refsp, frame);
+      }
+    }
   }
 
   async start() {
@@ -71,8 +82,8 @@ class AppSession {
   async _setupScene() {
     {
       const matrix = mat4.fromTRS(
-        vec3.fromValues(0, 1.3, -0.5),
-        quat.fromEuler(-45.0, 0.0, 0.0),
+        vec3.fromValues(0, 1.4, -0.5),
+        quat.fromEuler(-10.0, 0.0, 0.0),
         vec3.fromValues(0.3, 0.3, 0.3),
       );
       await StatsGraph.factory(this.world, matrix);
@@ -83,7 +94,8 @@ class AppSession {
     await HandTracking.factory(this.world, "right");
     await interactionFactory(this.world);
     await cubeSeaFactory(this.world, 6, 0.5)
-    await bitmapFontFactory(this.world, vec3.fromValues(0, 0, -0.2));
+    const textgrid = await bitmapFontFactory(this.world, vec3.fromValues(0.2, 1.2, -0.4));
+    textgrid.puts(0, 0, window.navigator.userAgent);
 
     await this._loadGltf('assets', 'garage');
 
@@ -131,8 +143,7 @@ class AppSession {
     HandTracking.system(
       this.world, time, frameDelta, xrRefSpace, frame, session.inputSources);
 
-    this._planeDetection.update(this.world, xrRefSpace, frame);
-    this._meshDetection.update(this.world, xrRefSpace, frame);
+    this._detection(xrRefSpace, frame);
 
     hoverSystem(this.world);
     animationSystem(this.world);

@@ -86,13 +86,14 @@ export async function loadTextureAsync(): Promise<BlobTexture> {
 }
 
 
-class TextGrid {
+export class TextGrid {
   length = 0;
   fg = 0xFF0000FF;
   bg = 0xFFFF00FF;
   uintView: Uint32Array;
 
   constructor(private array: Float32Array,
+    private readonly callback: (n: number) => void,
     public cell_width: number = 0.024,
     public cell_height: number = 0.032) {
     this.uintView = new Uint32Array(array.buffer,
@@ -114,11 +115,13 @@ class TextGrid {
       x += this.cell_width;
       this.length += 1;
     }
+
+    this.callback(this.length);
   }
 }
 
 
-export async function bitmapFontFactory(world: World, pos: vec3): Promise<void> {
+export async function bitmapFontFactory(world: World, pos: vec3): Promise<TextGrid> {
   const material = new Material('BitmapFontMaterial', BitmapFontShader)
   material.setTexture('color', await loadTextureAsync());
 
@@ -153,19 +156,14 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<void> 
       32, 16)
   ];
 
-  const grid = new TextGrid(instances);
-  grid.puts(0, 0.1, '0123456789');
-  grid.puts(0, 0.2, '~!@#$%^&*()_+=-:;{][]\'"?/<>,.');
-  grid.puts(0, 0.3, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
-  grid.puts(0, 0.4, 'abcdefghijklmnopqrstuvwxyz');
-
   const primitive = new Primitive(material,
-    attributes, 4, new BufferSource(1, ibo), 
+    attributes, 4, new BufferSource(1, ibo),
     { instanceAttributes });
-  primitive.instanceCount = grid.length;
+
+  const grid = new TextGrid(instances, (count) => primitive.instanceCount = count);
 
   const matrix = mat4.fromTranslation(pos.x, pos.y, pos.z);
   world.create(matrix, primitive);
 
-  return Promise.resolve()
+  return Promise.resolve(grid)
 }

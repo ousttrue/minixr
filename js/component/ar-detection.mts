@@ -55,4 +55,5 @@ void main() {
 export type DetectedItem = {
   entity: Entity,
   time: number,
+  counter: number,
 }
