@@ -23,7 +23,6 @@ import { ProgramDefine } from '../materials/shader.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 import { Texture } from '../materials/texture.mjs';
 
-
 const GL = WebGL2RenderingContext;
 
 
@@ -59,6 +58,7 @@ export class Program {
   attrib: { [key: string]: number } = {};
   uniformMap: { [key: string]: WebGLUniformLocation } = {};
   textureUnitMap: { [key: string]: number } = {};
+  uboIndexMap: { [key: string]: { index: number, byteLength: number } } = {}
   defines: { [key: string]: number } = {};
   private _nextUseCallbacks: Function[] = [];
   constructor(public readonly gl: WebGL2RenderingContext,
@@ -68,7 +68,7 @@ export class Program {
     this.program = gl.createProgram()!;
     console.log('create', name, this.program);
 
-    if(!shader){
+    if (!shader) {
       throw new Error('no shader');
     }
 
@@ -122,10 +122,30 @@ export class Program {
             const v = gl.getUniform(this.program, location);
             this.textureUnitMap[uniformName] = v;
           }
+          else if (uniformInfo.type == GL.SAMPLER_2D_ARRAY) {
+            console.info(`TODO: [${uniformName}] SAMPLER_2D_ARRAY !`)
+          }
           else {
             this.uniformMap[uniformName] = location;
           }
         }
+        else {
+          // UBO ?
+          // console.log(`${uniformName}: no location`)
+        }
+      }
+    }
+
+    let uniformBlockCount = gl.getProgramParameter(this.program, GL.ACTIVE_UNIFORM_BLOCKS);
+    for (let i = 0; i < uniformBlockCount; ++i) {
+      const name = gl.getActiveUniformBlockName(this.program, i);
+      if (name) {
+        console.log(`ubo: ${name}`);
+        const size = gl.getActiveUniformBlockParameter(this.program, i, gl.UNIFORM_BLOCK_DATA_SIZE);
+        this.uboIndexMap[name] = { index: i, byteLength: size };
+      }
+      else {
+        console.warn(`ubo: ${i}: no name`);
       }
     }
   }
@@ -141,7 +161,9 @@ export class Program {
     }
   }
 
-  bindMaterial(material: Material, getTexture: (src: Texture) => WebGLTexture | null) {
+  bindMaterial(material: Material, 
+    getTexture: (src: Texture) => WebGLTexture | null,
+  ) {
     const gl = this.gl;
     for (const name in material._textureMap) {
       const texture = material._textureMap[name];

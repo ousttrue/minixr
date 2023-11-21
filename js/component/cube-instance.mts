@@ -109,12 +109,20 @@ void main()
     uint index = o_Palette_Flag_Flag.x;
     vec4 color = Palette.colors[index];
 
-    float textureIndex=Palette.textures[index].x;
-    vec4 texel = texture(sampler, vec3(oUvBarycentric.xy, textureIndex));
+    // float textureIndex=Palette.textures[index].x;
+    // vec4 texel = texture(sampler, vec3(oUvBarycentric.xy, textureIndex));
+    vec4 texel = vec4(1,1,1,1);
 
     FragColor = texel * color * border;
 }
 `,
+
+  ubos: [
+    {
+      name: 'Palette',
+      byteLength: 4 * 4 * 64,
+    }
+  ],
 }
 
 

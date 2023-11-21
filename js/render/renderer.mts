@@ -23,6 +23,7 @@ import { Shader } from '../materials/shader.mjs';
 import { MaterialState, CAP } from '../materials/materialstate.mjs';
 import { Primitive } from '../geometry/primitive.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
+import { Ubo } from './ubo.mjs';
 import { Program, ProgramFactory } from './program.mjs';
 import { TextureFactory } from './texturefactory.mjs';
 

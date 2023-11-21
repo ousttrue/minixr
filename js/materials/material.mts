@@ -60,10 +60,19 @@ export class MaterialUniformInt32Array {
 }
 
 
+export class Ubo {
+  buffer: ArrayBuffer;
+  constructor(byteLength: number) {
+    this.buffer = new ArrayBuffer(byteLength);
+  }
+}
+
+
 export class Material {
   state = new MaterialState();
   _uniformMap: { [key: string]: MaterialUniform } = {}
   _textureMap: { [key: string]: Texture } = {}
+  _uboMap: { [key: string]: Ubo } = {}
 
   constructor(
     public readonly name: string,
@@ -73,6 +82,14 @@ export class Material {
         this.setUniform(name, value);
       }
     }
+    if (shader.ubos) {
+      for (const ubo of shader.ubos) {
+        this.defineUbo(ubo.name, ubo.byteLength);
+      }
+    }
+  }
+
+  defineUbo(name: string, byteLength: number) {
   }
 
   setUniform(name: string, value: number | vec2 | vec3 | vec4 | number[] | Int32Array) {
