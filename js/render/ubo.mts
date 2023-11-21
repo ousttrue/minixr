@@ -1,9 +1,9 @@
 export class Ubo {
   buffer: WebGLBuffer;
-  array: ArrayBuffer;
-  constructor(gl: WebGL2RenderingContext, byteLength: number) {
+
+  constructor(gl: WebGL2RenderingContext,
+    public readonly array: ArrayBuffer) {
     this.buffer = gl.createBuffer()!;
-    this.array = new ArrayBuffer(byteLength);
     console.log('create ubo', this.buffer);
     gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
     gl.bufferData(gl.UNIFORM_BUFFER, this.array, gl.STATIC_DRAW);

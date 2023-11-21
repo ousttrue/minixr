@@ -1,6 +1,5 @@
-import { vec4, mat4 } from '../math/gl-matrix.mjs';
+import { vec3, mat4 } from '../math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
-import { Primitive } from '../geometry/primitive.mjs';
 import { Shader } from '../materials/shader.mjs';
 import { Material, MaterialUniform4f } from '../materials/material.mjs';
 
@@ -48,6 +47,7 @@ export class HoverMaterial extends Material {
     super("HoverMaterial", HoverShader);
   }
 
+  // uniform
   setColor(r: number, g: number, b: number, a: number) {
     (this._uniformMap.uColor as MaterialUniform4f).value.set(r, g, b, a)
   }
@@ -94,6 +94,16 @@ export class HoverPassive {
   ) { }
 }
 
+function hitTest(local: vec3, s: number) {
+  if (local.x < -s) return false;
+  if (local.x > s) return false;
+  if (local.y < -s) return false;
+  if (local.y > s) return false;
+  if (local.z < -s) return false;
+  if (local.z > s) return false;
+  return true;
+}
+
 export function hoverSystem(world: World) {
   const actives = world.view(HoverActive, mat4);
   const passives = world.view(HoverPassive, mat4);
@@ -107,12 +117,8 @@ export function hoverSystem(world: World) {
     passives.each((passiveEntity, passive, passiveMatrix) => {
       passiveMatrix.invert({ out: _toLocal });
       const local = worldPoint.transformMat4(_toLocal);
-
-      const prim = world.get(passiveEntity, Primitive);
-      if (prim) {
-        if (prim.hitTest(local)) {
-          hitList.push(passiveEntity);
-        }
+      if (hitTest(local, 0.5)) {
+        hitList.push(passiveEntity);
       }
     });
 

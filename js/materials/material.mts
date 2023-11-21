@@ -75,7 +75,7 @@ export class Material {
   state = new MaterialState();
   _uniformMap: { [key: string]: MaterialUniform } = {}
   _textureMap: { [key: string]: Texture } = {}
-  _uboMap: { [key: string]: Ubo } = {}
+  _uboMap: { [key: string]: ArrayBuffer } = {}
 
   constructor(
     public readonly name: string,
@@ -87,12 +87,13 @@ export class Material {
     }
     if (shader.ubos) {
       for (const ubo of shader.ubos) {
-        this.defineUbo(ubo.name, ubo.byteLength);
+        this.defineUbo(ubo.name, new ArrayBuffer(ubo.byteLength));
       }
     }
   }
 
-  defineUbo(name: string, byteLength: number) {
+  defineUbo(name: string, buffer: ArrayBuffer) {
+    this._uboMap[name] = buffer;
   }
 
   setUniform(name: string, value: number | vec2 | vec3 | vec4 | number[] | Int32Array) {

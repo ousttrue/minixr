@@ -4,7 +4,7 @@ import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { HoverPassive, HoverMaterial } from '../component/hover.mjs';
 import { cubeInstancePrimitive } from './cube-instance.mjs';
 
-const defaultIndex = 0;
+const defaultIndex = 7;
 const hoverIndex = 1;
 
 export async function cubeSeaFactory(
@@ -16,6 +16,15 @@ export async function cubeSeaFactory(
   const [primitive, matrices, faces] = cubeInstancePrimitive()
   world.create(mat4.identity(), primitive)
   primitive.instanceCount = 0;
+
+  function setCubeColor(faceIndex: number, colorIndex: number) {
+    faces[faceIndex] = colorIndex;
+    faces[faceIndex + 1] = colorIndex;
+    faces[faceIndex + 2] = colorIndex;
+    faces[faceIndex + 4] = colorIndex;
+    faces[faceIndex + 5] = colorIndex;
+    faces[faceIndex + 6] = colorIndex;
+  }
 
   let matrixIndex = 0;
   let faceIndex = 0;
@@ -31,22 +40,16 @@ export async function cubeSeaFactory(
     const pos = positions[i];
     const hover = new HoverPassive(
       () => {
-        faces[faceIndex] = hoverIndex;
-        faces[faceIndex + 1] = hoverIndex;
-        faces[faceIndex + 2] = hoverIndex;
-        faces[faceIndex + 4] = hoverIndex;
-        faces[faceIndex + 5] = hoverIndex;
-        faces[faceIndex + 6] = hoverIndex;
+        setCubeColor(faceIndex, hoverIndex);
+        primitive.instanceUpdated = true;
       },
       () => {
-        faces[faceIndex] = defaultIndex;
-        faces[faceIndex + 1] = defaultIndex;
-        faces[faceIndex + 2] = defaultIndex;
-        faces[faceIndex + 4] = defaultIndex;
-        faces[faceIndex + 5] = defaultIndex;
-        faces[faceIndex + 6] = defaultIndex;
+        setCubeColor(faceIndex, defaultIndex);
+        primitive.instanceUpdated = true;
       },
     )
+    setCubeColor(faceIndex, defaultIndex);
+
     const matrix = new mat4(matrices.subarray(matrixIndex, matrixIndex + 16))
     mat4.fromScaling(vec3.fromValues(0.1, 0.1, 0.1), { out: matrix })
     matrix.m30 = pos[0]
@@ -81,22 +84,15 @@ export async function cubeSeaFactory(
 
           const hover = new HoverPassive(
             () => {
-              faces[faceIndex] = hoverIndex;
-              faces[faceIndex + 1] = hoverIndex;
-              faces[faceIndex + 2] = hoverIndex;
-              faces[faceIndex + 4] = hoverIndex;
-              faces[faceIndex + 5] = hoverIndex;
-              faces[faceIndex + 6] = hoverIndex;
+              setCubeColor(faceIndex, hoverIndex);
+              primitive.instanceUpdated = true;
             },
             () => {
-              faces[faceIndex] = defaultIndex;
-              faces[faceIndex + 1] = defaultIndex;
-              faces[faceIndex + 2] = defaultIndex;
-              faces[faceIndex + 4] = defaultIndex;
-              faces[faceIndex + 5] = defaultIndex;
-              faces[faceIndex + 6] = defaultIndex;
+              setCubeColor(faceIndex, defaultIndex);
+              primitive.instanceUpdated = true;
             },
           );
+          setCubeColor(faceIndex, defaultIndex);
 
           let size = 0.4 * cubeScale;
           const matrix = new mat4(

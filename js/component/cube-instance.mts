@@ -3,6 +3,7 @@ import { Material } from '../materials/material.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
 
+
 const GL = WebGL2RenderingContext;
 const CCW = true;
 
@@ -112,18 +113,34 @@ void main()
 
     // float textureIndex=Palette.textures[index].x;
     // vec4 texel = texture(sampler, vec3(oUvBarycentric.xy, textureIndex));
-    // FragColor = texel * color * border;
-
-    FragColor = vec4(1,1,1,1);
+    vec4 texel = vec4(1,1,1,1);
+    FragColor = texel * color * border;
 }
 `,
 
-  ubos: [
-    {
-      name: 'palette',
-      byteLength: 4 * 4 * 64,
-    }
-  ],
+}
+
+
+class CubeMaterial extends Material {
+  colors: Float32Array;
+  textures: Float32Array;
+  constructor() {
+    super("cubes", CubeInstanceShader);
+
+    const values = new Float32Array(64 * 4);
+    this.colors = values.subarray(0, 32 * 4);
+    this.textures = values.subarray(32 * 4, 64 * 4);
+    this.textures.fill(-1);
+    this.defineUbo('palette', values.buffer);
+  }
+
+  setPaletteColor(i: number, rgba: number[]) {
+    const index = i * 4;
+    this.colors[index] = rgba[0];
+    this.colors[index + 1] = rgba[1];
+    this.colors[index + 2] = rgba[2];
+    this.colors[index + 3] = rgba[3];
+  }
 }
 
 
@@ -305,7 +322,33 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
       faceInfoArrayView, 4, GL.FLOAT, 32, 16),
   ];
 
-  const primitive = new Primitive(new Material("cubes", CubeInstanceShader)
+  const material = new CubeMaterial();
+
+  // palette
+
+  const Red = [1, 0, 0, 1];
+  const Green = [0, 1, 0, 1];
+  const Blue = [0, 0, 1, 1];
+  const DarkRed = [0.5, 0, 0, 1];
+  const DarkGreen = [0, 0.5, 0, 1];
+  const DarkBlue = [0, 0, 0.5, 1];
+  const Magenta = [1, 0, 1, 1];
+  const White = [0.8, 0.8, 0.9, 1];
+  const Black = [0, 0, 0, 1];
+
+  // error
+  material.setPaletteColor(0, Magenta);
+  //
+  material.setPaletteColor(1, Red);
+  material.setPaletteColor(2, Green);
+  material.setPaletteColor(3, Blue);
+  material.setPaletteColor(4, DarkRed);
+  material.setPaletteColor(5, DarkGreen);
+  material.setPaletteColor(6, DarkBlue);
+  material.setPaletteColor(7, White);
+  material.setPaletteColor(8, Black);
+
+  const primitive = new Primitive(material
     , attributes, vertices.length / 8, indices, {
     instanceAttributes
   });

@@ -214,9 +214,9 @@ export class ProgramFactory {
     }
 
     uboMap = {}
-    if (material.shader.ubos) {
-      for (const { name, byteLength } of material.shader.ubos) {
-        const ubo = new Ubo(gl, byteLength);
+    if (material._uboMap) {
+      for (const name in material._uboMap) {
+        const ubo = new Ubo(gl, material._uboMap[name]);
         uboMap[name] = ubo;
       }
     }
