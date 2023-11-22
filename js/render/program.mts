@@ -202,7 +202,8 @@ export class ProgramFactory {
   private _uboMap: Map<Material, UboMap> = new Map();
 
   constructor(
-    private readonly gl: WebGL2RenderingContext
+    private readonly gl: WebGL2RenderingContext,
+    private readonly multiview: boolean,
   ) {
   }
 

@@ -1,4 +1,3 @@
-import { Renderer } from './js/render/renderer.mjs';
 import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
 import { ArMeshDetection, } from './js/component/ar-mesh-detection.mjs';
 import { ArPlaneDetection } from './js/component/ar-plane-detection.mjs';
@@ -7,125 +6,22 @@ import { StatsGraph } from './js/component/stats-graph.mjs';
 import { SevenSegmentText } from './js/component/seven-segment-text.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
 import { Gltf2Loader } from './js/loaders/gltf2.mjs';
-import { UrlTexture } from './js/materials/texture.mjs';
 import { cubeSeaFactory } from './js/component/cube-sea.mjs';
 import { interactionFactory } from './js/component/interaction.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';
 import { bitmapFontFactory } from './js/component/bitmap-font.mjs';
 import { World } from './js/third-party/uecs-0.4.2/index.mjs';
-import { Primitive } from './js/buffer/primitive.mjs';
 import { Rotater } from './js/component/rotater.mjs';
 import { Spinner } from './js/component/spinner.mjs';
 import { HandTracking } from './js/component/hand-tracking.mjs';
 import { hoverSystem } from './js/component/hover.mjs';
 import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
-import { InlineViewerHelper } from './js/util/inline-viewer-helper.mjs';
 import { animationSystem } from './js/component/animation.mjs';
-
-
-const GL = WebGL2RenderingContext;
-
-
-// https://github.com/immersive-web/webxr-samples/blob/main/layers-samples/proj-multiview.html
-class OculusMultiview {
-  xrFramebuffer: WebGLFramebuffer;
-  layer: XRProjectionLayer;
-  depthStencilTex: WebGLTexture | null = null;
-
-  private constructor(
-    public readonly session: XRSession,
-    public readonly gl: WebGL2RenderingContext,
-    public readonly xrGLFactory: XRWebGLBinding,
-    public readonly ext: OCULUS_multiview | OVR_multiview2,
-    public readonly is_multisampled: boolean,
-  ) {
-    this.layer = this.xrGLFactory.createProjectionLayer({
-      textureType: "texture-array",
-      depthFormat: GL.DEPTH_COMPONENT24
-    });
-    this.xrFramebuffer = gl.createFramebuffer()!;
-  }
-
-  static factory(
-    session: XRSession,
-    gl: WebGL2RenderingContext,
-  ): OculusMultiview | undefined {
-    console.log(session, gl);
-    const xrGLFactory = new XRWebGLBinding(session, gl);
-
-    {
-      const ext = gl.getExtension('OCULUS_multiview');
-      if (ext) {
-        console.log("OCULUS_multiview extension is supported");
-        return new OculusMultiview(session, gl,
-          xrGLFactory, ext, true);
-      }
-    }
-
-    {
-      console.log("OCULUS_multiview extension is NOT supported");
-      const ext = gl.getExtension('OVR_multiview2');
-      if (ext) {
-        console.log("OVR_multiview2 extension is supported");
-        return new OculusMultiview(session, gl,
-          xrGLFactory, ext, false);
-      }
-    }
-
-    console.log("Neither OCULUS_multiview nor OVR_multiview2 extensions are supported");
-    return undefined;
-  }
-
-  prepareFramebuffer(frame: XRFrame, pose: XRViewerPose): XRViewport[] {
-    const gl = this.gl;
-
-    this.gl.bindFramebuffer(GL.FRAMEBUFFER, this.xrFramebuffer);
-
-    const viewports: XRViewport[] = [];
-    for (const view of pose.views) {
-      const glLayer = this.xrGLFactory.getViewSubImage(this.layer, view);
-      glLayer.framebuffer = this.xrFramebuffer;
-      this.gl.bindFramebuffer(GL.FRAMEBUFFER, this.xrFramebuffer);
-
-      const viewport = glLayer.viewport;
-
-      if (viewports.length == 0) {
-        // for multiview we need to set fbo only once, 
-        // so only do this for the first view
-        // if (!this.is_multisampled)
-        this.ext.framebufferTextureMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, glLayer.colorTexture, 0, 0, 2);
-        // else
-        //   this.ext.framebufferTextureMultisampleMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, glLayer.colorTexture, 0, samples, 0, 2);
-
-        if (glLayer.depthStencilTexture === null) {
-          if (this.depthStencilTex === null) {
-            console.log("MaxViews = " + gl.getParameter(this.ext.MAX_VIEWS_OVR));
-            this.depthStencilTex = gl.createTexture();
-            gl.bindTexture(GL.TEXTURE_2D_ARRAY, this.depthStencilTex);
-            gl.texStorage3D(GL.TEXTURE_2D_ARRAY, 1, GL.DEPTH_COMPONENT24, viewport.width, viewport.height, 2);
-          }
-        } else {
-          this.depthStencilTex = glLayer.depthStencilTexture;
-        }
-        // if (!this.is_multisampled)
-        this.ext.framebufferTextureMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.DEPTH_ATTACHMENT, this.depthStencilTex, 0, 0, 2);
-        // else
-        //   mv_ext.framebufferTextureMultisampleMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.DEPTH_ATTACHMENT, depthStencilTex, 0, samples, 0, 2);
-        //
-        gl.disable(GL.SCISSOR_TEST);
-      }
-
-      viewports.push(viewport);
-    }
-    return viewports;
-  }
-}
+import { createViewLayer } from './js/viewlayer/index.mjs';
 
 
 class AppSession {
   world = new World();
-
-  renderer: Renderer;
 
   _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
@@ -139,13 +35,9 @@ class AppSession {
   constructor(
     public readonly mode: XRSessionMode,
     public readonly session: XRSession,
-    public readonly space: XRReferenceSpace,
     public readonly gl: WebGL2RenderingContext,
-    private readonly _inlineViewerHelper: InlineViewerHelper | null = null
+    private readonly viewspace: IViewSpace
   ) {
-    // Create a renderer with that GL context (this is just for the samples
-    // framework and has nothing to do with WebXR specifically.)
-    this.renderer = new Renderer(gl);
     // this.term = new XRTerm(gl);
 
     if (navigator.userAgent.includes('Quest 3')) {
@@ -162,21 +54,21 @@ class AppSession {
     }
   }
 
-  async start(multiview?: OculusMultiview) {
-    if (this.space instanceof XRBoundedReferenceSpace) {
-      await BoundsRenderer.factory(this.world, this.space);
+  async start() {
+    if (this.viewspace.referenceSpace instanceof XRBoundedReferenceSpace) {
+      await BoundsRenderer.factory(this.world, this.viewspace.referenceSpace);
     }
 
-    await this._setupScene(multiview);
+    await this._setupScene();
 
-    this.session.requestAnimationFrame((t, f) => this.onXRFrame(t, f, multiview));
+    this.session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
   }
 
   shutdown() {
     console.log('shutdown');
   }
 
-  async _setupScene(multiview?: OculusMultiview) {
+  async _setupScene() {
     {
       const matrix = mat4.fromTRS(
         vec3.fromValues(0, 1.4, -0.5),
@@ -193,7 +85,7 @@ class AppSession {
     await cubeSeaFactory(this.world, 6, 0.5)
     const textgrid = await bitmapFontFactory(this.world, vec3.fromValues(0.2, 1.2, -0.4));
     textgrid.puts(0, 0, window.navigator.userAgent);
-    textgrid.puts(0, 0.1, multiview ? "multiview" : "not multiview");
+    textgrid.puts(0, 0.1, this.viewspace.toString());
 
     await this._loadGltf('assets', 'garage');
 
@@ -215,19 +107,20 @@ class AppSession {
     }
   }
 
-  onXRFrame(time: number, frame: XRFrame, multiview?: OculusMultiview) {
-    const session = frame.session;
-    const xrRefSpace = this._inlineViewerHelper
-      ? this._inlineViewerHelper.referenceSpace
-      : this.space;
-
-    // Per-frame scene setup. Nothing WebXR specific here.
+  onXRFrame(time: number, frame: XRFrame) {
+    // stats
     this._stats.begin(this.world);
     let frameDelta = 0;
     if (this._prevTime >= 0) {
       frameDelta = time - this._prevTime;
     }
     this._prevTime = time;
+
+    const session = frame.session;
+    // Inform the session that we're ready for the next frame.
+    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
+
+    const xrRefSpace = this.viewspace.referenceSpace;
 
     //
     // update scene
@@ -240,9 +133,6 @@ class AppSession {
     hoverSystem(this.world);
     animationSystem(this.world);
 
-    //
-    // render scene
-    //
     if (session.visibilityState === 'visible-blurred') {
       return;
     }
@@ -257,66 +147,11 @@ class AppSession {
     // framebuffer cleared, so tracking loss means the scene will simply
     // disappear.
     if (pose) {
-      const gl = this.gl;
 
-      let viewports: XRViewport[] = [];
-      if (multiview) {
-        viewports = multiview.prepareFramebuffer(frame, pose);
-      }
-      else {
-        const renderState = session.renderState;
-        const glLayer = renderState.baseLayer ?? renderState.layers![0];
-
-        // If we do have a valid pose, bind the WebGL layer's framebuffer,
-        // which is where any content to be displayed on the XRDevice must be
-        // rendered.
-        gl.bindFramebuffer(GL.FRAMEBUFFER, glLayer.framebuffer);
-
-        // Loop through each of the views reported by the frame and draw them
-        // into the corresponding viewport.
-        viewports = pose.views.map(view => glLayer.getViewport(view)!);
-      }
-
-      // Clear the framebuffer
-      gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-
-      const renderList = this.world.view(mat4, Primitive);
-
-      // reder type
-      // | mode          | view | drawcall |
-      // | --            | --   | --       |
-      // | inline        | 1    | 1        |
-      // | vr            | 2    | 2        |
-      // | vr(multiview) | 2    | 1        | OCULUS_multiview / OVR_multiview2 
-
-      {
-        // left eye
-        const vp = viewports[0];
-        gl.viewport(vp.x, vp.y, vp.width, vp.height);
-        const state = {
-          prevProgram: null,
-          prevMaterial: null,
-          prevVao: null,
-        }
-        const view = pose.views[0];
-        renderList.each((entity, matrix, primitive) => {
-          this.renderer.drawPrimitive(view, 0, matrix, primitive, state);
-        });
-      }
-      if (pose.views.length > 1) {
-        // right eye
-        const vp = viewports[1];
-        gl.viewport(vp.x, vp.y, vp.width, vp.height);
-        const state = {
-          prevProgram: null,
-          prevMaterial: null,
-          prevVao: null,
-        }
-        const view = pose.views[1];
-        renderList.each((entity, matrix, primitive) => {
-          this.renderer.drawPrimitive(view, 1, matrix, primitive, state);
-        });
-      }
+      //
+      // render scene
+      //
+      this.viewspace.render(pose, this.world);
 
     } else {
       // There's several options for handling cases where no pose is given.
@@ -333,9 +168,6 @@ class AppSession {
     }
 
     this._stats.end(this.world);
-
-    // Inform the session that we're ready for the next frame.
-    session.requestAnimationFrame((t, f) => this.onXRFrame(t, f, multiview));
   }
 }
 
@@ -369,65 +201,6 @@ export default class App {
     if (!gl) {
       throw new Error('fail to create WebGL2RenderingContext');
     }
-
-    let multiview: OculusMultiview | undefined = undefined;
-    if (mode != 'inline') {
-      const layers: XRLayer[] = [];
-      // multiview = OculusMultiview.factory(session, gl);
-      // if (multiview) {
-      //   layers.push(multiview.layer);
-      // }
-      // else 
-      {
-        const layer = new XRWebGLLayer(session, gl, {
-          // framebufferScaleFactor: 0.1,
-        });
-        layers.push(layer);
-
-      }
-      session.updateRenderState({
-        layers
-      });
-    }
-    else {
-      const layer = new XRWebGLLayer(session, gl, {
-        // framebufferScaleFactor: 0.1,
-      });
-      session.updateRenderState({
-        baseLayer: layer
-      });
-    }
-
-    // Get a frame of reference, which is required for querying poses. In
-    // this case an 'local' frame of reference means that all poses will
-    // be relative to the location where the XRDevice was first detected.
-    // let localSpace = await session.requestReferenceSpace(mode == 'inline' ? 'viewer' : 'local');
-
-    let space: XRReferenceSpace | undefined = undefined;
-    try {
-      space = await session.requestReferenceSpace('bounded-floor');
-      console.log('bounded-floor', space);
-    }
-    catch (err) {
-    }
-
-    if (!space) {
-      try {
-        space = await session.requestReferenceSpace('local-floor');
-        console.log('local-floor', space);
-      }
-      catch (err) {
-      }
-    }
-
-    let inlineViewerHelper: InlineViewerHelper | null = null;
-    if (mode == 'inline') {
-      inlineViewerHelper = new InlineViewerHelper(canvas, space!);
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      document.body.appendChild(canvas);
-    }
-
     function onResize() {
       canvas.width = canvas.clientWidth * window.devicePixelRatio;
       canvas.height = canvas.clientHeight * window.devicePixelRatio;
@@ -435,7 +208,9 @@ export default class App {
     window.addEventListener('resize', onResize);
     onResize();
 
-    this.appSession = new AppSession(mode, session, space!, gl, inlineViewerHelper);
-    this.appSession.start(multiview);
+    const viewspace = await createViewLayer(mode, session, canvas, gl);
+
+    this.appSession = new AppSession(mode, session, gl, viewspace);
+    this.appSession.start();
   }
 }

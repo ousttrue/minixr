@@ -75,8 +75,10 @@ export class Renderer {
   private _primVaoMap: Map<Primitive, Vao> = new Map();
 
   constructor(
-    private readonly gl: WebGL2RenderingContext) {
-    this._programFactory = new ProgramFactory(gl);
+    private readonly gl: WebGL2RenderingContext,
+    multiview = false,
+  ) {
+    this._programFactory = new ProgramFactory(gl, multiview);
     this._textureFactory = new TextureFactory(gl);
   }
 
