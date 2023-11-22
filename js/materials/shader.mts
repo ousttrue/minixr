@@ -1,4 +1,31 @@
-export const VS_UNIFORMS = 'uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;'
+
+
+const MULTIVIEW_VP = `
+#extension GL_OVR_multiview : require
+layout(num_views=2) in;
+uniform mat4 LEFT_PROJECTION_MATRIX;
+uniform mat4 LEFT_VIEW_MATRIX;
+uniform mat4 RIGHT_PROJECTION_MATRIX;
+uniform mat4 RIGHT_VIEW_MATRIX;
+uniform mat4 MODEL_MATRIX;
+
+mat4 ViewProjection()
+{
+  return gl_ViewID_OVR == 0u 
+    ? (LEFT_PROJECTION_MATRIX * LEFT_VIEW_MATRIX)
+    : (RIGHT_PROJECTION_MATRIX * RIGHT_VIEW_MATRIX)
+  ;
+}
+`;
+
+const DEFAULT_VP = `
+uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
+
+mat4 ViewProjection()
+{
+  return PROJECTION_MATRIX * VIEW_MATRIX;
+}
+`;
 
 
 export const RENDER_ORDER = {

@@ -22,13 +22,13 @@ document.addEventListener("DOMContentLoaded", _ => {
     domElement: element,
     requiredFeatures: [
       HandTracking.requiredFeature,
-      ArMeshDetection.requiredFeature,
-      ArPlaneDetection.requiredFeature,
       'local-floor',
     ],
     optionalFeatures: [
+      ArMeshDetection.requiredFeature,
+      ArPlaneDetection.requiredFeature,
       BoundsRenderer.requiredFeature,
-      // 'layers',
+      'layers',
       // 'high-fixed-foveation-level',
     ],
   });
