@@ -76,20 +76,20 @@ class OculusMultiview {
     return undefined;
   }
 
-  prepareMultiview(frame: XRFrame, pose: XRViewerPose): XRViewport[] {
+  prepareFramebuffer(frame: XRFrame, pose: XRViewerPose): XRViewport[] {
     const gl = this.gl;
 
     this.gl.bindFramebuffer(GL.FRAMEBUFFER, this.xrFramebuffer);
 
     const viewports: XRViewport[] = [];
-    for (let view of pose.views) {
+    for (const view of pose.views) {
       const glLayer = this.xrGLFactory.getViewSubImage(this.layer, view);
       glLayer.framebuffer = this.xrFramebuffer;
       this.gl.bindFramebuffer(GL.FRAMEBUFFER, this.xrFramebuffer);
 
-      let viewport = glLayer.viewport;
+      const viewport = glLayer.viewport;
 
-      if (views.length == 0) {
+      if (viewports.length == 0) {
         // for multiview we need to set fbo only once, 
         // so only do this for the first view
         // if (!this.is_multisampled)
@@ -113,7 +113,6 @@ class OculusMultiview {
         //   mv_ext.framebufferTextureMultisampleMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.DEPTH_ATTACHMENT, depthStencilTex, 0, samples, 0, 2);
         //
         gl.disable(GL.SCISSOR_TEST);
-        gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
       }
 
       viewports.push(viewport);
@@ -162,9 +161,6 @@ class AppSession {
       }
     }
   }
-
-
-
 
   async start(multiview?: OculusMultiview) {
     if (this.space instanceof XRBoundedReferenceSpace) {
@@ -265,7 +261,7 @@ class AppSession {
 
       let viewports: XRViewport[] = [];
       if (multiview) {
-        viewports = multiview.prepareMultiview(frame, pose);
+        viewports = multiview.prepareFramebuffer(frame, pose);
       }
       else {
         const renderState = session.renderState;
@@ -285,6 +281,13 @@ class AppSession {
       gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
       const renderList = this.world.view(mat4, Primitive);
+
+      // reder type
+      // | mode          | view | drawcall |
+      // | --            | --   | --       |
+      // | inline        | 1    | 1        |
+      // | vr            | 2    | 2        |
+      // | vr(multiview) | 2    | 1        | OCULUS_multiview / OVR_multiview2 
 
       {
         // left eye
