@@ -4,8 +4,6 @@ export const SimpleShader: Shader = {
   name: 'simple',
 
   vertexSource: `
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-
 in vec3 POSITION;
 in vec3 NORMAL;
 
@@ -19,7 +17,7 @@ void main() {
   vec3 normalRotated = vec3(MODEL_MATRIX * vec4(NORMAL, 0.0));
   float lightFactor = max(dot(normalize(lightDir), normalRotated), 0.0);
   vLight = ambientColor + (lightColor * lightFactor);
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+  gl_Position = ViewProjection() * MODEL_MATRIX * vec4(POSITION, 1.0);
 }
 `,
 

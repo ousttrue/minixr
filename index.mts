@@ -21,10 +21,10 @@ document.addEventListener("DOMContentLoaded", _ => {
   const xrButton = new WebXRButton({
     domElement: element,
     requiredFeatures: [
-      HandTracking.requiredFeature,
       'local-floor',
     ],
     optionalFeatures: [
+      HandTracking.requiredFeature,
       ArMeshDetection.requiredFeature,
       ArPlaneDetection.requiredFeature,
       BoundsRenderer.requiredFeature,

@@ -43,22 +43,21 @@ export async function createViewLayer(
     return new InlineMonoView(session, canvas, gl, space!);
   }
 
-  const xrGLFactory = new XRWebGLBinding(session, gl);
-  {
-    const ext = gl.getExtension('OCULUS_multiview');
-    if (ext) {
-      console.log("OCULUS_multiview extension is supported");
-      return new OculusMultiview(session, gl,
-        xrGLFactory, ext, true);
+  if (navigator.userAgent.includes('Quest')) {
+    {
+      const ext = gl.getExtension('OCULUS_multiview');
+      if (ext) {
+        console.log("OCULUS_multiview extension is supported");
+        return new OculusMultiview(session, gl, space, ext, true);
+      }
     }
-  }
-  {
-    console.log("OCULUS_multiview extension is NOT supported");
-    const ext = gl.getExtension('OVR_multiview2');
-    if (ext) {
-      console.log("OVR_multiview2 extension is supported");
-      return new OculusMultiview(session, gl,
-        xrGLFactory, ext, false);
+    {
+      console.log("OCULUS_multiview extension is NOT supported");
+      const ext = gl.getExtension('OVR_multiview2');
+      if (ext) {
+        console.log("OVR_multiview2 extension is supported");
+        return new OculusMultiview(session, gl, space, ext, false);
+      }
     }
   }
 

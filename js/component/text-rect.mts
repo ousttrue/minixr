@@ -24,8 +24,6 @@ const vec2 ATLAS_CELL_SIZE = vec2(14, 13);
 const vec2 ATLAS_SIZE = vec2(364, 4864);
 const vec2 ATLAS_OFFSET = vec2(0.5/364.0, 0.5/4864.0);
 
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-
 vec2 glyph(vec2 base, int unicode)
 {
   float col = float(unicode % 16);
@@ -48,7 +46,7 @@ vec4 extractUint32(float src)
 
 void main() {
   vec2 pos = i_Cell.xy + i_Cell.zw * a_Position;
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(pos, 0, 1);
+  gl_Position = ViewProjection() * MODEL_MATRIX * vec4(pos, 0, 1);
   f_Uv = ATLAS_OFFSET + glyph(a_Uv, int(i_Unicode_FgBg.x)) / ATLAS_SIZE;
   f_Fg = extractUint32(i_Unicode_FgBg.z);
   f_Bg = extractUint32(i_Unicode_FgBg.w);

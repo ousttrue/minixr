@@ -44,7 +44,6 @@ in vec4 i_Cell;
 in vec2 i_Char_Color;
 out vec4 f_Color;
 
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 // TODO: pack to int[32]
 uniform int ascii[128];
 
@@ -73,9 +72,9 @@ vec4 extractUint32(float src)
 void main() {
   vec2 pos = i_Cell.xy + i_Cell.zw * a_Position.xy;
   bool visible = isVisible(floatBitsToInt(i_Char_Color.x), int(a_Position.z) % 7);
-  // gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(pos, 0.01, 1);
+  // gl_Position = ViewProjection() * MODEL_MATRIX * vec4(pos, 0.01, 1);
   gl_Position = visible
-    ? PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(pos, 0.04, 1.0)
+    ? ViewProjection() * MODEL_MATRIX * vec4(pos, 0.04, 1.0)
     : vec4(0,0,0,0) // discard
     ;
   f_Color = extractUint32(i_Char_Color.y);

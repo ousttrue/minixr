@@ -11,10 +11,6 @@ const CCW = true;
 const CubeInstanceShader: Shader = {
   name: "cubes",
   vertexSource: `
-precision mediump float;
-
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-
 in vec4 vPosFace;
 in vec4 vUvBarycentric;
 in vec4 iRow0;
@@ -38,7 +34,7 @@ mat4 transform(vec4 r0, vec4 r1, vec4 r2, vec4 r3)
 
 void main()
 {
-    gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * transform(iRow0, iRow1, iRow2, iRow3) * vec4(vPosFace.xyz, 1);
+    gl_Position = ViewProjection() * MODEL_MATRIX * transform(iRow0, iRow1, iRow2, iRow3) * vec4(vPosFace.xyz, 1);
     oUvBarycentric = vUvBarycentric;
     if(vPosFace.w==0.0)
     {

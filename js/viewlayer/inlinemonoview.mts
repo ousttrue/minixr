@@ -71,7 +71,7 @@ export class InlineMonoView implements IViewLayer {
         prevVao: null,
       }
       renderList.each((_entity, matrix, primitive) => {
-        this.renderer.drawPrimitive(view, 0, matrix, primitive, state);
+        this.renderer.drawPrimitive(view, matrix, primitive, state);
       });
     }
   }

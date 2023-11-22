@@ -42,8 +42,6 @@ export const ATTRIB_MASK: { [key: string]: number } = {
 
 const VERTEX_SOURCE = `
 
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-
 in vec3 POSITION, NORMAL;
 in vec2 TEXCOORD_0, TEXCOORD_1;
 
@@ -84,7 +82,7 @@ void main() {
   vec4 mPos = MODEL_MATRIX * vec4(POSITION, 1.0);
   vLight = -LIGHT_DIRECTION;
   vView = CAMERA_POSITION - mPos.xyz;
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * mPos;
+  gl_Position = ViewProjection() * mPos;
 }`;
 
 // These equations are borrowed with love from this docs from Epic because I

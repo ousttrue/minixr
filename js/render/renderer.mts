@@ -172,13 +172,15 @@ export class Renderer {
   }
 
   drawPrimitive(
-    view: XRView, eyeIndex: number,
+    view: XRView,
     matrix: mat4, primitive: Primitive,
     state: {
       prevProgram: Program | null,
       prevMaterial: Material | null,
       prevVao: Vao | null,
-    }) {
+    },
+    rightView?: XRView
+  ) {
 
     let gl = this.gl;
     const [program, uboMap] = this._programFactory.getOrCreateProgram(gl, primitive);
@@ -207,8 +209,12 @@ export class Renderer {
         view.projectionMatrix);
       gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
         view.transform.inverse.matrix);
-      gl.uniform3fv(program.uniformMap.CAMERA_POSITION, view.transform.matrix.subarray(12, 15));
-      gl.uniform1i(program.uniformMap.EYE_INDEX, eyeIndex);
+      if (rightView) {
+        gl.uniformMatrix4fv(program.uniformMap.RIGHT_PROJECTION_MATRIX, false,
+          rightView.projectionMatrix);
+        gl.uniformMatrix4fv(program.uniformMap.RIGHT_VIEW_MATRIX, false,
+          rightView.transform.inverse.matrix);
+      }
     }
 
     if (programChanged || state.prevMaterial != primitive.material) {

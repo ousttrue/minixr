@@ -14,19 +14,23 @@ export class OculusMultiview implements IViewLayer {
   xrFramebuffer: WebGLFramebuffer;
   layer: XRProjectionLayer;
   depthStencilTex: WebGLTexture | null = null;
+  xrGLFactory: XRWebGLBinding;
 
   constructor(
     public readonly session: XRSession,
     public readonly gl: WebGL2RenderingContext,
     public readonly space: XRReferenceSpace,
-    public readonly xrGLFactory: XRWebGLBinding,
     public readonly ext: OCULUS_multiview | OVR_multiview2,
     public readonly is_multisampled: boolean,
   ) {
     this.renderer = new Renderer(gl, true);
+    this.xrGLFactory = new XRWebGLBinding(session, gl);
     this.layer = this.xrGLFactory.createProjectionLayer({
       textureType: "texture-array",
       depthFormat: GL.DEPTH_COMPONENT24
+    });
+    session.updateRenderState({
+      layers: [this.layer],
     });
     this.xrFramebuffer = gl.createFramebuffer()!;
   }
@@ -42,13 +46,12 @@ export class OculusMultiview implements IViewLayer {
     // Clear the framebuffer
     this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-    const viewports: XRViewport[] = [];
-    for (const view of pose.views) {
-      const glLayer = this.xrGLFactory.getViewSubImage(this.layer, view);
+    for (let i=0; i<pose.views.length; ++i) {
+      const glLayer = this.xrGLFactory.getViewSubImage(this.layer, pose.views[i]);
       glLayer.framebuffer = this.xrFramebuffer;
 
       const viewport = glLayer.viewport;
-      if (viewports.length == 0) {
+      if (i == 0) {
         // for multiview we need to set fbo only once, 
         // so only do this for the first view
         // if (!this.is_multisampled)
@@ -74,22 +77,20 @@ export class OculusMultiview implements IViewLayer {
         //   mv_ext.framebufferTextureMultisampleMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.DEPTH_ATTACHMENT, depthStencilTex, 0, samples, 0, 2);
         //
         gl.disable(GL.SCISSOR_TEST);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
       }
     }
 
     const renderList = world.view(mat4, Primitive);
     {
-      // multiview
-      // const view = pose.views[0];
-      // const vp = this.layer.getViewport(view)!;
-      // this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
       const state = {
         prevProgram: null,
         prevMaterial: null,
         prevVao: null,
       }
       renderList.each((_entity, matrix, primitive) => {
-        this.renderer.drawMultiview(pose.views, matrix, primitive, state);
+        this.renderer.drawPrimitive(pose.views[0], matrix, primitive, state, pose.views[1]);
       });
     }
   }

@@ -13,10 +13,6 @@ const GL = WebGLRenderingContext; // For enums
 export const BitmapFontShader: Shader = {
   name: 'BitmapFont',
   vertexSource: `
-precision mediump float;
-
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-
 in vec2 a_Position;
 in vec2 a_Uv;
 // x, y, w, h
@@ -54,7 +50,7 @@ vec4 extractUint32(float src)
 
 void main() {
   vec2 pos = i_Cell.xy + i_Cell.zw * a_Position;
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(pos, 0, 1);
+  gl_Position = ViewProjection() * MODEL_MATRIX * vec4(pos, 0, 1);
   f_Uv = ATLAS_OFFSET + glyph(a_Uv, int(i_Unicode_FgBg.x)) / ATLAS_SIZE;
   f_Fg = extractUint32(i_Unicode_FgBg.z);
   f_Bg = extractUint32(i_Unicode_FgBg.w);

@@ -44,14 +44,13 @@ const StatsShader: Shader = {
   name: 'STATS_VIEWER',
 
   vertexSource: `
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 in vec3 POSITION;
 in vec3 COLOR_0;
 out vec4 vColor;
 
 void main() {
   vColor = vec4(COLOR_0, 1.0);
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+  gl_Position = ViewProjection() * MODEL_MATRIX * vec4(POSITION, 1.0);
 }`,
 
   fragmentSource: `

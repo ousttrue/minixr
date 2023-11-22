@@ -7,11 +7,10 @@ export const ArOcclusionShader: Shader = {
   name: 'ArOcclusion',
 
   vertexSource: `
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 in vec3 POSITION;
 
 void main() {
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+  gl_Position = ViewProjection() * MODEL_MATRIX * vec4(POSITION, 1.0);
 }`,
 
   fragmentSource: `
@@ -28,13 +27,12 @@ export const ArOcclusionShaderDebug: Shader = {
   name: 'ArOcclusionDebug',
 
   vertexSource: `
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
 in vec3 POSITION;
 out vec2 f_XZ;
 
 void main() {
   f_XZ = POSITION.xz;
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+  gl_Position = ViewProjection() * MODEL_MATRIX * vec4(POSITION, 1.0);
 }`,
 
   fragmentSource: `

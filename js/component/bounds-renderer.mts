@@ -50,10 +50,8 @@ const BoundsShader: Shader = {
   vertexSource: `
 in vec3 POSITION;
 
-uniform mat4 PROJECTION_MATRIX, VIEW_MATRIX, MODEL_MATRIX;
-
 void main() {
-  gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(POSITION, 1.0);
+  gl_Position = ViewProjection() * MODEL_MATRIX * vec4(POSITION, 1.0);
 }`,
 
   fragmentSource: `

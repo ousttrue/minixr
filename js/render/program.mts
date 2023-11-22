@@ -17,7 +17,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-import { Shader } from '../materials/shader.mjs';
+import { Shader, MULTIVIEW_VP, DEFAULT_VP } from '../materials/shader.mjs';
 import { Material, ProgramDefine } from '../materials/material.mjs';
 import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
 import { Texture } from '../materials/texture.mjs';
@@ -65,7 +65,8 @@ export class Program {
   constructor(public readonly gl: WebGL2RenderingContext,
     public readonly name: string,
     shader: Shader,
-    defines: ProgramDefine[]) {
+    defines: ProgramDefine[],
+    multiview: boolean) {
     this.program = gl.createProgram()!;
     console.log('create', name, this.program);
 
@@ -73,7 +74,7 @@ export class Program {
       throw new Error('no shader');
     }
 
-    let definesString = '#version 300 es\n';
+    let definesString = '';
     if (defines) {
       for (let [key, value] of defines) {
         this.defines[key] = value;
@@ -81,15 +82,36 @@ export class Program {
       }
     }
 
+    const vs_list = [
+      '#version 300 es\n'
+    ]
+    if (multiview) {
+      vs_list.push('#extension GL_OVR_multiview2 : require\n')
+    }
+    vs_list.push(definesString)
+    vs_list.push('precision mediump float;\n')
+    if (multiview) {
+      vs_list.push(MULTIVIEW_VP)
+    }
+    else {
+      vs_list.push(DEFAULT_VP)
+    }
+    vs_list.push(shader.vertexSource);
     const vertShader = gl.createShader(GL.VERTEX_SHADER)!;
-    gl.shaderSource(vertShader, definesString + shader.vertexSource);
+    gl.shaderSource(vertShader, vs_list.join(''))
     gl.compileShader(vertShader);
     if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
       console.error(`[${name}] Vertex shader compile error: ${gl.getShaderInfoLog(vertShader)}: ${definesString + shader.vertexSource}`);
     }
 
+    const fs_list = [
+      '#version 300 es\n'
+    ]
+    fs_list.push(definesString);
+    fs_list.push('precision mediump float;\n')
+    fs_list.push(shader.fragmentSource);
     const fragShader = gl.createShader(GL.FRAGMENT_SHADER)!;
-    gl.shaderSource(fragShader, definesString + shader.fragmentSource);
+    gl.shaderSource(fragShader, fs_list.join(''));
     gl.compileShader(fragShader);
     if (!gl.getShaderParameter(fragShader, GL.COMPILE_STATUS)) {
       console.error(`[${name}] Fragment shader compile error: ${gl.getShaderInfoLog(fragShader)}: ${definesString + shader.fragmentSource}`);
@@ -236,7 +258,7 @@ export class ProgramFactory {
     let program = this._programCache[key];
     if (!program) {
       program = new Program(this.gl,
-        key, material.shader, defines);
+        key, material.shader, defines, this.multiview);
       this._programCache[key] = program;
     }
 
