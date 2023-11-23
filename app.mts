@@ -18,6 +18,7 @@ import { hoverSystem } from './js/component/hover.mjs';
 import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
 import { animationSystem } from './js/component/animation.mjs';
 import { createViewLayer } from './js/viewlayer/index.mjs';
+import { CubeInstancing } from './js/component/cube-instance.mjs';
 
 
 class AppSession {
@@ -79,10 +80,12 @@ class AppSession {
       await SevenSegmentText.factory(this.world, matrix);
     }
 
-    await HandTracking.factory(this.world, "left");
-    await HandTracking.factory(this.world, "right");
+    const instancing = new CubeInstancing(65535, this.world);
+
+    await HandTracking.factory(this.world, instancing, "left");
+    await HandTracking.factory(this.world, instancing, "right");
     await interactionFactory(this.world);
-    await cubeSeaFactory(this.world, 6, 0.5)
+    await cubeSeaFactory(this.world, instancing, 6, 0.5)
     const textgrid = await bitmapFontFactory(this.world, vec3.fromValues(0.2, 1.2, -0.4));
     textgrid.puts(0, 0, window.navigator.userAgent);
     textgrid.puts(0, 0.1, this.viewspace.toString());

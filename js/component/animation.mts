@@ -1,7 +1,7 @@
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 
 
-export class Animation {
+export class AnimationComponent {
   stack: Function[] = []
   constructor(animations: Function[] = []) {
     for (const animation of animations) {
@@ -20,7 +20,7 @@ export class Animation {
 
 
 export function animationSystem(world: World) {
-  world.view(Animation).each((_, animation) => {
+  world.view(AnimationComponent).each((_, animation) => {
     animation.execute();
   });
 }

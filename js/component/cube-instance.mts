@@ -1,8 +1,10 @@
 import { Shader } from '../materials/shader.mjs';
 import { Material } from '../materials/material.mjs';
-import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
+import { vec2, vec3, vec4, mat4 } from '../math/gl-matrix.mjs';
 import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
 import { BufferSource } from '../buffer/buffersource.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { AnimationComponent } from '../component/animation.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -285,7 +287,7 @@ function position_uv(isCCW: boolean): [Float32Array, Uint16Array] {
 }
 
 
-export function cubeInstancePrimitive(isCCW: boolean = true):
+export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
   [Primitive, BufferSource, BufferSource] {
   const [vertices, indices] = position_uv(isCCW);
   const view = new BufferSource(8, vertices);
@@ -297,10 +299,10 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
       view, 4, GL.FLOAT, 32, 16),
   ];
 
-  const matrixArray = new Float32Array(16 * 65535);
+  const matrixArray = new Float32Array(16 * cubes);
   const matrixArrayView = new BufferSource(4, matrixArray, GL.DYNAMIC_DRAW);
 
-  const faceInfoArray = new Float32Array(8 * 65535);
+  const faceInfoArray = new Float32Array(8 * cubes);
   const faceInfoArrayView = new BufferSource(4, faceInfoArray);
 
   const instanceAttributes: PrimitiveAttribute[] = [
@@ -319,10 +321,9 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
       faceInfoArrayView, 4, GL.FLOAT, 32, 16),
   ];
 
-  const material = new CubeMaterial();
 
   // palette
-
+  const material = new CubeMaterial();
   const Red = [1, 0, 0, 1];
   const Green = [0, 1, 0, 1];
   const Blue = [0, 0, 1, 1];
@@ -332,7 +333,6 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
   const Magenta = [1, 0, 1, 1];
   const White = [0.8, 0.8, 0.9, 1];
   const Black = [0, 0, 0, 1];
-
   // error
   material.setPaletteColor(0, Magenta);
   //
@@ -350,5 +350,49 @@ export function cubeInstancePrimitive(isCCW: boolean = true):
     new BufferSource(1, indices), {
     instanceAttributes
   });
+
   return [primitive, matrixArrayView, faceInfoArrayView];
+}
+
+
+export class CubeInstancing {
+  matrixIndex = 0;
+  faceIndex = 0;
+  primitive: Primitive;
+  matricesView: BufferSource;
+  facesView: BufferSource;
+  matrices: Float32Array;
+  faces: Float32Array;
+
+  private _newIndex = 0;
+
+  constructor(cubes: number, world: World) {
+    [this.primitive, this.matricesView, this.facesView] = cubeInstancePrimitive(cubes)
+    this.matrices = this.matricesView.array as Float32Array;
+    this.faces = this.facesView.array as Float32Array;
+    world.create(mat4.identity(), this.primitive, new AnimationComponent([() => {
+      this.matricesView.dirty = true;
+    }]));
+    this.primitive.instanceCount = 0;
+  }
+
+  newInstance(): [number, mat4] {
+    const index = this._newIndex++;
+    const matrixIndex = index * 16;
+    this.primitive.instanceCount = this._newIndex;
+    return [index, new mat4(this.matrices.subarray(matrixIndex, matrixIndex + 16))]
+  }
+
+  setCubeColor(cubeIndex: number, colorIndex: number) {
+    const faceIndex = cubeIndex * 8;
+    this.faces[faceIndex] = colorIndex;
+    this.faces[faceIndex + 1] = colorIndex;
+    this.faces[faceIndex + 2] = colorIndex;
+
+    this.faces[faceIndex + 4] = colorIndex;
+    this.faces[faceIndex + 5] = colorIndex;
+    this.faces[faceIndex + 6] = colorIndex;
+
+    this.facesView.dirty = true;
+  }
 }

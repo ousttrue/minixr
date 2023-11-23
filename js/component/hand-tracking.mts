@@ -1,12 +1,11 @@
 /**
  * https://immersive-web.github.io/webxr-hand-input/
  */
-import { mat4 } from '../math/gl-matrix.mjs';
+import { vec3, mat4 } from '../math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
-import { Material } from '../materials/material.mjs';
-import { SimpleShader } from '../materials/simple.mjs';
-import { BoxBuilder } from '../buffer/box-builder.mjs';
 import { HoverActive } from './hover.mjs';
+import { CubeInstancing } from './cube-instance.mjs';
+
 
 const PINCH_START_DISTANCE = 0.015;
 const PINCH_END_DISTANCE = 0.03;
@@ -79,6 +78,7 @@ class PinchStatus {
   }
 }
 
+const FINGER_JOINT_SCALING = mat4.fromScaling(vec3.fromValues(0.01, 0.01, 0.01))
 
 /**
  *
@@ -106,23 +106,18 @@ export class HandTracking {
   }
 
   static async factory(world: World,
+    instancing: CubeInstancing,
     hand: 'left' | 'right'
   ): Promise<void> {
 
-    const material = new Material('SimpleMaterial', SimpleShader);
-
-    const boxBuilder = new BoxBuilder();
-    boxBuilder.pushCube([0, 0, 0], 0.01);
-    const primitive = boxBuilder.finishPrimitive(material);
-
     const joints: mat4[] = [];
     for (let i = 0; i < 24; i++) {
-      const matrix = new mat4();
+      const [index, matrix] = instancing.newInstance();
       if (i == 9) {
-        world.create(matrix, primitive, new HoverActive());
+        world.create(matrix, new HoverActive());
       }
       else {
-        world.create(matrix, primitive);
+        world.create(matrix);
       }
       joints.push(matrix);
     }
@@ -172,7 +167,8 @@ export class HandTracking {
 
     let offset = 0;
     for (const matrix of this.joints) {
-      matrix.array.set(this._positions.slice(offset, offset + 16));
+      const tr = new mat4(this._positions.slice(offset, offset + 16))
+      tr.mul(FINGER_JOINT_SCALING, { out: matrix })
       offset += 16;
     }
   }
