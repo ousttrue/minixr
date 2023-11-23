@@ -5,7 +5,9 @@ import path from "path";
 const config = {
   // config options
   // root: './',
-  // base: '/',
+
+  // github-pages
+  base: '/minixr',
   resolve: {
     alias: {
       "browser": path.resolve(__dirname, "xterm.mjs/src/browser"),
