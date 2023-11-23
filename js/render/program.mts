@@ -87,6 +87,9 @@ export class Program {
     ]
     if (multiview) {
       vs_list.push('#extension GL_OVR_multiview2 : require\n')
+      vs_list.push('#define NUM_VIEWS 2\n')
+      vs_list.push('layout(num_views=NUM_VIEWS) in;\n')
+      vs_list.push('#define VIEW_ID gl_ViewID_OVR\n')
     }
     vs_list.push(definesString)
     vs_list.push('precision mediump float;\n')

@@ -42,43 +42,40 @@ export class OculusMultiview implements IViewLayer {
   render(pose: XRViewerPose, world: World): void {
     const gl = this.gl;
 
-    this.gl.bindFramebuffer(GL.FRAMEBUFFER, this.xrFramebuffer);
-    // Clear the framebuffer
-    this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+    for (let i = 0; i < pose.views.length; ++i) {
 
-    for (let i=0; i<pose.views.length; ++i) {
       const glLayer = this.xrGLFactory.getViewSubImage(this.layer, pose.views[i]);
+      // @ts-ignore
       glLayer.framebuffer = this.xrFramebuffer;
 
-      const viewport = glLayer.viewport;
       if (i == 0) {
+        this.gl.bindFramebuffer(GL.FRAMEBUFFER, this.xrFramebuffer);
+
         // for multiview we need to set fbo only once, 
         // so only do this for the first view
-        // if (!this.is_multisampled)
-        this.ext.framebufferTextureMultiviewOVR(GL.DRAW_FRAMEBUFFER,
-          GL.COLOR_ATTACHMENT0, glLayer.colorTexture, 0, 0, 2);
-        // else
-        //   this.ext.framebufferTextureMultisampleMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, glLayer.colorTexture, 0, samples, 0, 2);
+        this.ext.framebufferTextureMultiviewOVR(
+          GL.DRAW_FRAMEBUFFER, GL.COLOR_ATTACHMENT0,
+          glLayer.colorTexture, 0, 0, 2);
 
         if (glLayer.depthStencilTexture === null) {
           if (this.depthStencilTex === null) {
             console.log("MaxViews = " + gl.getParameter(this.ext.MAX_VIEWS_OVR));
             this.depthStencilTex = gl.createTexture();
             gl.bindTexture(GL.TEXTURE_2D_ARRAY, this.depthStencilTex);
-            gl.texStorage3D(GL.TEXTURE_2D_ARRAY, 1, GL.DEPTH_COMPONENT24, viewport.width, viewport.height, 2);
+            gl.texStorage3D(GL.TEXTURE_2D_ARRAY, 1, GL.DEPTH_COMPONENT24,
+              glLayer.viewport.width, glLayer.viewport.height, 2);
           }
         } else {
           this.depthStencilTex = glLayer.depthStencilTexture;
         }
-        // if (!this.is_multisampled)
-        this.ext.framebufferTextureMultiviewOVR(GL.DRAW_FRAMEBUFFER,
-          GL.DEPTH_ATTACHMENT, this.depthStencilTex, 0, 0, 2);
-        // else
-        //   mv_ext.framebufferTextureMultisampleMultiviewOVR(GL.DRAW_FRAMEBUFFER, GL.DEPTH_ATTACHMENT, depthStencilTex, 0, samples, 0, 2);
-        //
+        this.ext.framebufferTextureMultiviewOVR(
+          GL.DRAW_FRAMEBUFFER, GL.DEPTH_ATTACHMENT,
+          this.depthStencilTex, 0, 0, 2);
+
         gl.disable(GL.SCISSOR_TEST);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        // gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+        gl.viewport(glLayer.viewport.x, glLayer.viewport.y,
+          glLayer.viewport.width, glLayer.viewport.height);
       }
     }
 
