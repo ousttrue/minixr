@@ -5,15 +5,17 @@ Mini WebXR Engine.
 - based on https://immersive-web.github.io/webxr-samples/
 - TypeScript( + vite)
 
-- [ ] hand pinch
-- [ ] depth
+- [x] immerive-ar
+- [x] hand-tracking. pinch cube
+- [x] mesh / plane detection and transparent occlusion material 
+- [x] multiview: GL_OVR_multiview2
+- [ ] bitmapfont 
 - [ ] xrterm
 
-## WebGL
+# third-party
 
-- https://github.com/toji/gl-matrix
-
-## GLTF2
-
-- https://github.com/robertlong/gltf-typescript-generator => js/render/loaders/GLTF.ts
+- `js/math` based on https://github.com/toji/gl-matrix
+- `js/render/loaders/GLTF.ts` https://github.com/robertlong/gltf-typescript-generator
+- `js/third-party/uecs-0.4.2` https://github.com/jprochazk/uecs
+- `assets/cozette_charmap.png` https://github.com/slavfox/Cozette
 
