@@ -1,13 +1,8 @@
 import fs from 'fs'
 import path from "path";
 
-export default {
-  server: {
-    https: {
-      key: fs.readFileSync('./localhost-key.pem'),
-      cert: fs.readFileSync('./localhost.pem'),
-    }
-  },
+/** @type any */
+const config = {
   // config options
   // root: './',
   // base: '/',
@@ -18,3 +13,14 @@ export default {
     },
   },
 }
+
+if (fs.existsSync('localhost-key.pem') && fs.existsSync('localhost.pem')) {
+  config.server = {
+    https: {
+      key: fs.readFileSync('./localhost-key.pem'),
+      cert: fs.readFileSync('./localhost.pem'),
+    }
+  };
+}
+
+export default config
