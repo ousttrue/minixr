@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import 'react-complex-tree/lib/style-modern.css';
 import './App.css'
 import MyDropzone from './dropzone.jsx';
 import { Glb } from '../lib/glb.js';
-import type * as GLTF2 from '../lib/GLTF.js';
 import JsonTree from './jsontree.jsx';
 
 
@@ -58,6 +56,8 @@ type State = null | Reader | string | Loader;
 
 
 export default function App() {
+  const [content, setContent] = useState<object>({});
+
   const [state, setState] = useState<State>(null);
 
   return (
@@ -68,7 +68,12 @@ export default function App() {
             setState(res);
           }
           else if (res instanceof ArrayBuffer) {
-            setState(new Loader(file, res));
+            const loader = new Loader(file, res);
+            setState(loader);
+            const glb = loader.glb;
+            if (glb) {
+              setContent({ json: glb.json });
+            }
           }
           else {
             setState(null);
@@ -83,7 +88,12 @@ export default function App() {
         {state ? state.toString() : 'null'}
       </div>
       <div style={{ flexGrow: 1 }}>
-        {(state instanceof Loader) ? <JsonTree json={state.glb?.json} /> : ''}
+        {(state instanceof Loader)
+          ? <JsonTree
+            content={content}
+            onChange={setContent}
+          />
+          : ''}
       </div>
     </div>
   )

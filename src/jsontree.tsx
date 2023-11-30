@@ -1,9 +1,7 @@
-import {
-  UncontrolledTreeEnvironment, StaticTreeDataProvider, Tree,
-  TreeItemIndex,
-  TreeDataProvider,
-  TreeItem,
-} from 'react-complex-tree';
+import { JSONEditor } from "vanilla-jsoneditor";
+import { useEffect, useRef } from "react";
+import 'vanilla-jsoneditor/themes/jse-theme-default.css';
+
 
 type JsonItem = boolean | number | string | Array<JsonItem> | { [key: string]: JsonItem };
 
@@ -87,32 +85,63 @@ class JsonTreePovider implements TreeDataProvider<JsonItem> {
 
 
 export default function JsonTree(props: {
-  json?: JsonItem,
+  content: JsonItem,
+  onChange: Function,
 }) {
 
-  if (props.json) {
-    const provider = new JsonTreePovider(props.json);
+  const refContainer = useRef(null);
+  const refEditor = useRef(null);
 
-    function getTitle(item: TreeItem<JsonItem>): string {
-      if (typeof (item.index) == 'string') {
-        return item.index.split('/').at(-1)!;
+  useEffect(() => {
+    // create editor
+    console.log("create editor", refContainer.current);
+    refEditor.current = new JSONEditor({
+      target: refContainer.current,
+      props: {}
+    });
+
+    return () => {
+      // destroy editor
+      if (refEditor.current) {
+        console.log("destroy editor");
+        refEditor.current.destroy();
+        refEditor.current = null;
       }
-      else {
-        return `${item.index}`;
-      }
+    };
+  }, []);
+
+  // update props
+  useEffect(() => {
+    if (refEditor.current) {
+      console.log("update props", props);
+      refEditor.current.updateProps(props);
     }
+  }, [props]);
 
-    return (
-      <UncontrolledTreeEnvironment
-        dataProvider={provider}
-        getItemTitle={getTitle}
-        viewState={{}}
-      >
-        <Tree treeId="tree-1" rootItem="/" treeLabel="Tree Example" />
-      </UncontrolledTreeEnvironment>
-    );
-  }
-  else {
-    return <>no</>;
-  }
+  return <div className="vanilla-jsoneditor-react" ref={refContainer}></div>;
+  // if (props.json) {
+  //   const provider = new JsonTreePovider(props.json);
+  //
+  //   function getTitle(item: TreeItem<JsonItem>): string {
+  //     if (typeof (item.index) == 'string') {
+  //       return item.index.split('/').at(-1)!;
+  //     }
+  //     else {
+  //       return `${item.index}`;
+  //     }
+  //   }
+  //
+  //   return (
+  //     <UncontrolledTreeEnvironment
+  //       dataProvider={provider}
+  //       getItemTitle={getTitle}
+  //       viewState={{}}
+  //     >
+  //       <Tree treeId="tree-1" rootItem="/" treeLabel="Tree Example" />
+  //     </UncontrolledTreeEnvironment>
+  //   );
+  // }
+  // else {
+  //   return <>no</>;
+  // }
 }
