@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import 'vanilla-jsoneditor/themes/jse-theme-default.css';
 
 
-type JsonItem = boolean | number | string | Array<JsonItem> | { [key: string]: JsonItem };
+export type JsonItem = boolean | number | string | Array<JsonItem> | { [key: string]: JsonItem };
 
 class JsonTreePovider implements TreeDataProvider<JsonItem> {
   constructor(

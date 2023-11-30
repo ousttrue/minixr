@@ -7,10 +7,3 @@ div#root {
   padding: 0;
 }
 
-.dropZone {
-  margin: 0;
-  padding: 0;
-  background-color: #ddd;
-  display :flex;
-  flex-direction: column;
-} auto

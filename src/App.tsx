@@ -2,7 +2,8 @@ import { useState } from 'react'
 import './App.css'
 import MyDropzone from './dropzone.jsx';
 import { Glb } from '../lib/glb.js';
-import JsonTree from './jsontree.jsx';
+import JsonTree, { JsonItem } from './jsontree.jsx';
+import Split from 'react-split'
 
 
 class Reader {
@@ -20,6 +21,26 @@ class Reader {
     reader.readAsArrayBuffer(file);
   }
 
+  static set(setState: Function, file: File, setContent: Function) {
+    const reader = new Reader(file, (res: null | ArrayBuffer | string) => {
+      if (typeof (res) == 'string') {
+        setState(res);
+      }
+      else if (res instanceof ArrayBuffer) {
+        const loader = new Loader(file, res);
+        setState(loader);
+        const glb = loader.glb;
+        if (glb) {
+          console.log(glb);
+          setContent({ json: glb.json });
+        }
+      }
+      else {
+        setState(null);
+      }
+    });
+    setState(reader);
+  }
   toString(): string {
     return 'loading...';
   }
@@ -44,7 +65,7 @@ class Loader {
 
   toString(): string {
     if (this.glb) {
-      return `glTF: ${this.glb.json.asset.version}`;
+      return `${this.file.name}: glTF: ${this.glb.json.asset.version}`;
     }
     return this.state;
   }
@@ -54,31 +75,13 @@ class Loader {
 type State = null | Reader | string | Loader;
 
 
-
 export default function App() {
-  const [content, setContent] = useState<object>({});
-
+  const [content, setContent] = useState<JsonItem>({});
   const [state, setState] = useState<State>(null);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <MyDropzone setFile={(file) =>
-        setState(new Reader(file, (res: null | ArrayBuffer | string) => {
-          if (typeof (res) == 'string') {
-            setState(res);
-          }
-          else if (res instanceof ArrayBuffer) {
-            const loader = new Loader(file, res);
-            setState(loader);
-            const glb = loader.glb;
-            if (glb) {
-              setContent({ json: glb.json });
-            }
-          }
-          else {
-            setState(null);
-          }
-        }))}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <MyDropzone setFile={(file) => Reader.set(setState, file, setContent)}
         message={(isDragActive: boolean) => isDragActive ?
           <p style={{ textAlign: 'center' }}>🔽 Drop the files here ...</p> :
           <p style={{ textAlign: 'center' }}>➕ Drag 'n' drop some files here, or click to select files</p>
@@ -87,14 +90,21 @@ export default function App() {
       <div>
         {state ? state.toString() : 'null'}
       </div>
-      <div style={{ flexGrow: 1 }}>
-        {(state instanceof Loader)
-          ? <JsonTree
-            content={content}
-            onChange={setContent}
-          />
-          : ''}
-      </div>
+      <Split
+        className="split"
+      >
+        <div style={{ overflowY: 'auto' }}>
+          {
+            (state instanceof Loader)
+              ? (<JsonTree
+                content={content}
+                onChange={setContent}
+              />)
+              : ''
+          }
+        </div>
+        <div>right</div>
+      </Split>
     </div>
   )
 }
