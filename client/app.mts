@@ -5,7 +5,7 @@ import { StatsViewer } from './js/component/stats-viewer.mjs';
 import { StatsGraph } from './js/component/stats-graph.mjs';
 import { SevenSegmentText } from './js/component/seven-segment-text.mjs';
 import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
-import { Gltf2Loader } from './js/loaders/gltf2.mjs';
+import { Gltf2Loader } from './js/gltf2.mjs';
 import { cubeSeaFactory } from './js/component/cube-sea.mjs';
 import { interactionFactory } from './js/component/interaction.mjs';
 import { XRTerm } from './js/xterm/xrterm.mjs';

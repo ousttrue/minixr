@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import MyDropzone from './dropzone.jsx';
+import { Glb } from '../lib/glb.js';
 
 
 class Reader {
@@ -26,14 +27,24 @@ class Reader {
 
 class Loader {
   state: string;
+  glb: Glb | null = null;
 
   constructor(
     public readonly file: File,
     public readonly bytes: ArrayBuffer) {
     this.state = `${file.name}: ${bytes.byteLength} bytes`
+    try {
+      this.glb = Glb.parse(bytes);
+    }
+    catch (err) {
+      console.warn(err);
+    }
   }
 
   toString(): string {
+    if (this.glb) {
+      return `glTF: ${this.glb.json.asset.version}`;
+    }
     return this.state;
   }
 }

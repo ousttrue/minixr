@@ -18,24 +18,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { PbrMaterial } from '../materials/pbr.mjs';
-import { Material } from '../materials/material.mjs';
-import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
-import * as GLTF2 from './GLTF.js';
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { vec2, vec3, vec4, quat, mat4 } from '../math/gl-matrix.mjs';
+import { PbrMaterial } from './materials/pbr.mjs';
+import { Material } from './materials/material.mjs';
+import { ImageTexture, ColorTexture } from './materials/texture.mjs';
+import { Primitive, PrimitiveAttribute } from './buffer/primitive.mjs';
+import { BufferSource } from './buffer/buffersource.mjs';
+import * as GLTF2 from '../../lib/GLTF.js';
+import { Glb } from '../../lib/glb.js';
+import { World } from './third-party/uecs-0.4.2/index.mjs';
+import { vec2, vec3, vec4, quat, mat4 } from './math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
 const DEFAULT_MATERIAL = new PbrMaterial('glTF-default-material')
-
-const GLB_MAGIC = 0x46546C67;
-const CHUNK_TYPE = {
-  JSON: 0x4E4F534A,
-  BIN: 0x004E4942,
-};
 
 type IndexBuffer = Uint8Array | Uint16Array | Uint32Array;
 
@@ -110,36 +105,8 @@ export class Gltf2Loader {
   }
 
   static loadFromBinary(arrayBuffer: ArrayBuffer, baseUrl: string): Gltf2Loader {
-    const headerView = new DataView(arrayBuffer, 0, 12);
-    const magic = headerView.getUint32(0, true);
-    const version = headerView.getUint32(4, true);
-    const length = headerView.getUint32(8, true);
+    const glb = Glb.parse(arrayBuffer);
 
-    if (magic != GLB_MAGIC) {
-      throw new Error('Invalid magic string in binary header.');
-    }
-
-    if (version != 2) {
-      throw new Error('Incompatible version in binary header.');
-    }
-
-    const chunks: { [key: string]: Uint8Array } = {};
-    let chunkOffset = 12;
-    while (chunkOffset < length) {
-      const chunkHeaderView = new DataView(arrayBuffer, chunkOffset, 8);
-      const chunkLength = chunkHeaderView.getUint32(0, true);
-      const chunkType = chunkHeaderView.getUint32(4, true);
-      chunks[chunkType] = new Uint8Array(arrayBuffer).subarray(chunkOffset + 8, chunkOffset + 8 + chunkLength);
-      chunkOffset += chunkLength + 8;
-    }
-
-    if (!chunks[CHUNK_TYPE.JSON]) {
-      throw new Error('File contained no json chunk.');
-    }
-
-    const decoder = new TextDecoder('utf-8');
-    const jsonString = decoder.decode(chunks[CHUNK_TYPE.JSON]);
-    const json = JSON.parse(jsonString);
     return new Gltf2Loader(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
   }
 
