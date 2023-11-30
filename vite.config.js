@@ -1,28 +1,49 @@
-import fs from 'fs'
-import path from "path";
+import { defineConfig } from 'vite'
+import path from 'node:path'
+import electron from 'vite-plugin-electron/simple'
+import react from '@vitejs/plugin-react'
+import fs from 'node:fs'
 
 /** @type any */
-const config = {
+const config = defineConfig({
   // config options
   // root: './',
 
   // github-pages
-  base: '/minixr',
+  // base: '/minixr',
   resolve: {
     alias: {
       "browser": path.resolve(__dirname, "xterm.mjs/src/browser"),
       "common": path.resolve(__dirname, "xterm.mjs/src/common"),
     },
   },
-}
+  // https://vitejs.dev/config/
+  plugins: [
+    react(),
+    electron({
+      main: {
+        // Shortcut of `build.lib.entry`.
+        entry: 'electron/main.ts',
+      },
+      preload: {
+        // Shortcut of `build.rollupOptions.input`.
+        // Preload scripts may contain Web assets, so use the `build.rollupOptions.input` instead `build.lib.entry`.
+        input: path.join(__dirname, 'electron/preload.ts'),
+      },
+      // Ployfill the Electron and Node.js built-in modules for Renderer process.
+      // See 👉 https://github.com/electron-vite/vite-plugin-electron-renderer
+      renderer: {},
+    }),
+  ],
+});
 
-if (fs.existsSync('localhost-key.pem') && fs.existsSync('localhost.pem')) {
-  config.server = {
-    https: {
-      key: fs.readFileSync('./localhost-key.pem'),
-      cert: fs.readFileSync('./localhost.pem'),
-    }
-  };
-}
+// if (fs.existsSync('localhost-key.pem') && fs.existsSync('localhost.pem')) {
+//   config.server = {
+//     https: {
+//       key: fs.readFileSync('./localhost-key.pem'),
+//       cert: fs.readFileSync('./localhost.pem'),
+//     }
+//   };
+// }
 
-export default config
+export default config;
