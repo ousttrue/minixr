@@ -14,18 +14,70 @@ class JsonTreePovider implements TreeDataProvider<JsonItem> {
   // onDidChangeTreeData?: (listener: (changedItemIds: TreeItemIndex[]) => void) => Disposable;
   getTreeItem(itemId: TreeItemIndex): Promise<TreeItem<JsonItem>> {
 
-    console.log(itemId);
+    if (typeof (itemId) !== 'string') {
+      throw new Error('invalid key');
+    }
+    if (itemId[0] != '/') {
+      throw new Error('first must /');
+    }
+
+    const path: string[] = itemId == '/'
+      ? []
+      : itemId.substring(1).split('/');
 
     // root
-    const data = this.json;
+    let data: JsonItem = this.json;
+    while (path.length > 0) {
+      const next = path.shift()!;
+      switch (typeof (data)) {
+        case 'boolean':
+        case 'number':
+        case 'string':
+          // literal
+          throw new Error("literal !");
+      }
+      if (Array.isArray(data)) {
+        const index = parseInt(next);
+        if (index == null) {
+          throw new Error('not number key');
+        }
+        data = data[index];
+      }
+      else {
+        data = data[next];
+      }
+    }
+    // console.log(itemId, path, data);
 
-    return Promise.resolve({
+    const item: TreeItem<JsonItem> = {
       index: itemId,
-      children: typeof (data) == 'object'
-        ? Object.keys(data).map((x: string) => `${itemId}/${x}`)
-        : [],
       data: this.json,
-    });
+    };
+
+    const parent = itemId == '/' ? '/' : itemId + '/';
+    switch (typeof (data)) {
+      case 'boolean':
+      case 'number':
+      case 'string':
+        // literal
+        break;
+      default:
+        if (Array.isArray(data)) {
+          item.children = [];
+          for (let i = 0; i < data.length; ++i) {
+            item.children.push(`${parent}${i}`);
+          }
+          item.isFolder = true;
+        }
+        else {
+          item.children = Object.keys(data).map(x => `${parent}${x}`);
+          item.isFolder = true;
+        }
+        break;
+    }
+
+
+    return Promise.resolve(item);
   }
 
   // getTreeItems?: (itemIds: TreeItemIndex[]) => Promise<TreeItem[]>;
@@ -56,7 +108,7 @@ export default function JsonTree(props: {
         getItemTitle={getTitle}
         viewState={{}}
       >
-        <Tree treeId="tree-1" rootItem="" treeLabel="Tree Example" />
+        <Tree treeId="tree-1" rootItem="/" treeLabel="Tree Example" />
       </UncontrolledTreeEnvironment>
     );
   }
