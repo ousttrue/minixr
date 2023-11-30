@@ -1,4 +1,4 @@
-import * as GLTF2 from './GLTF.js';
+import type * as GLTF2 from './GLTF.js';
 
 
 const GLB_MAGIC = 0x46546C67;

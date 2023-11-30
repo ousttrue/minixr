@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import 'react-complex-tree/lib/style-modern.css';
 import './App.css'
 import MyDropzone from './dropzone.jsx';
 import { Glb } from '../lib/glb.js';
+import type * as GLTF2 from '../lib/GLTF.js';
+import JsonTree from './jsontree.jsx';
 
 
 class Reader {
@@ -53,7 +56,8 @@ class Loader {
 type State = null | Reader | string | Loader;
 
 
-function App() {
+
+export default function App() {
   const [state, setState] = useState<State>(null);
 
   return (
@@ -75,11 +79,12 @@ function App() {
           <p style={{ textAlign: 'center' }}>➕ Drag 'n' drop some files here, or click to select files</p>
         }
       />
-      <div style={{ flexGrow: 1 }}>
+      <div>
         {state ? state.toString() : 'null'}
+      </div>
+      <div style={{ flexGrow: 1 }}>
+        {(state instanceof Loader) ? <JsonTree json={state.glb?.json} /> : ''}
       </div>
     </div>
   )
 }
-
-export default App
