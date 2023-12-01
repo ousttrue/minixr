@@ -27,9 +27,8 @@ class Reader {
         setState(res);
       }
       else if (res instanceof ArrayBuffer) {
-        const loader = new Loader(file, res);
-        setState(loader);
-        const glb = loader.glb;
+        const glb = Glb.parse(res);
+        setState(glb);
         if (glb) {
           console.log(glb);
           setContent({ json: glb.json });
@@ -47,32 +46,7 @@ class Reader {
 }
 
 
-class Loader {
-  state: string;
-  glb: Glb | null = null;
-
-  constructor(
-    public readonly file: File,
-    public readonly bytes: ArrayBuffer) {
-    this.state = `${file.name}: ${bytes.byteLength} bytes`
-    try {
-      this.glb = Glb.parse(bytes);
-    }
-    catch (err) {
-      console.warn(err);
-    }
-  }
-
-  toString(): string {
-    if (this.glb) {
-      return `${this.file.name}: glTF: ${this.glb.json.asset.version}`;
-    }
-    return this.state;
-  }
-}
-
-
-type State = null | Reader | string | Loader;
+type State = null | Reader | string | Glb;
 
 
 export default function App() {
@@ -95,7 +69,7 @@ export default function App() {
       >
         <div style={{ overflowY: 'auto' }}>
           {
-            (state instanceof Loader)
+            (state instanceof Glb)
               ? (<JsonTree
                 content={content}
                 onChange={setContent}
