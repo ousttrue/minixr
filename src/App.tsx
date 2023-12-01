@@ -4,6 +4,7 @@ import MyDropzone from './dropzone.jsx';
 import { Glb } from '../lib/glb.js';
 import JsonTree, { JsonItem } from './jsontree.jsx';
 import Split from 'react-split'
+import WebGLCanvas from './webgl.jsx';
 
 
 class Reader {
@@ -77,7 +78,7 @@ export default function App() {
               : ''
           }
         </div>
-        <div>right</div>
+        <WebGLCanvas glb={state instanceof Glb ? state : undefined} />
       </Split>
     </div>
   )
