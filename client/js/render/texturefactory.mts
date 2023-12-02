@@ -1,6 +1,6 @@
 import { Texture } from '../scene/materials/texture.mjs';
 import { DataTexture, VideoTexture } from '../scene/materials/texture.mjs';
-import { isPowerOfTwo } from '../math/gl-matrix.mjs';
+import { isPowerOfTwo } from '../../../lib/math/gl-matrix.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums

@@ -1,4 +1,5 @@
 import { Glb } from '../lib/glb.js';
+import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
 import React from 'react';
 import { vec3, mat4, OrbitView, PerspectiveProjection } from '../lib/math/gl-matrix.mjs';
 
@@ -179,13 +180,29 @@ export class Renderer {
   view = new OrbitView(mat4.identity(), vec3.fromValues(0, 0, 5));
   projection = new PerspectiveProjection(mat4.identity());
 
+  glb: Glb | null = null;
+  loader: Gltf2Loader | null = null;
+
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly observer: ResizeObserver,
   ) { }
 
-  render(time: number, width: number, height: number) {
+  render(time: number, width: number, height: number, glb?: Glb) {
     this.projection.resize(width, height);
+
+    if (glb != this.glb) {
+      this.glb = glb ?? null;
+      if (this.glb) {
+        const loader = new Gltf2Loader(this.glb.json, { binaryChunk: this.glb.bin });
+        this.loader = loader;
+        loader.load().then(() => this.buildScene(loader));
+      }
+      else {
+        // dispose ?
+        this.loader = null;
+      }
+    }
 
     const gl = this.gl;
     const { shader, vao } = this.getOrCreate(gl);
@@ -214,6 +231,14 @@ export class Renderer {
     shader.setMatrix('uModel', this.model);
 
     vao.draw(6);
+  }
+
+  buildScene(loader: Gltf2Loader) {
+    for (const mesh of loader.meshes) {
+
+      console.log(mesh);
+
+    }
   }
 
   private getOrCreate(gl: WebGL2RenderingContext): { shader: ShaderProgram, vao: Vao } {
@@ -291,7 +316,7 @@ export default function WebGLCanvas(props: {
 
     const state = getOrCreateState();
 
-    state.render(Date.now(), ref.current.width, ref.current.height);
+    state.render(Date.now(), ref.current.width, ref.current.height, props.glb);
   });
 
   const [count, setCount] = React.useState(0);

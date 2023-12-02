@@ -1,14 +1,14 @@
-import { vec3, quat, mat4, Ray } from './js/math/gl-matrix.mjs';
+import { vec3, quat, mat4 } from '../lib/math/gl-matrix.mjs';
 import { ArMeshDetection, } from './js/component/ar-mesh-detection.mjs';
 import { ArPlaneDetection } from './js/component/ar-plane-detection.mjs';
 import { StatsViewer } from './js/component/stats-viewer.mjs';
 import { StatsGraph } from './js/component/stats-graph.mjs';
 import { SevenSegmentText } from './js/component/seven-segment-text.mjs';
-import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
-import { Gltf2Loader } from './js/gltf2.mjs';
+// import { InputRenderer } from './js/scene/nodes/input-renderer.mjs';
+import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
 import { cubeSeaFactory } from './js/component/cube-sea.mjs';
 import { interactionFactory } from './js/component/interaction.mjs';
-import { XRTerm } from './js/xterm/xrterm.mjs';
+// import { XRTerm } from './js/xterm/xrterm.mjs';
 import { bitmapFontFactory } from './js/component/bitmap-font.mjs';
 import { World } from './js/third-party/uecs-0.4.2/index.mjs';
 import { Rotater } from './js/component/rotater.mjs';
@@ -19,6 +19,7 @@ import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
 import { animationSystem } from './js/component/animation.mjs';
 import { createViewLayer } from './js/viewlayer/index.mjs';
 import { CubeInstancing } from './js/component/cube-instance.mjs';
+import { buildGltf } from './gltf2-builder.mjs';
 
 
 class AppSession {
@@ -101,11 +102,13 @@ class AppSession {
 
   private async _loadGltf(dir: string, name: string, origin?: mat4) {
     if (dir == 'assets') {
-      await Gltf2Loader.loadFromUrl(this.world, `./assets/gltf/${name}/${name}.gltf`);
+      const loader = await Gltf2Loader.loadFromUrl(`./assets/gltf/${name}/${name}.gltf`);
+      await buildGltf(this.world, loader);
     }
     else if (dir == 'glTF-Sample-Models') {
-      await Gltf2Loader.loadFromUrl(this.world,
+      const loader = await Gltf2Loader.loadFromUrl(
         `./glTF-Sample-Models/2.0/${name}/glTF-Binary/${name}.glb`, origin);
+      await buildGltf(this.world, loader);
     }
   }
 

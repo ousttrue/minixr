@@ -23,9 +23,8 @@ import { Material } from './materials/material.mjs';
 import { ImageTexture, ColorTexture } from './materials/texture.mjs';
 import { Primitive, PrimitiveAttribute } from './buffer/primitive.mjs';
 import { BufferSource } from './buffer/buffersource.mjs';
-import * as GLTF2 from '../../lib/GLTF.js';
-import { Glb } from '../../lib/glb.js';
-import { World } from './third-party/uecs-0.4.2/index.mjs';
+import type * as GLTF2 from './GLTF2.d.ts';
+import { Glb } from './glb.js';
 import { vec2, vec3, vec4, quat, mat4 } from './math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
@@ -93,9 +92,11 @@ export class Gltf2Loader {
 
   constructor(
     public readonly json: GLTF2.GlTf,
-    public readonly baseUrl: string,
-    public readonly binaryChunk?: Uint8Array) {
-
+    public readonly data: {
+      baseUrl?: string,
+      binaryChunk?: Uint8Array,
+    },
+  ) {
     if (!json.asset) {
       throw new Error('Missing asset description.');
     }
@@ -106,11 +107,10 @@ export class Gltf2Loader {
 
   static loadFromBinary(arrayBuffer: ArrayBuffer, baseUrl: string): Gltf2Loader {
     const glb = Glb.parse(arrayBuffer);
-
-    return new Gltf2Loader(json, baseUrl, chunks[CHUNK_TYPE.BIN]);
+    return new Gltf2Loader(glb.json, { baseUrl, binaryChunk: glb.bin ?? undefined });
   }
 
-  static async loadFromUrl(world: World, url: string, origin?: mat4): Promise<Gltf2Loader> {
+  static async loadFromUrl(url: string, origin?: mat4): Promise<Gltf2Loader> {
     const response =
       url.startsWith('http://')
         ? await fetch(url, { mode: "cors" })
@@ -120,15 +120,13 @@ export class Gltf2Loader {
     const baseUrl = (i !== 0) ? url.substring(0, i + 1) : '';
     if (url.endsWith('.gltf')) {
       const json = await response.json();
-      const loader = new Gltf2Loader(json, baseUrl);
+      const loader = new Gltf2Loader(json, { baseUrl });
       await loader.load();
-      loader.build(world, origin);
       return loader;
     } else if (url.endsWith('.glb')) {
       const arrayBuffer = await response.arrayBuffer()
       const loader = Gltf2Loader.loadFromBinary(arrayBuffer, baseUrl);
       await loader.load();
-      loader.build(world, origin);
       return loader;
     } else {
       throw new Error('Unrecognized file extension');
@@ -149,15 +147,20 @@ export class Gltf2Loader {
         return bytes;
       }
       else {
-        const response = await fetch(resolveUri(buffer.uri, this.baseUrl));
-        const arrayBuffer = await response.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        this.urlBytesMap[buffer.uri] = bytes;
-        return bytes;
+        if (this.data.baseUrl) {
+          const response = await fetch(resolveUri(buffer.uri, this.data.baseUrl));
+          const arrayBuffer = await response.arrayBuffer();
+          const bytes = new Uint8Array(arrayBuffer);
+          this.urlBytesMap[buffer.uri] = bytes;
+          return bytes;
+        }
+        else {
+          throw new Error("no baseUrl");
+        }
       }
     }
-    else if (this.binaryChunk) {
-      return this.binaryChunk;
+    else if (this.data.binaryChunk) {
+      return this.data.binaryChunk;
     }
     else {
       throw new Error("invalid buffer");
@@ -179,7 +182,7 @@ export class Gltf2Loader {
     if (!this.json.bufferViews) {
       throw new Error("no bufferViews");
     }
-    if (!accessor.bufferView) {
+    if (accessor.bufferView == null) {
       throw new Error("not impl");
     }
 
@@ -228,11 +231,7 @@ export class Gltf2Loader {
     return this.textures[textureInfo.index];
   }
 
-  private async _primitiveAttributeFromAccessor(name: string, accessorIndex: number): Promise<PrimitiveAttribute> {
-    if (!this.json.accessors) {
-      throw new Error('no accessors');
-    }
-    const accessor = this.json.accessors[accessorIndex];
+  private async _primitiveAttributeFromAccessor(name: string, accessor: GLTF2.Accessor): Promise<PrimitiveAttribute> {
     const bufferSource = await this._bufferSourceFromAccessor(accessor);
 
     return new PrimitiveAttribute(
@@ -293,7 +292,7 @@ export class Gltf2Loader {
           if (isDataUri(glImage.uri)) {
             image.src = glImage.uri;
           } else {
-            image.src = `${this.baseUrl}${glImage.uri}`;
+            image.src = `${this.data.baseUrl}${glImage.uri}`;
           }
         } else if (glImage.bufferView != null && this.json.bufferViews) {
           // this._texture.genDataKey();
@@ -382,19 +381,22 @@ export class Gltf2Loader {
             : DEFAULT_MATERIAL;
           ;
 
-          // let min = null;
-          // let max = null;
-
+          let min = null;
+          let max = null;
           const attributes: PrimitiveAttribute[] = [];
           let vertexCount = 0;
           for (const name in glPrimitive.attributes) {
-            const attribute = await this._primitiveAttributeFromAccessor(name, glPrimitive.attributes[name]);
-
-            // if (name == 'POSITION') {
-            //   min = accessor.min;
-            //   max = accessor.max;
-            // }
-
+            if (!this.json.accessors) {
+              throw new Error('no accessors');
+            }
+            const accessorIndex = glPrimitive.attributes[name];
+            const accessor = this.json.accessors[accessorIndex];
+            const attribute = await this._primitiveAttributeFromAccessor(name, accessor);
+            if (name == 'POSITION') {
+              min = accessor.min;
+              max = accessor.max;
+              vertexCount = accessor.count;
+            }
             attributes.push(attribute);
           }
 
@@ -403,86 +405,19 @@ export class Gltf2Loader {
           const primitive = new Primitive(
             material,
             attributes,
-            // TODO:
             vertexCount,
             indexBuffer ? new BufferSource(1, indexBuffer) : undefined,
             { mode: glPrimitive.mode ?? GL.TRIANGLES });
 
-          // if (min && max) {
-          //   glPrimitive.bb = new BoundingBox(
-          //     vec3.fromValues(min[0], min[1], min[2]),
-          //     vec3.fromValues(max[0], max[1], max[2]));
-          // }
+          if (min && max) {
+            primitive.bb.expand(vec3.fromValues(min[0], min[1], min[2]));
+            primitive.bb.expand(vec3.fromValues(max[0], max[1], max[2]));
+          }
 
           // After all the attributes have been processed, get a program that is
           // appropriate for both the material and the primitive attributes.
           mesh.primitives.push(primitive);
         }
-      }
-    }
-  }
-
-  build(world: World, origin?: mat4) {
-    // const sceneNode = new Node('gltf.scene');
-    if (this.json.nodes && this.json.scenes) {
-      const scene = this.json.scenes[this.json.scene ?? 0];
-      if (scene.nodes) {
-        for (const nodeId of scene.nodes) {
-          const glNode = this.json.nodes[nodeId];
-          this._processNodes(world, glNode, origin);
-        }
-      }
-    }
-  }
-
-  private _processNodes(world: World, glNode: GLTF2.Node, parent?: mat4) {
-    const matrix = new mat4();
-    if (glNode.matrix) {
-      matrix.array.set(new Float32Array(glNode.matrix));
-    } else {
-      const t = new vec3();
-      if (glNode.translation) {
-        t.x = glNode.translation[0];
-        t.y = glNode.translation[1];
-        t.z = glNode.translation[2];
-      }
-
-      const r = new quat();
-      if (glNode.rotation) {
-        r.x = glNode.rotation[0];
-        r.y = glNode.rotation[1];
-        r.z = glNode.rotation[2];
-        r.w = glNode.rotation[3];
-      }
-
-      const s = vec3.fromValues(1, 1, 1);
-      if (glNode.scale) {
-        s.x = glNode.scale[0];
-        s.y = glNode.scale[1];
-        s.z = glNode.scale[2];
-      }
-
-      mat4.fromTRS(t, r, s, { out: matrix });
-    }
-
-    if (parent) {
-      parent.mul(matrix, { out: matrix })
-    }
-
-    let prims = 0;
-    if (glNode.mesh != null) {
-      const mesh = this.meshes[glNode.mesh];
-      for (const primitive of mesh.primitives) {
-
-        world.create(matrix, primitive);
-        ++prims;
-      }
-    }
-
-    if (glNode.children && this.json.nodes) {
-      for (const nodeId of glNode.children) {
-        const glChildNode = this.json.nodes[nodeId];
-        this._processNodes(world, glChildNode, matrix);
       }
     }
   }

@@ -25,13 +25,13 @@ The bounds `geometry` is a series of DOMPointReadOnlys in
 clockwise-order.
 */
 
-import { Shader } from '../materials/shader.mjs';
-import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
-import { MaterialState } from '../materials/materialstate.mjs';
+import { Shader } from '../../../lib/materials/shader.mjs';
+import { Material } from '../../../lib/materials/material.mjs';
+import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
+import { MaterialState } from '../../../lib/materials/materialstate.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { mat4 } from '../math/gl-matrix.mjs';
+import { mat4 } from '../../../lib/math/gl-matrix.mjs';
 
 
 const GL = WebGL2RenderingContext; // For enums

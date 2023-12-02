@@ -1,8 +1,8 @@
-import { Shader } from '../materials/shader.mjs';
-import { Material } from '../materials/material.mjs';
-import { vec2, vec3, vec4, mat4 } from '../math/gl-matrix.mjs';
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
+import { Shader } from '../../../lib/materials/shader.mjs';
+import { Material } from '../../../lib/materials/material.mjs';
+import { vec2, vec3, vec4, mat4 } from '../../../lib/math/gl-matrix.mjs';
+import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { AnimationComponent } from '../component/animation.mjs';
 

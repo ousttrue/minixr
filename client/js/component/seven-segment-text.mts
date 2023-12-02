@@ -23,14 +23,14 @@ Renders simple text using a seven-segment LED style pattern. Only really good
 for numbers and a limited number of other characters.
 */
 
-import { Shader } from '../materials/shader.mjs';
-import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
+import { Shader } from '../../../lib/materials/shader.mjs';
+import { Material } from '../../../lib/materials/material.mjs';
+import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { Stats, now } from './stats-viewer.mjs';
-import { mat4 } from '../math/gl-matrix.mjs';
+import { mat4 } from '../../../lib/math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 

@@ -10,7 +10,7 @@ const CHUNK_TYPE = {
 export class Glb {
   constructor(
     public readonly json: GLTF2.GlTf,
-    public readonly bin: Uint8Array | null = null,
+    public readonly bin?: Uint8Array,
   ) {
   }
 
@@ -29,7 +29,7 @@ export class Glb {
     }
 
     let jsonChunk: Uint8Array | null = null;
-    let binChunk: Uint8Array | null = null;
+    let binChunk: Uint8Array | undefined = undefined;
     let chunkOffset = 12;
     while (chunkOffset < length) {
       const chunkHeaderView = new DataView(bytes, chunkOffset, 8);

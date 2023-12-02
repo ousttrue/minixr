@@ -17,10 +17,10 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-import { Shader, MULTIVIEW_VP, DEFAULT_VP } from '../materials/shader.mjs';
-import { Material, ProgramDefine } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
-import { Texture } from '../materials/texture.mjs';
+import { Shader, MULTIVIEW_VP, DEFAULT_VP } from '../../../lib/materials/shader.mjs';
+import { Material, ProgramDefine } from '../../../lib/materials/material.mjs';
+import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Texture } from '../../../lib/materials/texture.mjs';
 import { Ubo, UboMap } from './ubo.mjs';
 
 

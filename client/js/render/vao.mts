@@ -1,5 +1,5 @@
-import { Primitive } from '../buffer/primitive.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
+import { Primitive } from '../../../lib/buffer/primitive.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { Program } from './program.mjs';
 
 const GL = WebGLRenderingContext; // For enums

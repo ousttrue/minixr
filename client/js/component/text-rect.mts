@@ -1,6 +1,6 @@
-import { Material } from '../materials/material.mjs';
-import { Shader } from '../materials/shader.mjs';
-import { Primitive, PrimitiveAttribute, BufferSource } from '../buffer/primitive.mjs';
+import { Material } from '../../../lib/materials/material.mjs';
+import { Shader } from '../../../lib/materials/shader.mjs';
+import { Primitive, PrimitiveAttribute, BufferSource } from '../../../lib/buffer/primitive.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 

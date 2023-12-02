@@ -1,10 +1,10 @@
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
-import { vec3, mat4 } from '../math/gl-matrix.mjs';
+import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
+import { vec3, mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { Shader, RENDER_ORDER } from '../materials/shader.mjs';
-import { Material } from '../materials/material.mjs';
-import { BlobTexture } from '../materials/texture.mjs';
+import { Shader, RENDER_ORDER } from '../../../lib/materials/shader.mjs';
+import { Material } from '../../../lib/materials/material.mjs';
+import { BlobTexture, ImageTexture } from '../../../lib/materials/texture.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
@@ -76,9 +76,9 @@ void main() {
 
 
 export async function loadTextureAsync(): Promise<BlobTexture> {
-  const response = await fetch('../../../assets/cozette_charmap.png');
-  const imageBlob = await response.blob();
-  return new BlobTexture(imageBlob);
+  const img = document.getElementById("cozette") as HTMLImageElement;
+  // const imageBlob = await response.blob();
+  return new ImageTexture(img);
 }
 
 

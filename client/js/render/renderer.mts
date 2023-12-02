@@ -18,11 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { mat4, vec3 } from '../math/gl-matrix.mjs';
-import { Material } from '../materials/material.mjs';
-import { MaterialState, CAP } from '../materials/materialstate.mjs';
-import { Primitive } from '../buffer/primitive.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
+import { mat4, vec3 } from '../../../lib/math/gl-matrix.mjs';
+import { Material } from '../../../lib/materials/material.mjs';
+import { MaterialState, CAP } from '../../../lib/materials/materialstate.mjs';
+import { Primitive } from '../../../lib/buffer/primitive.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program, ProgramFactory } from './program.mjs';
 import { TextureFactory } from './texturefactory.mjs';

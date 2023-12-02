@@ -1,7 +1,7 @@
-import { vec3, mat4 } from '../math/gl-matrix.mjs';
+import { vec3, mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
-import { Shader } from '../materials/shader.mjs';
-import { Material, MaterialUniform4f } from '../materials/material.mjs';
+import { Shader } from '../../../lib/materials/shader.mjs';
+import { Material, MaterialUniform4f } from '../../../lib/materials/material.mjs';
 
 
 const HoverShader: Shader = {

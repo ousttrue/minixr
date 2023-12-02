@@ -1,4 +1,4 @@
-import { World } from '../../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../third-party/uecs-0.4.2/index.mjs';
 
 
 export const now = (window.performance && performance.now) ? performance.now.bind(performance) : Date.now;

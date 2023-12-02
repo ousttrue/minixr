@@ -25,13 +25,13 @@ usable (like WebXR), or if you want the FPS counter to be rendered as part of
 your scene.
 */
 
-import { Shader } from '../materials/shader.mjs';
-import { Material } from '../materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
-import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
+import { Shader } from '../../../lib/materials/shader.mjs';
+import { Material } from '../../../lib/materials/material.mjs';
+import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { vec3, mat4, BoundingBox } from '../../../lib/math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
-import { BufferSource } from '../buffer/buffersource.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums

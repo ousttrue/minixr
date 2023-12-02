@@ -1,4 +1,4 @@
-import { Shader } from '../materials/shader.mjs';
+import { Shader } from '../../../lib/materials/shader.mjs';
 import { Entity } from '../third-party/uecs-0.4.2/index.mjs';
 
 

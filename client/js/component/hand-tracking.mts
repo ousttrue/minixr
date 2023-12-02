@@ -1,7 +1,7 @@
 /**
  * https://immersive-web.github.io/webxr-hand-input/
  */
-import { vec3, mat4 } from '../math/gl-matrix.mjs';
+import { vec3, mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
 import { HoverActive } from './hover.mjs';
 import { CubeInstancing } from './cube-instance.mjs';
