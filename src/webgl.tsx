@@ -1,6 +1,6 @@
 import { Glb } from '../lib/glb.js';
 import React from 'react';
-import { mat4, Camera } from '../lib/math/gl-matrix.mjs';
+import { vec3, mat4, OrbitView, PerspectiveProjection } from '../lib/math/gl-matrix.mjs';
 
 const GL = WebGL2RenderingContext;
 
@@ -176,7 +176,8 @@ export class Renderer {
   vao: Vao | null = null;
   model = mat4.identity();
 
-  camera = new Camera(0, 0, -5);
+  view = new OrbitView(mat4.identity(), vec3.fromValues(0, 0, 5));
+  projection = new PerspectiveProjection(mat4.identity());
 
   constructor(
     public readonly gl: WebGL2RenderingContext,
@@ -184,7 +185,7 @@ export class Renderer {
   ) { }
 
   render(time: number, width: number, height: number) {
-    this.camera.resize(width, height);
+    this.projection.resize(width, height);
 
     const gl = this.gl;
     const { shader, vao } = this.getOrCreate(gl);
@@ -196,8 +197,8 @@ export class Renderer {
     shader.use();
 
     // update camera matrix
-    shader.setMatrix('uProjection', this.camera.projection);
-    shader.setMatrix('uView', this.camera.view);
+    shader.setMatrix('uProjection', this.projection.matrix);
+    shader.setMatrix('uView', this.view.matrix);
 
     // update model matrix
     const t = time * 0.001;
@@ -253,35 +254,15 @@ export class Renderer {
 }
 
 
-// class CanvasManager {
-//   renderer: Renderer | null = null;
-//
-//   constructor(
-//     public readonly canvas: HTMLCanvasElement,
-//     public readonly context: WebGL2RenderingContext,
-//   ) {
-//   }
-//
-//   static create(canvas: HTMLCanvasElement): CanvasManager {
-//     const context = canvas.getContext('webgl2');
-//     if (!context) {
-//       throw new Error('no WebGL2RenderingContext');
-//     }
-//     return new CanvasManager(canvas, context);
-//   }
-// }
-
-
-
 export default function WebGLCanvas(props: {
   glb?: Glb,
 }) {
   const ref = React.useRef<HTMLCanvasElement>(null);
-  const [state, setState] = React.useState<Renderer | null>(null);
+  const [renderer, setRenderer] = React.useState<Renderer | null>(null);
 
   function getOrCreateState(): Renderer {
-    if (state) {
-      return state;
+    if (renderer) {
+      return renderer;
     }
     const canvas = ref.current!;
     canvas.width = canvas.clientWidth;
@@ -298,9 +279,9 @@ export default function WebGLCanvas(props: {
     if (!gl) {
       throw new Error('no webgl2');
     }
-    const newState = new Renderer(gl, observer);
-    setState(newState);
-    return newState;
+    const newRenderer = new Renderer(gl, observer);
+    setRenderer(newRenderer);
+    return newRenderer;
   }
 
   React.useEffect(() => {
@@ -318,5 +299,28 @@ export default function WebGLCanvas(props: {
     setCount(count + 1);
   });
 
-  return <canvas style={{ width: '100%', height: '100%' }} ref={ref} />
+  const handleMouseMove: React.MouseEventHandler<HTMLCanvasElement> = (event) => {
+    // Only rotate when the left button is pressed
+    if (renderer) {
+      if (event.buttons & 1) {
+        renderer.view.rotate(event.movementX, event.movementY);
+      }
+      if (event.buttons & 4) {
+        renderer.view.shift(event.movementX, event.movementY);
+      }
+    }
+  };
+
+  const handleWheel: React.WheelEventHandler<HTMLCanvasElement> = (event) => {
+    if (renderer) {
+      renderer.view.dolly(event.deltaY);
+    }
+  };
+
+  return <canvas
+    style={{ width: '100%', height: '100%' }}
+    ref={ref}
+    onMouseMove={handleMouseMove}
+    onWheel={handleWheel}
+  />
 }

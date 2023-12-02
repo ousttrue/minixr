@@ -4,6 +4,11 @@ import { quat } from './quat.mjs';
 
 /**
  * 4x4 Matrix<br>Format: column-major, when typed out it looks like row-major<br>The matrices are being post multiplied.
+ *
+ * 00 01 02 03
+ * 04 05 02 03
+ * 08 09 10 11
+ * 12 13 14 15
  */
 export class mat4 {
   constructor(public array = new Float32Array(16)) { }
@@ -661,75 +666,64 @@ export class mat4 {
     return dst;
   }
 
-  // /**
-  //  * Creates a matrix from the given angle around the X axis
-  //  * This is equivalent to (but much faster than):
-  //  *
-  //  *     mat4.identity(dest);
-  //  *     mat4.rotateX(dest, dest, rad);
-  //  *
-  //  * @param {mat4} out mat4 receiving operation result
-  //  * @param {Number} rad the angle to rotate the matrix by
-  //  * @returns {mat4} out
-  //  */
-  // export function fromXRotation(out: mat4, rad: number): mat4 {
-  //   let s = Math.sin(rad);
-  //   let c = Math.cos(rad);
-  //
-  //   // Perform axis-specific matrix multiplication
-  //   out[0] = 1;
-  //   out[1] = 0;
-  //   out[2] = 0;
-  //   out[3] = 0;
-  //   out[4] = 0;
-  //   out[5] = c;
-  //   out[6] = s;
-  //   out[7] = 0;
-  //   out[8] = 0;
-  //   out[9] = -s;
-  //   out[10] = c;
-  //   out[11] = 0;
-  //   out[12] = 0;
-  //   out[13] = 0;
-  //   out[14] = 0;
-  //   out[15] = 1;
-  //   return out;
-  // }
-  //
-  // /**
-  //  * Creates a matrix from the given angle around the Y axis
-  //  * This is equivalent to (but much faster than):
-  //  *
-  //  *     mat4.identity(dest);
-  //  *     mat4.rotateY(dest, dest, rad);
-  //  *
-  //  * @param {mat4} out mat4 receiving operation result
-  //  * @param {Number} rad the angle to rotate the matrix by
-  //  * @returns {mat4} out
-  //  */
-  // export function fromYRotation(out: mat4, rad: number): mat4 {
-  //   let s = Math.sin(rad);
-  //   let c = Math.cos(rad);
-  //
-  //   // Perform axis-specific matrix multiplication
-  //   out[0] = c;
-  //   out[1] = 0;
-  //   out[2] = -s;
-  //   out[3] = 0;
-  //   out[4] = 0;
-  //   out[5] = 1;
-  //   out[6] = 0;
-  //   out[7] = 0;
-  //   out[8] = s;
-  //   out[9] = 0;
-  //   out[10] = c;
-  //   out[11] = 0;
-  //   out[12] = 0;
-  //   out[13] = 0;
-  //   out[14] = 0;
-  //   out[15] = 1;
-  //   return out;
-  // }
+  /**
+   * Creates a matrix from the given angle around the X axis
+   * This is equivalent to (but much faster than):
+   */
+  static fromXRotation(rad: number, option?: { out: mat4 }): mat4 {
+    let s = Math.sin(rad);
+    let c = Math.cos(rad);
+    const dst = option?.out ?? new mat4();
+    const out = dst.array;
+    // Perform axis-specific matrix multiplication
+    out[0] = 1;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = c;
+    out[6] = s;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = -s;
+    out[10] = c;
+    out[11] = 0;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
+    return dst;
+  }
+
+  /**
+   * Creates a matrix from the given angle around the Y axis
+   * This is equivalent to (but much faster than):
+   */
+  static fromYRotation(rad: number, option?: { out: mat4 }): mat4 {
+    let s = Math.sin(rad);
+    let c = Math.cos(rad);
+    const dst = option?.out ?? new mat4();
+    const out = dst.array;
+    // Perform axis-specific matrix multiplication
+    out[0] = c;
+    out[1] = 0;
+    out[2] = -s;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = 1;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = s;
+    out[9] = 0;
+    out[10] = c;
+    out[11] = 0;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
+    return dst;
+  }
+
   //
   // /**
   //  * Creates a matrix from the given angle around the Z axis
@@ -1172,12 +1166,6 @@ export class mat4 {
   /**
    * Generates a perspective projection matrix with the given bounds.
    * Passing null/undefined/no value for far will generate infinite projection matrix.
-   *
-   * @param {number} fovy Vertical field of view in radians
-   * @param {number} aspect Aspect ratio. typically viewport width/height
-   * @param {number} near Near bound of the frustum
-   * @param {number} far Far bound of the frustum, can be null or Infinity
-   * @returns {mat4} out
    */
   static perspective(
     fovy: number, aspect: number,
@@ -1187,7 +1175,8 @@ export class mat4 {
     const dst = option?.out ?? new mat4();
     const out = dst.array;
 
-    let f = 1.0 / Math.tan(fovy / 2), nf;
+    let f = 1.0 / Math.tan(fovy / 2);
+    const nf = 1 / (far - near);
     out[0] = f / aspect;
     out[1] = 0;
     out[2] = 0;
@@ -1198,18 +1187,12 @@ export class mat4 {
     out[7] = 0;
     out[8] = 0;
     out[9] = 0;
+    out[10] = -(far + near) * nf;
     out[11] = -1;
     out[12] = 0;
     out[13] = 0;
     out[15] = 0;
-    if (far != null && far !== Infinity) {
-      nf = 1 / (near - far);
-      out[10] = (far + near) * nf;
-      out[14] = (2 * far * near) * nf;
-    } else {
-      out[10] = -1;
-      out[14] = -2 * near;
-    }
+    out[14] = -(2 * far * near) * nf;
     return dst;
   }
 
