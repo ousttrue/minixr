@@ -7,70 +7,71 @@ import Split from 'react-split'
 import WebGLCanvas from './webgl.jsx';
 
 
-class Reader {
+class FileState {
+
+  reader: FileReader | null = null;
+  glb: Glb | null = null;
+  status = '';
+
   constructor(
     public readonly file: File,
-    onLoaded: (result: null | string | ArrayBuffer) => void,
+    public readonly bytes: ArrayBuffer | null,
+    setState: (state: FileState) => void,
+    setContent: (content: JsonItem) => void,
   ) {
-    const reader = new FileReader()
-    reader.onabort = () => console.log('file reading was aborted')
-    reader.onerror = () => console.log('file reading has failed')
-    reader.onload = () => {
-      // const res = reader.result
-      onLoaded(reader.result);
+    if (bytes) {
+      // ArrayBuffer => Glb
+      this.status = 'parse...';
+      this.glb = Glb.parse(bytes);
+      this.status = 'glb';
+      setContent({ json: this.glb.json });
     }
-    reader.readAsArrayBuffer(file);
-  }
-
-  static set(setState: Function, file: File, setContent: Function) {
-    const reader = new Reader(file, (res: null | ArrayBuffer | string) => {
-      if (typeof (res) == 'string') {
-        setState(res);
-      }
-      else if (res instanceof ArrayBuffer) {
-        const glb = Glb.parse(res);
-        setState(glb);
-        if (glb) {
-          console.log(glb);
-          setContent({ json: glb.json });
+    else if (file instanceof File) {
+      // File => ArrayBuffer
+      this.status = 'reading...';
+      const reader = new FileReader()
+      this.reader = reader;
+      reader.onabort = () => console.log('file reading was aborted')
+      reader.onerror = () => console.log('file reading has failed')
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) {
+          setState(new FileState(this.file, reader.result, setState, setContent));
         }
       }
-      else {
-        setState(null);
-      }
-    });
-    setState(reader);
+      reader.readAsArrayBuffer(file);
+    }
+    else {
+      throw new Error('invalid type');
+    }
   }
+
   toString(): string {
-    return 'loading...';
+    return `file: ${this.file.name} ${this.status}`
   }
 }
 
 
-type State = null | Reader | string | Glb;
-
-
 export default function App() {
   const [content, setContent] = useState<JsonItem>({});
-  const [state, setState] = useState<State>(null);
+  const [fileState, setFileState] = useState<FileState | null>(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <MyDropzone setFile={(file) => Reader.set(setState, file, setContent)}
+      <MyDropzone setFile={(file) => setFileState(new FileState(file, null, setFileState, setContent))}
         message={(isDragActive: boolean) => isDragActive ?
           <p style={{ textAlign: 'center' }}>🔽 Drop the files here ...</p> :
           <p style={{ textAlign: 'center' }}>➕ Drag 'n' drop some files here, or click to select files</p>
         }
       />
       <div>
-        {state ? state.toString() : 'null'}
+        {fileState ? fileState.toString() : 'null'}
       </div>
       <Split
         className="split"
       >
         <div style={{ overflowY: 'auto' }}>
           {
-            (state instanceof Glb)
+            (fileState && fileState.glb)
               ? (<JsonTree
                 content={content}
                 onChange={setContent}
@@ -78,7 +79,7 @@ export default function App() {
               : ''
           }
         </div>
-        <WebGLCanvas glb={state instanceof Glb ? state : undefined} />
+        <WebGLCanvas glb={(fileState && fileState.glb) ? fileState.glb : undefined} />
       </Split>
     </div>
   )
