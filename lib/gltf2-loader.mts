@@ -72,12 +72,69 @@ function getItemSize(accessor: GLTF2.Accessor): number {
   return getComponentCount(accessor.type) * getTypeSize(accessor.componentType)
 }
 
-class Gltf2Mesh {
-  primitives: Mesh[] = [];
-  constructor() {
-  }
-}
+function toInterleavedSubmesh(primitives: Mesh[],
+  totalVertexCount: number, totalIndexCount: number): Mesh {
 
+  // create interleaved vertex(POSITION + NORMAL + TEXCOORD_0)
+  const components = 8;
+  const stride = components * 4;
+  const vertices = new BufferSource(
+    components, new Float32Array(totalVertexCount * components));
+  const indices = totalIndexCount > 0
+    ? new Uint16Array(totalIndexCount)
+    : null
+    ;
+  const mesh = new Mesh([
+    new MeshVertexAttribute(
+      'POSITION',
+      vertices,
+      3,
+      GL.FLOAT,
+      stride,
+      0,
+      false
+    ),
+    new MeshVertexAttribute(
+      'NORMAL',
+      vertices,
+      3,
+      GL.FLOAT,
+      stride,
+      12,
+      false
+    ),
+    new MeshVertexAttribute(
+      'TEXCOORD_0',
+      vertices,
+      2,
+      GL.FLOAT,
+      stride,
+      24,
+      false
+    ),
+  ],
+    totalVertexCount,
+    primitives.map(x => new SubMesh(
+      x.submeshes[0].material,
+      x.submeshes[0].drawCount)),
+    indices ? new BufferSource(1, indices) : undefined,
+  );
+
+  let vertexOffset = 0;
+  let indexOffset = 0;
+  for (const primitive of primitives) {
+    for (const attr of primitive.attributes) {
+      mesh.setVertices(vertexOffset, attr);
+    }
+    if (primitive.indices) {
+      mesh.setIndices(vertexOffset, indexOffset, primitive.indices);
+      indexOffset += primitive.indices.length;
+    }
+    vertexOffset += primitive.vertexCount;
+  }
+
+  return mesh;
+}
 
 /**
  * Gltf2SceneLoader
@@ -87,7 +144,7 @@ export class Gltf2Loader {
   images: HTMLImageElement[] = [];
   textures: ImageTexture[] = [];
   materials: Material[] = [];
-  meshes: Gltf2Mesh[] = [];
+  meshes: Mesh[] = [];
   urlBytesMap: { [key: string]: Uint8Array } = {}
 
   constructor(
@@ -371,9 +428,10 @@ export class Gltf2Loader {
 
     if (this.json.meshes) {
       for (const glMesh of this.json.meshes) {
-        const mesh = new Gltf2Mesh();
-        this.meshes.push(mesh);
 
+        const primitives: Mesh[] = []
+        let totalVertexCount = 0;
+        let totalIndexCount = 0;
         for (const glPrimitive of glMesh.primitives) {
           const material = (glPrimitive.material != null)
             ? this.materials[glPrimitive.material]
@@ -396,11 +454,15 @@ export class Gltf2Loader {
               min = accessor.min;
               max = accessor.max;
               vertexCount = accessor.count;
+              totalVertexCount += vertexCount;
             }
             attributes.push(attribute);
           }
 
           const indexBuffer = await this._indexBufferFromAccessor(glPrimitive.indices);
+          if (indexBuffer) {
+            totalIndexCount += indexBuffer.length;
+          }
 
           // material,
           const primitive = new Mesh(
@@ -418,10 +480,13 @@ export class Gltf2Loader {
             primitive.bb.expand(vec3.fromValues(max[0], max[1], max[2]));
           }
 
-          // After all the attributes have been processed, get a program that is
-          // appropriate for both the material and the primitive attributes.
-          mesh.primitives.push(primitive);
+          primitives.push(primitive);
         }
+
+        const mesh = toInterleavedSubmesh(primitives,
+          totalVertexCount, totalIndexCount);
+
+        this.meshes.push(mesh);
       }
     }
   }

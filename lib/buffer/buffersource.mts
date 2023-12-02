@@ -43,6 +43,18 @@ export class BufferSource {
     return this.array.byteLength / this.array.length * this.componentCount
   }
 
+  getItem(index: number, offset: number, getCount: number): BufferSourceArray {
+    const start = index * this.componentCount + offset;
+    return this.array.subarray(start, start + getCount);
+  }
+
+  setItem(index: number, offset: number, src: BufferSourceArray) {
+    const start = index * this.componentCount + offset;
+    for (let i = 0; i < src.length; ++i) {
+      this.array[start + i] = src[i];
+    }
+  }
+
   updateBBFromPositions(bb: BoundingBox) {
     const floats = this.array as Float32Array;
     for (let i = 0; i < floats.length; i += this.componentCount) {

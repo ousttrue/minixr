@@ -19,7 +19,7 @@
 // SOFTWARE.
 import { vec3, BoundingBox } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
-import { BufferSource } from './buffersource.mjs';
+import { BufferSource, BufferSourceArray } from './buffersource.mjs';
 
 
 const GL = WebGL2RenderingContext; // For enums
@@ -51,6 +51,16 @@ export class MeshVertexAttribute {
 
   calcStride(): number {
     return getComponentSize(this.componentType) * this.componentCount;
+  }
+
+  getItem(index: number) {
+    const size = getComponentSize(this.componentType);
+    return this.source.getItem(index, this.byteOffset / size, this.componentCount);
+  }
+
+  setItem(index: number, src: BufferSourceArray) {
+    const size = getComponentSize(this.componentType);
+    this.source.setItem(index, this.byteOffset / size, src);
   }
 }
 
@@ -103,23 +113,45 @@ export class Mesh {
 
     if (this.submeshes.length == 0) {
       if (indices) {
-        this.submeshes.push(new SubMesh(indices.length));
+        this.submeshes.push(new SubMesh(null, indices.length));
       }
       else {
-        this.submeshes.push(new SubMesh(vertexCount));
+        this.submeshes.push(new SubMesh(null, vertexCount));
       }
     }
   }
 
-  calcStrideFor(attribute: MeshVertexAttribute) {
-    let stride = 0;
-    for (const a of this.attributes) {
-      if (a.source == attribute.source) {
-        stride += a.calcStride();
+  setVertices(offset: number, attribute: MeshVertexAttribute) {
+    for (const lhs of this.attributes) {
+      if (lhs.name == attribute.name) {
+        for (let i = 0; i < attribute.source.length; ++i) {
+          const src = attribute.getItem(i);
+          lhs.setItem(offset + i, src);
+        }
+        return;
       }
     }
-    return stride;
   }
+
+  setIndices(vertexOffset: number, indexOffset: number, indices: BufferSource) {
+    if (!this.indices) {
+      throw new Error("no indices");
+    }
+    for (let i = 0; i < indices.length; ++i) {
+      const index = indices.getItem(i, 0, 1)[0];
+      this.indices.array[indexOffset + i] = vertexOffset + index;
+    }
+  }
+
+  // calcStrideFor(attribute: MeshVertexAttribute) {
+  //   let stride = 0;
+  //   for (const a of this.attributes) {
+  //     if (a.source == attribute.source) {
+  //       stride += a.calcStride();
+  //     }
+  //   }
+  //   return stride;
+  // }
 
   hitTest(p: vec3): boolean {
     if (!this.bb.isFinite()) {

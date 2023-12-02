@@ -41,12 +41,12 @@ function _processNodes(world: World,
 
   let prims = 0;
   if (glNode.mesh != null) {
-    const mesh = loader.meshes[glNode.mesh];
-    for (const primitive of mesh.primitives) {
+    const primitive = loader.meshes[glNode.mesh];
+    // for (const primitive of mesh.primitives) {
 
       world.create(matrix, primitive);
       ++prims;
-    }
+    // }
   }
 
   if (glNode.children && loader.json.nodes) {
