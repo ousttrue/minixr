@@ -1,18 +1,19 @@
 import { Glb } from '../lib/glb.js';
 import React from 'react';
-
+import { mat4, Camera } from '../lib/math/gl-matrix.mjs';
 
 const GL = WebGL2RenderingContext;
 
 
 const VS = `#version 300 es
 in vec2 aPosition;
+uniform mat4 uModel;
+uniform mat4 uView;
 uniform mat4 uProjection;
-uniform mat4 uMatrix;
 
 void main()
 {
-  gl_Position = uProjection * uMatrix * vec4(aPosition, 0, 1);
+  gl_Position = uProjection * uView * uModel * vec4(aPosition, 0, 1);
 }
 `;
 
@@ -82,12 +83,13 @@ class ShaderProgram implements Disposable {
     this.gl.useProgram(this.program);
   }
 
-  setMatrix(name: string, data: Float32Array) {
+  setMatrix(name: string, matrix: mat4) {
     const gl = this.gl;
     const location = gl.getUniformLocation(this.program, name);
-    if (location) {
-      gl.uniformMatrix4fv(location, false, data);
+    if (!location) {
+      console.warn(`getUniformLocation${name} not found`);
     }
+    gl.uniformMatrix4fv(location, false, matrix.array);
   }
 }
 
@@ -172,15 +174,18 @@ export class Renderer {
   shader: ShaderProgram | null = null;
   vbo: Buffer | null = null;
   vao: Vao | null = null;
-  projectin = new Float32Array(16);
-  model = new Float32Array(16);
+  model = mat4.identity();
+
+  camera = new Camera(0, 0, -5);
 
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly observer: ResizeObserver,
   ) { }
 
-  render(width: number, height: number, time: number) {
+  render(time: number, width: number, height: number) {
+    this.camera.resize(width, height);
+
     const gl = this.gl;
     const { shader, vao } = this.getOrCreate(gl);
 
@@ -190,29 +195,22 @@ export class Renderer {
 
     shader.use();
 
-    // update projection matrix
-    const aspect = height / width;
-    this.projectin.set(
-      [
-        aspect, 0, 0, 0, //
-        0, 1, 0, 0, //
-        0, 0, 1, 0, //
-        0, 0, 0, 1, //
-      ]);
-    shader.setMatrix('uProjection', this.projectin);
+    // update camera matrix
+    shader.setMatrix('uProjection', this.camera.projection);
+    shader.setMatrix('uView', this.camera.view);
 
     // update model matrix
     const t = time * 0.001;
     const c = Math.sin(t);
     const s = Math.cos(t);
-    this.model.set(
+    this.model.array.set(
       [
         c, -s, 0, 0, //
         s, c, 0, 0, //
         0, 0, 1, 0, //
         0, 0, 0, 1, //
       ]);
-    shader.setMatrix('uMatrix', this.model);
+    shader.setMatrix('uModel', this.model);
 
     vao.draw(6);
   }
@@ -274,6 +272,7 @@ export class Renderer {
 // }
 
 
+
 export default function WebGLCanvas(props: {
   glb?: Glb,
 }) {
@@ -311,7 +310,7 @@ export default function WebGLCanvas(props: {
 
     const state = getOrCreateState();
 
-    state.render(ref.current.width, ref.current.height, Date.now());
+    state.render(Date.now(), ref.current.width, ref.current.height);
   });
 
   const [count, setCount] = React.useState(0);
