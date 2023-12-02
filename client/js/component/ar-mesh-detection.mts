@@ -1,4 +1,4 @@
-import { PrimitiveAttribute, Primitive } from '../../../lib/buffer/primitive.mjs';
+import { PrimitiveAttribute, Mesh } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -9,7 +9,7 @@ import { Material } from '../../../lib/materials/material.mjs';
 const GL = WebGLRenderingContext; // For enums
 
 
-function createPrimitive(mesh: XRMesh, material: Material): Primitive {
+function createPrimitive(mesh: XRMesh, material: Material): Mesh {
   let vertexBuffer = new BufferSource(3, mesh.vertices);
   let attributes = [
     new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
@@ -17,7 +17,7 @@ function createPrimitive(mesh: XRMesh, material: Material): Primitive {
   // wrong d.ts ?
   // @ts-ignore
   const indices = mesh.indices as Uint32Array;
-  const primitive = new Primitive(material, attributes, mesh.vertices.length / 3,
+  const primitive = new Mesh(material, attributes, mesh.vertices.length / 3,
     new BufferSource(1, indices));
   return primitive;
 }

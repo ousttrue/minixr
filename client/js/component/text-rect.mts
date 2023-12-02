@@ -1,6 +1,6 @@
 import { Material } from '../../../lib/materials/material.mjs';
 import { Shader } from '../../../lib/materials/shader.mjs';
-import { Primitive, PrimitiveAttribute, BufferSource } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute, BufferSource } from '../../../lib/buffer/primitive.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -127,7 +127,7 @@ export class TextRect extends Node {
         new BufferSource(4, this.codepoints), 4, GL.FLOAT, 32, 0),
     ];
 
-    const primitive = new Primitive(material, attributes, 4,
+    const primitive = new Mesh(material, attributes, 4,
       new BufferSource(1, indices), {
       instanceAttributes,
     });

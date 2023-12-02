@@ -2,7 +2,7 @@ import { IViewLayer } from './iviewlayer.mjs';
 import { Renderer } from '../render/renderer.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Primitive } from '../../../lib/buffer/primitive.mjs';
+import { Mesh } from '../../../lib/buffer/primitive.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -48,7 +48,7 @@ export class ImmersiveStereoView implements IViewLayer {
     // Clear the framebuffer
     this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-    const renderList = world.view(mat4, Primitive);
+    const renderList = world.view(mat4, Mesh);
     {
       // left eye
       const view = pose.views[0];

@@ -3,14 +3,14 @@ import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { ArOcclusionShader, ArOcclusionShaderDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
 
 
-function createPrimitive(plane: XRPlane, material: Material): Primitive {
+function createPrimitive(plane: XRPlane, material: Material): Mesh {
 
   const vertices = new Float32Array(4 * 3);
   let p = 0;
@@ -28,7 +28,7 @@ function createPrimitive(plane: XRPlane, material: Material): Primitive {
   ];
   // wrong d.ts ?
   // @ts-ignore
-  const primitive = new Primitive(material, attributes, 4,
+  const primitive = new Mesh(material, attributes, 4,
     new BufferSource(1, indices));
   return primitive;
 }

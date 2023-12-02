@@ -55,7 +55,7 @@ export class PrimitiveAttribute {
 }
 
 
-export class Primitive {
+export class Mesh {
   bb = new BoundingBox();
   drawCount: number = 0;
   instanceCount: number = 0;

@@ -21,7 +21,7 @@
 import { PbrMaterial } from './materials/pbr.mjs';
 import { Material } from './materials/material.mjs';
 import { ImageTexture, ColorTexture } from './materials/texture.mjs';
-import { Primitive, PrimitiveAttribute } from './buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from './buffer/primitive.mjs';
 import { BufferSource } from './buffer/buffersource.mjs';
 import type * as GLTF2 from './GLTF2.d.ts';
 import { Glb } from './glb.js';
@@ -73,7 +73,7 @@ function getItemSize(accessor: GLTF2.Accessor): number {
 }
 
 class Gltf2Mesh {
-  primitives: Primitive[] = [];
+  primitives: Mesh[] = [];
   constructor() {
   }
 }
@@ -110,7 +110,7 @@ export class Gltf2Loader {
     return new Gltf2Loader(glb.json, { baseUrl, binaryChunk: glb.bin ?? undefined });
   }
 
-  static async loadFromUrl(url: string, origin?: mat4): Promise<Gltf2Loader> {
+  static async loadFromUrl(url: string): Promise<Gltf2Loader> {
     const response =
       url.startsWith('http://')
         ? await fetch(url, { mode: "cors" })
@@ -402,7 +402,7 @@ export class Gltf2Loader {
 
           const indexBuffer = await this._indexBufferFromAccessor(glPrimitive.indices);
 
-          const primitive = new Primitive(
+          const primitive = new Mesh(
             material,
             attributes,
             vertexCount,

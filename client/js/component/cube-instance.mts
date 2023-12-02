@@ -1,7 +1,7 @@
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
 import { vec2, vec3, vec4, mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { AnimationComponent } from '../component/animation.mjs';
@@ -288,7 +288,7 @@ function position_uv(isCCW: boolean): [Float32Array, Uint16Array] {
 
 
 export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
-  [Primitive, BufferSource, BufferSource] {
+  [Mesh, BufferSource, BufferSource] {
   const [vertices, indices] = position_uv(isCCW);
   const view = new BufferSource(8, vertices);
 
@@ -345,7 +345,7 @@ export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
   material.setPaletteColor(7, White);
   material.setPaletteColor(8, Black);
 
-  const primitive = new Primitive(material
+  const primitive = new Mesh(material
     , attributes, vertices.length / 8,
     new BufferSource(1, indices), {
     instanceAttributes
@@ -358,7 +358,7 @@ export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
 export class CubeInstancing {
   matrixIndex = 0;
   faceIndex = 0;
-  primitive: Primitive;
+  primitive: Mesh;
   matricesView: BufferSource;
   facesView: BufferSource;
   matrices: Float32Array;

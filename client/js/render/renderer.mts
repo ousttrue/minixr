@@ -21,7 +21,7 @@
 import { mat4, vec3 } from '../../../lib/math/gl-matrix.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
 import { MaterialState, CAP } from '../../../lib/materials/materialstate.mjs';
-import { Primitive } from '../../../lib/buffer/primitive.mjs';
+import { Mesh } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program, ProgramFactory } from './program.mjs';
@@ -72,7 +72,7 @@ export class Renderer {
   private _programFactory: ProgramFactory;
   private _iboMap: Map<BufferSource, Ibo> = new Map();
   private _vboMap: Map<BufferSource, Vbo> = new Map();
-  private _primVaoMap: Map<Primitive, Vao> = new Map();
+  private _primVaoMap: Map<Mesh, Vao> = new Map();
 
   constructor(
     private readonly gl: WebGL2RenderingContext,
@@ -107,7 +107,7 @@ export class Renderer {
     return ibo;
   }
 
-  private _getOrCreatePrimtive(primitive: Primitive, program: Program) {
+  private _getOrCreatePrimtive(primitive: Mesh, program: Program) {
     let vao = this._primVaoMap.get(primitive);
     if (vao) {
       for (const attrib of primitive.attributes) {
@@ -173,7 +173,7 @@ export class Renderer {
 
   drawPrimitive(
     view: XRView,
-    matrix: mat4, primitive: Primitive,
+    matrix: mat4, primitive: Mesh,
     state: {
       prevProgram: Program | null,
       prevMaterial: Material | null,

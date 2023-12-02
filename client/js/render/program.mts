@@ -19,7 +19,7 @@
 // SOFTWARE.
 import { Shader, MULTIVIEW_VP, DEFAULT_VP } from '../../../lib/materials/shader.mjs';
 import { Material, ProgramDefine } from '../../../lib/materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
 import { Texture } from '../../../lib/materials/texture.mjs';
 import { Ubo, UboMap } from './ubo.mjs';
 
@@ -250,7 +250,7 @@ export class ProgramFactory {
     return uboMap;
   }
 
-  getOrCreateProgram(gl: WebGL2RenderingContext, primitive: Primitive): [Program, UboMap] {
+  getOrCreateProgram(gl: WebGL2RenderingContext, primitive: Mesh): [Program, UboMap] {
     const material = primitive.material;
 
     // determine shader defines by material & primitive combination 

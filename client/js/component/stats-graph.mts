@@ -27,7 +27,7 @@ your scene.
 
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
 import { vec3, mat4, BoundingBox } from '../../../lib/math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -84,7 +84,7 @@ function fpsToRGB(value: number): { r: number, g: number, b: number } {
 export class StatsGraph {
   vertices: Float32Array;
   indices: Uint16Array;
-  primitive: Primitive;
+  primitive: Mesh;
 
   private _performanceMonitoring: boolean = false;
   private _prevGraphUpdateTime: number = now();
@@ -149,7 +149,7 @@ export class StatsGraph {
         this.fpsVertexBuffer, 3, GL.FLOAT, 24, 12),
     ];
     const material = new Material('StatsMaterial', StatsShader)
-    this.primitive = new Primitive(material,
+    this.primitive = new Mesh(material,
       fpsAttribs, this.vertices.length / 6,
       new BufferSource(1, this.indices));
     this.primitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));

@@ -1,7 +1,7 @@
 import { IViewLayer } from './iviewlayer.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Primitive } from '../../../lib/buffer/primitive.mjs';
+import { Mesh } from '../../../lib/buffer/primitive.mjs';
 import { Renderer } from '../render/renderer.mjs';
 
 
@@ -79,7 +79,7 @@ export class OculusMultiview implements IViewLayer {
       }
     }
 
-    const renderList = world.view(mat4, Primitive);
+    const renderList = world.view(mat4, Mesh);
     {
       const state = {
         prevProgram: null,

@@ -93,22 +93,22 @@ class AppSession {
 
     // await this._loadGltf('assets', 'garage');
     // await this._loadGltf('glTF-Sample-Models', 'CesiumMan');
-    // await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
-    //   vec3.fromValues(0, 1, -3),
-    //   new quat(),
-    //   vec3.fromValues(1, 1, 1)
-    // ));
+    await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
+      vec3.fromValues(0, 1, -3),
+      new quat(),
+      vec3.fromValues(1, 1, 1)
+    ));
   }
 
   private async _loadGltf(dir: string, name: string, origin?: mat4) {
     if (dir == 'assets') {
       const loader = await Gltf2Loader.loadFromUrl(`./assets/gltf/${name}/${name}.gltf`);
-      await buildGltf(this.world, loader);
+      await buildGltf(this.world, loader, origin);
     }
     else if (dir == 'glTF-Sample-Models') {
       const loader = await Gltf2Loader.loadFromUrl(
-        `./glTF-Sample-Models/2.0/${name}/glTF-Binary/${name}.glb`, origin);
-      await buildGltf(this.world, loader);
+        `./glTF-Sample-Models/2.0/${name}/glTF-Binary/${name}.glb`);
+      await buildGltf(this.world, loader, origin);
     }
   }
 

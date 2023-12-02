@@ -25,7 +25,7 @@ for numbers and a limited number of other characters.
 
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -114,7 +114,7 @@ class SevenSegment {
   private _prevGraphUpdateTime: number = now();
   private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
   private _fpsAverage: number = 0;
-  primitive: Primitive;
+  primitive: Mesh;
   cellsBuffer: BufferSource;
   charColorsBuffer: BufferSource;
 
@@ -175,7 +175,7 @@ class SevenSegment {
     ]
 
 
-    this.primitive = new Primitive(material,
+    this.primitive = new Mesh(material,
       vertexAttribs, this.vertices.length / 2,
       new BufferSource(1, this.indices), {
       instanceAttributes: instanceAttribs,

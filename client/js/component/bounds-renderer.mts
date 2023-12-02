@@ -27,7 +27,7 @@ clockwise-order.
 
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { MaterialState } from '../../../lib/materials/materialstate.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -132,7 +132,7 @@ export class BoundsRenderer {
       : createConvex(geometry)
       ;
 
-    let primitive = new Primitive(
+    let primitive = new Mesh(
       new Material('bounds', BoundsShader), [
       new PrimitiveAttribute('POSITION', new BufferSource(3, vertices), 3, GL.FLOAT, 12, 0)],
       vertices.length / 3,

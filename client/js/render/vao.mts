@@ -1,4 +1,4 @@
-import { Primitive } from '../../../lib/buffer/primitive.mjs';
+import { Mesh } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { Program } from './program.mjs';
 
@@ -64,7 +64,7 @@ export class Vao {
   constructor(
     gl: WebGL2RenderingContext,
     program: Program,
-    primitive: Primitive,
+    primitive: Mesh,
     vboList: Vbo[],
     public readonly ibo?: Ibo,
     instanceList: Vbo[] = []) {

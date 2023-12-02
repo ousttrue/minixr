@@ -1,4 +1,4 @@
-import { Primitive, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { vec3, mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -152,7 +152,7 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<TextGr
       32, 16)
   ];
 
-  const primitive = new Primitive(material,
+  const primitive = new Mesh(material,
     attributes, 4, new BufferSource(1, ibo),
     { instanceAttributes });
 
