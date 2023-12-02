@@ -27,7 +27,7 @@ your scene.
 
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/primitive.mjs';
 import { vec3, mat4, BoundingBox } from '../../../lib/math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -143,14 +143,15 @@ export class StatsGraph {
 
     this.fpsVertexBuffer = new BufferSource(6, this.vertices, GL.DYNAMIC_DRAW);
     const fpsAttribs = [
-      new PrimitiveAttribute('POSITION',
+      new MeshVertexAttribute('POSITION',
         this.fpsVertexBuffer, 3, GL.FLOAT, 24, 0),
-      new PrimitiveAttribute('COLOR_0',
+      new MeshVertexAttribute('COLOR_0',
         this.fpsVertexBuffer, 3, GL.FLOAT, 24, 12),
     ];
     const material = new Material('StatsMaterial', StatsShader)
-    this.primitive = new Mesh(material,
+    this.primitive = new Mesh(
       fpsAttribs, this.vertices.length / 6,
+      [new SubMesh(material, this.indices.length)],
       new BufferSource(1, this.indices));
     this.primitive.bb = new BoundingBox(vec3.fromValues(-0.5, -0.5, 0.0), vec3.fromValues(0.5, 0.5, 0.015));
   }

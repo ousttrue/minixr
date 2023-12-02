@@ -27,7 +27,7 @@ clockwise-order.
 
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { MaterialState } from '../../../lib/materials/materialstate.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -133,9 +133,10 @@ export class BoundsRenderer {
       ;
 
     let primitive = new Mesh(
-      new Material('bounds', BoundsShader), [
-      new PrimitiveAttribute('POSITION', new BufferSource(3, vertices), 3, GL.FLOAT, 12, 0)],
+      [
+        new MeshVertexAttribute('POSITION', new BufferSource(3, vertices), 3, GL.FLOAT, 12, 0)],
       vertices.length / 3,
+      [new SubMesh(new Material('bounds', BoundsShader), indices.length)],
       new BufferSource(1, indices));
 
     world.create(new mat4(), primitive);

@@ -3,7 +3,7 @@ import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { ArOcclusionShader, ArOcclusionShaderDebug, DetectedItem } from './ar-detection.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 
 
@@ -24,11 +24,12 @@ function createPrimitive(plane: XRPlane, material: Material): Mesh {
 
   let vertexBuffer = new BufferSource(3, vertices);
   let attributes = [
-    new PrimitiveAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
+    new MeshVertexAttribute('POSITION', vertexBuffer, 3, GL.FLOAT, 12, 0),
   ];
   // wrong d.ts ?
   // @ts-ignore
-  const primitive = new Mesh(material, attributes, 4,
+  const primitive = new Mesh(attributes, 4,
+    [new SubMesh(material, indices.length)],
     new BufferSource(1, indices));
   return primitive;
 }

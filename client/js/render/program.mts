@@ -19,7 +19,7 @@
 // SOFTWARE.
 import { Shader, MULTIVIEW_VP, DEFAULT_VP } from '../../../lib/materials/shader.mjs';
 import { Material, ProgramDefine } from '../../../lib/materials/material.mjs';
-import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/primitive.mjs';
 import { Texture } from '../../../lib/materials/texture.mjs';
 import { Ubo, UboMap } from './ubo.mjs';
 
@@ -46,7 +46,7 @@ export const ATTRIB_MASK: { [key: string]: number } = {
 };
 
 
-function getAttributeMask(attributes: PrimitiveAttribute[]): number {
+function getAttributeMask(attributes: MeshVertexAttribute[]): number {
   let attributeMask = 0;
   for (const attribute of attributes) {
     attributeMask |= ATTRIB_MASK[attribute.name];
@@ -250,8 +250,8 @@ export class ProgramFactory {
     return uboMap;
   }
 
-  getOrCreateProgram(gl: WebGL2RenderingContext, primitive: Mesh): [Program, UboMap] {
-    const material = primitive.material;
+  getOrCreateProgram(gl: WebGL2RenderingContext, primitive: Mesh, submesh: SubMesh): [Program, UboMap] {
+    const material = submesh.material;
 
     // determine shader defines by material & primitive combination 
     const attributeMask = getAttributeMask(primitive.attributes);
@@ -265,7 +265,7 @@ export class ProgramFactory {
       this._programCache[key] = program;
     }
 
-    const uboMap = this.getOrCreateUbo(gl, program, primitive.material);
+    const uboMap = this.getOrCreateUbo(gl, program, submesh.material);
 
     return [program, uboMap];
   }

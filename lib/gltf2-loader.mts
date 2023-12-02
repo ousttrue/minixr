@@ -21,7 +21,7 @@
 import { PbrMaterial } from './materials/pbr.mjs';
 import { Material } from './materials/material.mjs';
 import { ImageTexture, ColorTexture } from './materials/texture.mjs';
-import { Mesh, PrimitiveAttribute } from './buffer/primitive.mjs';
+import { Mesh, SubMesh, MeshVertexAttribute } from './buffer/primitive.mjs';
 import { BufferSource } from './buffer/buffersource.mjs';
 import type * as GLTF2 from './GLTF2.d.ts';
 import { Glb } from './glb.js';
@@ -231,10 +231,10 @@ export class Gltf2Loader {
     return this.textures[textureInfo.index];
   }
 
-  private async _primitiveAttributeFromAccessor(name: string, accessor: GLTF2.Accessor): Promise<PrimitiveAttribute> {
+  private async _primitiveAttributeFromAccessor(name: string, accessor: GLTF2.Accessor): Promise<MeshVertexAttribute> {
     const bufferSource = await this._bufferSourceFromAccessor(accessor);
 
-    return new PrimitiveAttribute(
+    return new MeshVertexAttribute(
       name,
       bufferSource,
       getComponentCount(accessor.type),
@@ -383,7 +383,7 @@ export class Gltf2Loader {
 
           let min = null;
           let max = null;
-          const attributes: PrimitiveAttribute[] = [];
+          const attributes: MeshVertexAttribute[] = [];
           let vertexCount = 0;
           for (const name in glPrimitive.attributes) {
             if (!this.json.accessors) {
@@ -402,12 +402,16 @@ export class Gltf2Loader {
 
           const indexBuffer = await this._indexBufferFromAccessor(glPrimitive.indices);
 
+          // material,
           const primitive = new Mesh(
-            material,
             attributes,
             vertexCount,
+            [new SubMesh(material,
+              indexBuffer ? indexBuffer.length : vertexCount,
+              glPrimitive.mode ?? GL.TRIANGLES,
+            )],
             indexBuffer ? new BufferSource(1, indexBuffer) : undefined,
-            { mode: glPrimitive.mode ?? GL.TRIANGLES });
+          );
 
           if (min && max) {
             primitive.bb.expand(vec3.fromValues(min[0], min[1], min[2]));

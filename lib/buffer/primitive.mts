@@ -34,7 +34,7 @@ function getComponentSize(componentType: number) {
 }
 
 
-export class PrimitiveAttribute {
+export class MeshVertexAttribute {
   constructor(
     public readonly name: string,
     /** may sharing from multi PrimitiveAttributes */
@@ -55,22 +55,37 @@ export class PrimitiveAttribute {
 }
 
 
-export class Mesh {
-  bb = new BoundingBox();
-  drawCount: number = 0;
-  instanceCount: number = 0;
+export class SubMesh {
   constructor(
     public material: Material,
-    public attributes: PrimitiveAttribute[],
+    public drawCount: number,
+    public mode: number = GL.TRIANGLES,
+  ) { }
+}
+
+
+export class Instancing {
+  instanceCount: number = 0;
+
+  constructor(
+    public readonly instanceAttributes: MeshVertexAttribute[]
+  ) { }
+}
+
+
+export class Mesh {
+  bb = new BoundingBox();
+
+  constructor(
+    public readonly attributes: MeshVertexAttribute[],
     public vertexCount: number,
+    public readonly submeshes: SubMesh[] = [],
     public indices?: BufferSource,
     public options?: {
-      /** GL.TRIANGLES */
-      mode?: number,
-      instanceAttributes?: PrimitiveAttribute[],
       min?: any,
       max?: any,
-    }
+    },
+    public readonly instancing?: Instancing,
   ) {
     if (options?.min && options?.max) {
       this.bb.expand(vec3.fromValues(
@@ -86,15 +101,17 @@ export class Mesh {
       }
     }
 
-    if (indices) {
-      this.drawCount = indices.length;
-    }
-    else {
-      this.drawCount = vertexCount;
+    if (this.submeshes.length == 0) {
+      if (indices) {
+        this.submeshes.push(new SubMesh(indices.length));
+      }
+      else {
+        this.submeshes.push(new SubMesh(vertexCount));
+      }
     }
   }
 
-  calcStrideFor(attribute: PrimitiveAttribute) {
+  calcStrideFor(attribute: MeshVertexAttribute) {
     let stride = 0;
     for (const a of this.attributes) {
       if (a.source == attribute.source) {

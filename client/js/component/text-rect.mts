@@ -1,6 +1,7 @@
 import { Material } from '../../../lib/materials/material.mjs';
 import { Shader } from '../../../lib/materials/shader.mjs';
-import { Mesh, PrimitiveAttribute, BufferSource } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh, Instancing } from '../../../lib/buffer/primitive.mjs';
+import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 
 const GL = WebGLRenderingContext; // For enums
 
@@ -99,8 +100,8 @@ export class TextRect extends Node {
       1, 0, 1, 0,
       1, 1, 1, 1,
     ]));
-    const attributes: PrimitiveAttribute[] = [
-      new PrimitiveAttribute(
+    const attributes: MeshVertexAttribute[] = [
+      new MeshVertexAttribute(
         'a_Position',
         vertices,
         2,
@@ -108,7 +109,7 @@ export class TextRect extends Node {
         16,
         0)
       ,
-      new PrimitiveAttribute(
+      new MeshVertexAttribute(
         'a_Uv',
         vertices,
         2,
@@ -121,16 +122,18 @@ export class TextRect extends Node {
     this.positions = new Float32Array(cellCount * 4);
     this.codepoints = new Uint32Array(cellCount * 4);
     const instanceAttributes = [
-      new PrimitiveAttribute('i_Cell',
+      new MeshVertexAttribute('i_Cell',
         new BufferSource(4, this.positions), 4, GL.FLOAT, 16, 0),
-      new PrimitiveAttribute('i_Unicode_FgBg',
+      new MeshVertexAttribute('i_Unicode_FgBg',
         new BufferSource(4, this.codepoints), 4, GL.FLOAT, 32, 0),
     ];
 
-    const primitive = new Mesh(material, attributes, 4,
-      new BufferSource(1, indices), {
-      instanceAttributes,
-    });
+    const primitive = new Mesh(attributes, 4,
+      [new SubMesh(material, indices.length)],
+      new BufferSource(1, indices),
+      {},
+      new Instancing(instanceAttributes),
+    );
 
     // this.primitives.push(primitive);
 

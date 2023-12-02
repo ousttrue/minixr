@@ -1,7 +1,7 @@
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
 import { vec2, vec3, vec4, mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh, Instancing } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
 import { AnimationComponent } from '../component/animation.mjs';
@@ -292,10 +292,10 @@ export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
   const [vertices, indices] = position_uv(isCCW);
   const view = new BufferSource(8, vertices);
 
-  const attributes: PrimitiveAttribute[] = [
-    new PrimitiveAttribute("vPosFace",
+  const attributes: MeshVertexAttribute[] = [
+    new MeshVertexAttribute("vPosFace",
       view, 4, GL.FLOAT, 32, 0),
-    new PrimitiveAttribute("vUvBarycentric",
+    new MeshVertexAttribute("vUvBarycentric",
       view, 4, GL.FLOAT, 32, 16),
   ];
 
@@ -305,19 +305,19 @@ export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
   const faceInfoArray = new Float32Array(8 * cubes);
   const faceInfoArrayView = new BufferSource(4, faceInfoArray);
 
-  const instanceAttributes: PrimitiveAttribute[] = [
-    new PrimitiveAttribute("iRow0",
+  const instanceAttributes: MeshVertexAttribute[] = [
+    new MeshVertexAttribute("iRow0",
       matrixArrayView, 4, GL.FLOAT, 64, 0),
-    new PrimitiveAttribute("iRow1",
+    new MeshVertexAttribute("iRow1",
       matrixArrayView, 4, GL.FLOAT, 64, 16),
-    new PrimitiveAttribute("iRow2",
+    new MeshVertexAttribute("iRow2",
       matrixArrayView, 4, GL.FLOAT, 64, 32),
-    new PrimitiveAttribute("iRow3",
+    new MeshVertexAttribute("iRow3",
       matrixArrayView, 4, GL.FLOAT, 64, 48),
     //     //
-    new PrimitiveAttribute("iPositive_xyz_flag",
+    new MeshVertexAttribute("iPositive_xyz_flag",
       faceInfoArrayView, 4, GL.FLOAT, 32, 0),
-    new PrimitiveAttribute("iNegative_xyz_flag",
+    new MeshVertexAttribute("iNegative_xyz_flag",
       faceInfoArrayView, 4, GL.FLOAT, 32, 16),
   ];
 
@@ -345,11 +345,12 @@ export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
   material.setPaletteColor(7, White);
   material.setPaletteColor(8, Black);
 
-  const primitive = new Mesh(material
-    , attributes, vertices.length / 8,
-    new BufferSource(1, indices), {
-    instanceAttributes
-  });
+  const primitive = new Mesh(
+    attributes, vertices.length / 8,
+    [new SubMesh(material, indices.length)],
+    new BufferSource(1, indices), {},
+    new Instancing(instanceAttributes)
+  );
 
   return [primitive, matrixArrayView, faceInfoArrayView];
 }
@@ -359,6 +360,7 @@ export class CubeInstancing {
   matrixIndex = 0;
   faceIndex = 0;
   primitive: Mesh;
+  instancing: Instancing;
   matricesView: BufferSource;
   facesView: BufferSource;
   matrices: Float32Array;
@@ -368,18 +370,19 @@ export class CubeInstancing {
 
   constructor(cubes: number, world: World) {
     [this.primitive, this.matricesView, this.facesView] = cubeInstancePrimitive(cubes)
+    this.instancing = this.primitive.instancing!;
     this.matrices = this.matricesView.array as Float32Array;
     this.faces = this.facesView.array as Float32Array;
     world.create(mat4.identity(), this.primitive, new AnimationComponent([() => {
       this.matricesView.dirty = true;
     }]));
-    this.primitive.instanceCount = 0;
+    this.instancing.instanceCount = 0;
   }
 
   newInstance(): [number, mat4] {
     const index = this._newIndex++;
     const matrixIndex = index * 16;
-    this.primitive.instanceCount = this._newIndex;
+    this.instancing.instanceCount = this._newIndex;
     return [index, new mat4(this.matrices.subarray(matrixIndex, matrixIndex + 16))]
   }
 

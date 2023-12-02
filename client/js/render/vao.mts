@@ -103,7 +103,7 @@ export class Vao {
     }
 
     for (let i = 0; i < instanceList.length; ++i) {
-      const attrib = primitive.options?.instanceAttributes![i]!;
+      const attrib = primitive.instancing?.instanceAttributes![i]!;
       const buffer = instanceList[i]!;
       this.vboMap.set(attrib.source, buffer);
       const location = program.attrib[attrib.name];

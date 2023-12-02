@@ -25,7 +25,9 @@ for numbers and a limited number of other characters.
 
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import {
+  Mesh, MeshVertexAttribute, SubMesh, Instancing
+} from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -115,6 +117,7 @@ class SevenSegment {
   private _fpsStep: number = this._performanceMonitoring ? 1000 : 250;
   private _fpsAverage: number = 0;
   primitive: Mesh;
+  instancing: Instancing;
   cellsBuffer: BufferSource;
   charColorsBuffer: BufferSource;
 
@@ -162,24 +165,25 @@ class SevenSegment {
     // in vec2 a_Position;
     const vertexBuffer = new BufferSource(3, this.vertices);
     const vertexAttribs = [
-      new PrimitiveAttribute('a_Position', vertexBuffer, 3, GL.FLOAT, 12, 0),
+      new MeshVertexAttribute('a_Position', vertexBuffer, 3, GL.FLOAT, 12, 0),
     ];
 
     this.cellsBuffer = new BufferSource(4, this.cells);
     this.charColorsBuffer = new BufferSource(2, this.charColors);
     const instanceAttribs = [
-      new PrimitiveAttribute('i_Cell',
+      new MeshVertexAttribute('i_Cell',
         this.cellsBuffer, 4, GL.FLOAT, 16, 0),
-      new PrimitiveAttribute('i_Char_Color',
+      new MeshVertexAttribute('i_Char_Color',
         this.charColorsBuffer, 2, GL.FLOAT, 8, 0)
     ]
+    this.instancing = new Instancing(instanceAttribs);
 
-
-    this.primitive = new Mesh(material,
+    this.primitive = new Mesh(
       vertexAttribs, this.vertices.length / 2,
-      new BufferSource(1, this.indices), {
-      instanceAttributes: instanceAttribs,
-    });
+      [new SubMesh(material, this.indices.length)],
+      new BufferSource(1, this.indices), {},
+      this.instancing,
+    );
   }
 
   defineSegment(id: number,
@@ -264,7 +268,7 @@ class SevenSegment {
   }
 
   puts(x: number, y: number, text: string) {
-    this.primitive.instanceCount = 0
+    this.instancing.instanceCount = 0
     let i = 0;
     let j = 0;
     for (const c of text) {
@@ -277,7 +281,7 @@ class SevenSegment {
       x += this.cellWidth;
       i += 4;
       j += 2;
-      ++this.primitive.instanceCount;
+      ++this.instancing.instanceCount;
     }
     this.cellsBuffer.dirty = true;
     this.charColorsBuffer.dirty = true;

@@ -1,4 +1,4 @@
-import { Mesh, PrimitiveAttribute } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, SubMesh, MeshVertexAttribute, Instancing } from '../../../lib/buffer/primitive.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { vec3, mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { World } from '../third-party/uecs-0.4.2/index.mjs';
@@ -129,11 +129,11 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<TextGr
     1, 1, 1, 0,
   ]));
   const attributes = [
-    new PrimitiveAttribute(
+    new MeshVertexAttribute(
       'a_Position', vertices, 2, GL.FLOAT,
       16, 0
     ),
-    new PrimitiveAttribute(
+    new MeshVertexAttribute(
       'a_Uv', vertices, 2, GL.FLOAT,
       16, 8
     )]
@@ -143,20 +143,25 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<TextGr
   const instances = new Float32Array(65535);
   const instancesView = new BufferSource(1, instances);
   const instanceAttributes = [
-    new PrimitiveAttribute(
+    new MeshVertexAttribute(
       'i_Cell', instancesView, 4, GL.FLOAT,
       32, 0,
     ),
-    new PrimitiveAttribute(
+    new MeshVertexAttribute(
       'i_Unicode_FgBg', instancesView, 4, GL.FLOAT,
       32, 16)
   ];
 
-  const primitive = new Mesh(material,
-    attributes, 4, new BufferSource(1, ibo),
-    { instanceAttributes });
+  const instancing = new Instancing(instanceAttributes);
+  const primitive = new Mesh(
+    attributes, 4,
+    [new SubMesh(material, ibo.length)],
+    new BufferSource(1, ibo),
+    {},
+    instancing
+  );
 
-  const grid = new TextGrid(instances, (count) => primitive.instanceCount = count);
+  const grid = new TextGrid(instances, (count) => instancing.instanceCount = count);
 
   const matrix = mat4.fromTranslation(pos.x, pos.y, pos.z);
   world.create(matrix, primitive);

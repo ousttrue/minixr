@@ -126,8 +126,8 @@ export class Renderer {
           vao.ibo.indexBuffer.updateRenderBuffer(this.gl, primitive.indices);
         }
       }
-      if (primitive.options?.instanceAttributes) {
-        for (const attrib of primitive.options?.instanceAttributes!) {
+      if (primitive.instancing) {
+        for (const attrib of primitive.instancing.instanceAttributes!) {
           if (attrib.source.dirty || attrib.source.usage == GL.STREAM_DRAW) {
             const vbo = vao.vboMap.get(attrib.source);
             if (vbo) {
@@ -158,8 +158,8 @@ export class Renderer {
 
     // Instancing
     const instanceList: Vbo[] = [];
-    if (primitive.options?.instanceAttributes) {
-      for (let attrib of primitive.options?.instanceAttributes) {
+    if (primitive.instancing) {
+      for (let attrib of primitive.instancing.instanceAttributes) {
         const vbo = this._getOrCreateVertexBuffer(attrib.source);
         instanceList.push(vbo);
       }
@@ -182,8 +182,11 @@ export class Renderer {
     rightView?: XRView
   ) {
 
+    const submesh = primitive.submeshes[0];
+
     let gl = this.gl;
-    const [program, uboMap] = this._programFactory.getOrCreateProgram(gl, primitive);
+    const [program, uboMap] = this._programFactory.getOrCreateProgram(
+      gl, primitive, submesh);
     const vao = this._getOrCreatePrimtive(primitive, program);
     // Loop through every primitive known to the renderer.
     // Bind the primitive material's program if it's different than the one we
@@ -217,11 +220,11 @@ export class Renderer {
       }
     }
 
-    if (programChanged || state.prevMaterial != primitive.material) {
-      this._bindMaterialState(primitive.material.state, state.prevMaterial?.state);
-      program.bindMaterial(primitive.material,
+    if (programChanged || state.prevMaterial != submesh.material) {
+      this._bindMaterialState(submesh.material.state, state.prevMaterial?.state);
+      program.bindMaterial(submesh.material,
         (src) => this._textureFactory.getOrCreateTexture(src));
-      state.prevMaterial = primitive.material;
+      state.prevMaterial = submesh.material;
 
       for (const key in uboMap) {
         const ubo = uboMap[key];
@@ -235,7 +238,7 @@ export class Renderer {
       vao.bind(gl);
       state.prevVao = vao;
     }
-    vao.draw(gl, primitive.drawCount, primitive.instanceCount);
+    vao.draw(gl, submesh.drawCount, primitive.instancing?.instanceCount);
   }
 
   _colorMaskNeedsReset = false;
