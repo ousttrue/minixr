@@ -1,11 +1,24 @@
-import { Glb } from '../lib/glb.js';
-import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
+import React from 'react';
+import {
+  vec3, mat4, OrbitView, PerspectiveProjection
+} from '../lib/math/gl-matrix.mjs';
 import { Mesh } from '../lib/buffer/primitive.mjs';
 import { Material } from '../lib/materials/material.mjs';
-import React from 'react';
-import { vec3, mat4, OrbitView, PerspectiveProjection } from '../lib/math/gl-matrix.mjs';
 import { ShaderProgram } from '../lib/wgl/shader.mjs';
 import { Vao, Buffer } from '../lib/wgl/geometry.mjs';
+import { World } from '../lib/uecs/index.mjs';
+import Stats from 'stats-gl'
+
+// create a new Stats object
+const stats = new Stats({
+  logsPerSecond: 20,
+  samplesLog: 100,
+  samplesGraph: 10,
+  precision: 2,
+  horizontal: true,
+  minimal: false,
+  mode: 0
+});
 
 
 const GL = WebGL2RenderingContext;
@@ -18,9 +31,6 @@ export class Renderer {
   view = new OrbitView(mat4.identity(), vec3.fromValues(0, 0, 5));
   projection = new PerspectiveProjection(mat4.identity());
 
-  glb: Glb | null = null;
-  loader: Gltf2Loader | null = null;
-
   meshVaoMap: Map<Mesh, Vao> = new Map();
   materialShaderMap: Map<Material, ShaderProgram> = new Map();
 
@@ -29,22 +39,10 @@ export class Renderer {
     public readonly observer: ResizeObserver,
   ) { }
 
-  render(time: number, width: number, height: number, glb?: Glb) {
-    this.projection.resize(width, height);
+  render(time: number, width: number, height: number, world: World) {
+    stats.begin();
 
-    if (glb != this.glb) {
-      this.glb = glb ?? null;
-      if (this.glb) {
-        const loader = new Gltf2Loader(this.glb.json, { binaryChunk: this.glb.bin });
-        loader.load().then(() => {
-          this.loader = loader;
-        });
-      }
-      else {
-        // dispose ?
-        this.loader = null;
-      }
-    }
+    this.projection.resize(width, height);
 
     {
       const gl = this.gl;
@@ -53,30 +51,29 @@ export class Renderer {
       gl.viewport(0, 0, width, height);
     }
 
-    if (this.loader) {
-      for (const mesh of this.loader.meshes) {
+    world.view(mat4, Mesh).each((entity, matrix, mesh) => {
+      const vao = this._getOrCreateVao(mesh);
 
-        const vao = this._getOrCreateVao(mesh);
+      vao.bind();
 
-        vao.bind();
+      let offset = 0
+      for (const submesh of mesh.submeshes) {
 
-        let offset = 0
-        for (const submesh of mesh.submeshes) {
+        const shader = this._getOrCreateShader(submesh.material);
+        shader.use();
 
-          const shader = this._getOrCreateShader(submesh.material);
-          shader.use();
+        // update camera matrix
+        shader.setMatrix('uProjection', this.projection.matrix);
+        shader.setMatrix('uView', this.view.matrix);
 
-          // update camera matrix
-          shader.setMatrix('uProjection', this.projection.matrix);
-          shader.setMatrix('uView', this.view.matrix);
+        shader.setMatrix('uModel', this.model);
 
-          shader.setMatrix('uModel', this.model);
-
-          vao.draw(submesh.drawCount, offset);
-          offset += submesh.drawCount;
-        }
+        vao.draw(submesh.drawCount, offset);
+        offset += submesh.drawCount;
       }
-    }
+    });
+
+    stats.end();
   }
 
   private _getOrCreateVao(mesh: Mesh): Vao {
@@ -146,7 +143,7 @@ export class Renderer {
 
 
 export default function WebGLCanvas(props: {
-  glb?: Glb,
+  world: World,
 }) {
   const ref = React.useRef<HTMLCanvasElement>(null);
   const [renderer, setRenderer] = React.useState<Renderer | null>(null);
@@ -170,6 +167,11 @@ export default function WebGLCanvas(props: {
     if (!gl) {
       throw new Error('no webgl2');
     }
+    const statsParent = document.getElementById('stats')!;
+    statsParent.appendChild(stats.container);
+    stats.container.style.position = 'absolute';
+    statsParent.style.position = 'relative';
+
     const newRenderer = new Renderer(gl, observer);
     setRenderer(newRenderer);
     return newRenderer;
@@ -182,7 +184,7 @@ export default function WebGLCanvas(props: {
 
     const state = getOrCreateState();
 
-    state.render(Date.now(), ref.current.width, ref.current.height, props.glb);
+    state.render(Date.now(), ref.current.width, ref.current.height, props.world);
   });
 
   const [count, setCount] = React.useState(0);
@@ -208,10 +210,12 @@ export default function WebGLCanvas(props: {
     }
   };
 
-  return <canvas
-    style={{ width: '100%', height: '100%' }}
-    ref={ref}
-    onMouseMove={handleMouseMove}
-    onWheel={handleWheel}
-  />
+  return (<div id="stats" style={{ width: '100%', height: '100%' }}>
+    <canvas
+      style={{ width: '100%', height: '100%' }}
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onWheel={handleWheel}
+    />
+  </div>)
 }

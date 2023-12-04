@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import React from 'react'
 import './App.css'
 import MyDropzone from './dropzone.jsx';
 import { Glb } from '../lib/glb.js';
 import JsonTree, { JsonItem } from './jsontree.jsx';
 import Split from 'react-split'
 import WebGLCanvas from './webgl.jsx';
+import { World } from '../lib/uecs/index.mjs';
 
 
 class FileState {
@@ -50,10 +51,26 @@ class FileState {
   }
 }
 
+const world = new World();
 
 export default function App() {
-  const [content, setContent] = useState<JsonItem>({});
-  const [fileState, setFileState] = useState<FileState | null>(null);
+  const [content, setContent] = React.useState<JsonItem>({});
+  const [fileState, setFileState] = React.useState<FileState | null>(null);
+  const ref = React.useRef(world);
+
+  // if (glb != this.glb) {
+  //   this.glb = glb ?? null;
+  //   if (this.glb) {
+  //     const loader = new Gltf2Loader(this.glb.json, { binaryChunk: this.glb.bin });
+  //     loader.load().then(() => {
+  //       this.loader = loader;
+  //     });
+  //   }
+  //   else {
+  //     // dispose ?
+  //     this.loader = null;
+  //   }
+  // }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -79,7 +96,7 @@ export default function App() {
               : ''
           }
         </div>
-        <WebGLCanvas glb={(fileState && fileState.glb) ? fileState.glb : undefined} />
+        <WebGLCanvas world={ref.current} />
       </Split>
     </div>
   )

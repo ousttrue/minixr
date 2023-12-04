@@ -17,8 +17,6 @@ export class PerspectiveProjection {
     const aspect = this.width / this.height;
     mat4.perspective(this.fovy, aspect,
       this.zNear, this.zFar, { out: this.matrix });
-    console.log(this.matrix);
-    // mat4.identity({out: this.matrix})
   }
 
   resize(width: number, height: number) {
