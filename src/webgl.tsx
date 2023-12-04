@@ -65,12 +65,13 @@ export class Renderer {
         // update camera matrix
         shader.setMatrix('uProjection', this.projection.matrix);
         shader.setMatrix('uView', this.view.matrix);
-
-        shader.setMatrix('uModel', this.model);
+        shader.setMatrix('uModel', matrix);
 
         vao.draw(submesh.drawCount, offset);
         offset += submesh.drawCount;
       }
+
+      vao.unbind();
     });
 
     stats.end();
