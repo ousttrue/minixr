@@ -6,7 +6,7 @@ export class PerspectiveProjection {
   constructor(public readonly matrix: mat4,
     public fovy = (30.0 / 180.0) * 3.14,
     public zNear = 0.01,
-    public zFar = 10.0,
+    public zFar = 100.0,
     public width = 300.0,
     public height = 300.0,
   ) {

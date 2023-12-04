@@ -1,29 +1,37 @@
 import { Glb } from '../lib/glb.js';
 import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
+import { Mesh } from '../lib/buffer/primitive.mjs';
+import { Material } from '../lib/materials/material.mjs';
 import React from 'react';
 import { vec3, mat4, OrbitView, PerspectiveProjection } from '../lib/math/gl-matrix.mjs';
+
 
 const GL = WebGL2RenderingContext;
 
 
 const VS = `#version 300 es
-in vec2 aPosition;
+in vec3 aPosition;
+in vec3 aNormal;
+in vec2 aUv;
+out vec2 fUv;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 
 void main()
 {
-  gl_Position = uProjection * uView * uModel * vec4(aPosition, 0, 1);
+  gl_Position = uProjection * uView * uModel * vec4(aPosition, 1);
+  fUv = aUv;
 }
 `;
 
 const FS = `#version 300 es
 precision mediump float;
+in vec2 fUv;
 out vec4 _Color;
 
 void main(){
-  _Color = vec4(1,1,1,1);
+  _Color = vec4(fUv,1,1);
 }
 `;
 
@@ -100,6 +108,7 @@ class Buffer implements Disposable {
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly type = GL.ARRAY_BUFFER,
+    public readonly componentType?: ElementType,
   ) {
     this.buffer = gl.createBuffer()!;
     if (!this.buffer) {
@@ -111,8 +120,12 @@ class Buffer implements Disposable {
     this.gl.deleteBuffer(this.buffer);
   }
 
-  static create(gl: WebGL2RenderingContext, bytes: ArrayBuffer): Buffer {
-    const buffer = new Buffer(gl, GL.ARRAY_BUFFER);
+  static create(gl: WebGL2RenderingContext,
+    type: (GL.ARRAY_BUFFER | GL.ELEMENT_ARRAY_BUFFER),
+    bytes: ArrayBuffer,
+    componetType?: ElementType
+  ): Buffer {
+    const buffer = new Buffer(gl, type, componetType);
     buffer.upload(bytes);
     return buffer;
   }
@@ -127,6 +140,7 @@ class Buffer implements Disposable {
 
 
 type VertexAttribute = {
+  name: string,
   buffer: Buffer,
   componentType: number,
   componentCount: number,
@@ -134,10 +148,14 @@ type VertexAttribute = {
   bufferOffset: number,
 }
 
+type ElementType = GL.UNSIGNED_BYTE | GL.UNSIGNED_SHORT | GL.UNSIGNED_INT;
 
 class Vao implements Disposable {
   vao: WebGLVertexArrayObject;
-  constructor(public readonly gl: WebGL2RenderingContext) {
+  constructor(
+    public readonly gl: WebGL2RenderingContext,
+    public readonly elementType?: ElementType,
+  ) {
     this.vao = gl.createVertexArray()!;
     if (!this.vao) {
       throw new Error('createVertexArray');
@@ -148,8 +166,10 @@ class Vao implements Disposable {
     this.gl.deleteVertexArray(this.vao);
   }
 
-  static create(gl: WebGL2RenderingContext, attributes: VertexAttribute[]) {
-    const vao = new Vao(gl);
+  static create(gl: WebGL2RenderingContext,
+    attributes: VertexAttribute[],
+    indices?: Buffer) {
+    const vao = new Vao(gl, indices?.componentType);
     gl.bindVertexArray(vao.vao);
     let location = 0;
     for (const a of attributes) {
@@ -157,24 +177,40 @@ class Vao implements Disposable {
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(location, a.componentCount, a.componentType, false,
         a.bufferStride, a.bufferOffset);
+      ++location;
     }
-    gl.bindBuffer(GL.ARRAY_BUFFER, null);
+
+    if (indices) {
+      gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, indices.buffer);
+    }
+
     gl.bindVertexArray(null);
+    gl.bindBuffer(GL.ARRAY_BUFFER, null);
+    gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
     return vao;
   }
 
-  draw(count: number) {
+  bind() {
     this.gl.bindVertexArray(this.vao);
-    this.gl.drawArrays(GL.TRIANGLES, 0, count);
+  }
+
+  unbind() {
     this.gl.bindVertexArray(null);
+  }
+
+  draw(count: number, offset: number = 0) {
+    if (this.elementType) {
+      this.gl.drawElements(GL.TRIANGLES, count, this.elementType, offset);
+    }
+    else {
+      this.gl.drawArrays(GL.TRIANGLES, offset, count);
+    }
   }
 }
 
 
 export class Renderer {
   shader: ShaderProgram | null = null;
-  vbo: Buffer | null = null;
-  vao: Vao | null = null;
   model = mat4.identity();
 
   view = new OrbitView(mat4.identity(), vec3.fromValues(0, 0, 5));
@@ -182,6 +218,9 @@ export class Renderer {
 
   glb: Glb | null = null;
   loader: Gltf2Loader | null = null;
+
+  meshVaoMap: Map<Mesh, Vao> = new Map();
+  materialShaderMap: Map<Material, ShaderProgram> = new Map();
 
   constructor(
     public readonly gl: WebGL2RenderingContext,
@@ -195,8 +234,9 @@ export class Renderer {
       this.glb = glb ?? null;
       if (this.glb) {
         const loader = new Gltf2Loader(this.glb.json, { binaryChunk: this.glb.bin });
-        this.loader = loader;
-        loader.load().then(() => this.buildScene(loader));
+        loader.load().then(() => {
+          this.loader = loader;
+        });
       }
       else {
         // dispose ?
@@ -204,77 +244,100 @@ export class Renderer {
       }
     }
 
-    const gl = this.gl;
-    const { shader, vao } = this.getOrCreate(gl);
+    {
+      const gl = this.gl;
+      gl.clearColor(0.2, 0.2, 0.2, 1);
+      gl.clear(GL.COLOR_BUFFER_BIT);
+      gl.viewport(0, 0, width, height);
+    }
 
-    gl.clearColor(0.2, 0.2, 0.2, 1);
-    gl.clear(GL.COLOR_BUFFER_BIT);
-    gl.viewport(0, 0, width, height);
+    if (this.loader) {
+      for (const mesh of this.loader.meshes) {
 
-    shader.use();
+        const vao = this._getOrCreateVao(mesh);
 
-    // update camera matrix
-    shader.setMatrix('uProjection', this.projection.matrix);
-    shader.setMatrix('uView', this.view.matrix);
+        vao.bind();
 
-    // update model matrix
-    const t = time * 0.001;
-    const c = Math.sin(t);
-    const s = Math.cos(t);
-    this.model.array.set(
-      [
-        c, -s, 0, 0, //
-        s, c, 0, 0, //
-        0, 0, 1, 0, //
-        0, 0, 0, 1, //
-      ]);
-    shader.setMatrix('uModel', this.model);
+        let offset = 0
+        for (const submesh of mesh.submeshes) {
 
-    vao.draw(6);
-  }
+          const shader = this._getOrCreateShader(submesh.material);
+          shader.use();
 
-  buildScene(loader: Gltf2Loader) {
-    for (const mesh of loader.meshes) {
+          // update camera matrix
+          shader.setMatrix('uProjection', this.projection.matrix);
+          shader.setMatrix('uView', this.view.matrix);
 
-      console.log(mesh);
+          shader.setMatrix('uModel', this.model);
 
+          vao.draw(submesh.drawCount, offset);
+          offset += submesh.drawCount;
+        }
+      }
     }
   }
 
-  private getOrCreate(gl: WebGL2RenderingContext): { shader: ShaderProgram, vao: Vao } {
-    let shader = this.shader;
-    if (!shader) {
-      shader = ShaderProgram.create(gl, VS, FS);
-      this.shader = shader;
+  private _getOrCreateVao(mesh: Mesh): Vao {
+    {
+      const vao = this.meshVaoMap.get(mesh);
+      if (vao) {
+        return vao;
+      }
     }
 
-    let vao = this.vao;
-    if (!vao) {
-      //  2
-      // 0>1
-      const pos = [
-        -0.5, -0.5,
-        0.5, -0.5,
-        0.5, 0.5,
-
-        0.5, 0.5,
-        -0.5, 0.5,
-        -0.5, -0.5,
-      ];
-      const vbo = Buffer.create(gl, new Float32Array(pos).buffer);
-      vao = Vao.create(gl, [
+    {
+      const vertices = mesh.attributes[0]!.source;
+      const vbo = Buffer.create(this.gl,
+        GL.ARRAY_BUFFER, vertices.array);
+      const vao = Vao.create(this.gl, [
         {
+          name: 'POSITION',
           buffer: vbo,
-          bufferStride: 2 * 4,
+          bufferStride: 8 * 4,
           bufferOffset: 0,
+          componentCount: 3,
+          componentType: GL.FLOAT,
+        },
+        {
+          name: 'NORMAL',
+          buffer: vbo,
+          bufferStride: 8 * 4,
+          bufferOffset: 12,
+          componentCount: 3,
+          componentType: GL.FLOAT,
+        },
+        {
+          name: 'TEXCOORD_0',
+          buffer: vbo,
+          bufferStride: 8 * 4,
+          bufferOffset: 24,
           componentCount: 2,
           componentType: GL.FLOAT,
         }
-      ]);
-      this.vao = vao;
+      ], mesh.indices
+        ? Buffer.create(this.gl, GL.ELEMENT_ARRAY_BUFFER,
+          mesh.indices.array, mesh.indices.glType)
+        : undefined
+      );
+
+      this.meshVaoMap.set(mesh, vao);
+      return vao;
+    }
+  }
+
+  private _getOrCreateShader(material: Material): ShaderProgram {
+    {
+      const shader = this.materialShaderMap.get(material);
+      if (shader) {
+        return shader;
+      }
     }
 
-    return { shader, vao };
+    {
+      const shader = ShaderProgram.create(this.gl, VS, FS);
+      this.materialShaderMap.set(material, shader);
+      return shader;
+    }
   }
 }
 
