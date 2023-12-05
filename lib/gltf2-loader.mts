@@ -131,6 +131,8 @@ function toInterleavedSubmesh(primitives: Mesh[],
       indexOffset += primitive.indices.length;
     }
     vertexOffset += primitive.vertexCount;
+    mesh.bb.expand(primitive.bb.min)
+    mesh.bb.expand(primitive.bb.max)
   }
 
   return mesh;

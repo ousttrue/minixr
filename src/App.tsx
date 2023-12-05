@@ -123,7 +123,7 @@ class FileState {
     if (node.mesh != null) {
       const mesh = loader.meshes[node.mesh]
       this.world.create(matrix, mesh);
-      console.log(i, node);
+      console.log(i, mesh);
     }
     if (node.children) {
       for (const child of node.children) {
