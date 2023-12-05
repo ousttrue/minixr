@@ -44,7 +44,7 @@ class Env {
       new mat4(this.buffer.subarray(16, 32)));
 
     this.lightPosDir = new vec4(this.buffer.subarray(32, 36));
-    this.lightPosDir.set(0, 0, 0, 1);
+    this.lightPosDir.set(1, 1, 1, 0);
     this.lightColor = new vec4(this.buffer.subarray(36, 40));
   }
 }

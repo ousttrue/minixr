@@ -1,4 +1,4 @@
-// import * as glMatrix from "./common.mjs"
+import * as glMatrix from "./common.mjs"
 
 /**
  * Quaternion
@@ -200,56 +200,57 @@ export class quat {
   //   out[3] = Math.sqrt(Math.abs(1.0 - x * x - y * y - z * z));
   //   return out;
   // }
-  //
-  // /**
-  //  * Performs a spherical linear interpolation between two quat
-  //  *
-  //  * @param {quat} out the receiving quaternion
-  //  * @param {quat} a the first operand
-  //  * @param {quat} b the second operand
-  //  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
-  //  * @returns {quat} out
-  //  */
-  // export function slerp(out: quat, a: quat, b: quat, t: number): quat {
-  //   // benchmarks:
-  //   //    http://jsperf.com/quaternion-slerp-implementations
-  //   let ax = a[0], ay = a[1], az = a[2], aw = a[3];
-  //   let bx = b[0], by = b[1], bz = b[2], bw = b[3];
-  //
-  //   let omega, cosom, sinom, scale0, scale1;
-  //
-  //   // calc cosine
-  //   cosom = ax * bx + ay * by + az * bz + aw * bw;
-  //   // adjust signs (if necessary)
-  //   if (cosom < 0.0) {
-  //     cosom = -cosom;
-  //     bx = - bx;
-  //     by = - by;
-  //     bz = - bz;
-  //     bw = - bw;
-  //   }
-  //   // calculate coefficients
-  //   if ((1.0 - cosom) > glMatrix.EPSILON) {
-  //     // standard case (slerp)
-  //     omega = Math.acos(cosom);
-  //     sinom = Math.sin(omega);
-  //     scale0 = Math.sin((1.0 - t) * omega) / sinom;
-  //     scale1 = Math.sin(t * omega) / sinom;
-  //   } else {
-  //     // "from" and "to" quaternions are very close
-  //     //  ... so we can do a linear interpolation
-  //     scale0 = 1.0 - t;
-  //     scale1 = t;
-  //   }
-  //   // calculate final values
-  //   out[0] = scale0 * ax + scale1 * bx;
-  //   out[1] = scale0 * ay + scale1 * by;
-  //   out[2] = scale0 * az + scale1 * bz;
-  //   out[3] = scale0 * aw + scale1 * bw;
-  //
-  //   return out;
-  // }
-  //
+
+  /**
+   * Performs a spherical linear interpolation between two quat
+   *
+   * @param {quat} out the receiving quaternion
+   * @param {quat} a the first operand
+   * @param {quat} b the second operand
+   * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
+   * @returns {quat} out
+   */
+  slerp(b: quat, t: number, option?: { out: quat }): quat {
+    const dst = option?.out ?? new quat();
+    // benchmarks:
+    //    http://jsperf.com/quaternion-slerp-implementations
+    let ax = this.x, ay = this.y, az = this.z, aw = this.w;
+    let bx = b.x, by = b.y, bz = b.z, bw = b.w;
+
+    let omega, cosom, sinom, scale0, scale1;
+
+    // calc cosine
+    cosom = ax * bx + ay * by + az * bz + aw * bw;
+    // adjust signs (if necessary)
+    if (cosom < 0.0) {
+      cosom = -cosom;
+      bx = - bx;
+      by = - by;
+      bz = - bz;
+      bw = - bw;
+    }
+    // calculate coefficients
+    if ((1.0 - cosom) > glMatrix.EPSILON) {
+      // standard case (slerp)
+      omega = Math.acos(cosom);
+      sinom = Math.sin(omega);
+      scale0 = Math.sin((1.0 - t) * omega) / sinom;
+      scale1 = Math.sin(t * omega) / sinom;
+    } else {
+      // "from" and "to" quaternions are very close
+      //  ... so we can do a linear interpolation
+      scale0 = 1.0 - t;
+      scale1 = t;
+    }
+    // calculate final values
+    dst.x = scale0 * ax + scale1 * bx;
+    dst.y = scale0 * ay + scale1 * by;
+    dst.z = scale0 * az + scale1 * bz;
+    dst.w = scale0 * aw + scale1 * bw;
+
+    return dst;
+  }
+
   // /**
   //  * Generates a random quaternion
   //  *
@@ -580,7 +581,7 @@ export class quat {
   //     }
   //   };
   // })();
-  //
+
   // /**
   //  * Performs a spherical linear interpolation with two control points
   //  *
@@ -604,7 +605,7 @@ export class quat {
   //     return out;
   //   };
   // }());
-  //
+
   // /**
   //  * Sets the specified quaternion with values corresponding to the given
   //  * axes. Each axis is a vec3 and is expected to be unit length and

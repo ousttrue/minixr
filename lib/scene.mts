@@ -17,14 +17,7 @@ class TRSNode {
   ) { }
 
   updateRecursive(parent?: mat4) {
-    mat4.fromScaling(this.s, { out: this.matrix });
-    mat4.fromQuat(this.r, { out: tmp });
-    // r x s
-    tmp.mul(this.matrix, { out: this.matrix });
-    // t
-    this.matrix.m30 = this.t.x;
-    this.matrix.m31 = this.t.y;
-    this.matrix.m32 = this.t.z;
+    mat4.fromTRS(this.t, this.r, this.s, { out: this.matrix })
     if (parent) {
       parent.mul(this.matrix, { out: this.matrix })
     }
@@ -34,6 +27,10 @@ class TRSNode {
   }
 }
 
+type TimeRange = {
+  index: number;
+  ratio: number;
+}
 
 class InputCurve {
   input: Float32Array;
@@ -46,21 +43,52 @@ class InputCurve {
     this.input = _input;
   }
 
-  getIndex(time: number): number {
+  getIndex(time: number, componentCount: number): number {
     if (time < this.input[0]) {
-      return this.input[0];
+      return this.input[0] * componentCount;
     }
     else if (time > this.input[this.input.length - 1]) {
-      return this.input[this.input.length - 1];
+      return this.input[this.input.length - 1] * componentCount;
     }
     for (const v of this.input) {
       if (v > time) {
-        return v;
+        return v * componentCount;
       }
     }
     throw new Error("invalid");
   }
+
+  getRange(time: number, componentCount: number): number | TimeRange {
+    if (time <= this.input[0]) {
+      return 0;
+    }
+    if (time >= this.input[this.input.length - 1]) {
+      return (this.input.length - 1) * componentCount;
+    }
+
+    let end = this.input[0];
+    for (let i = 0; i < this.input.length - 1; ++i) {
+      const begin = end;
+      end = this.input[i + 1];
+      if (end >= time) {
+        return {
+          index: i * componentCount,
+          ratio: (time - begin) / (end - begin)
+        }
+      }
+    }
+    throw new Error("invalid");
+  }
+
+  get lastTime(): number {
+    return this.input[this.input.length - 1];
+  }
 }
+
+function lerp(b: number, e: number, r: number) {
+  return b + (e - b) * r;
+}
+
 
 class Vec3Curve {
   input: InputCurve;
@@ -79,15 +107,26 @@ class Vec3Curve {
     this.output = _output;
   }
 
-  get(time: number): Float32Array {
-    const start = this.input.getIndex(time) * 3;
-    return this.output.subarray(start, start + 3);
+  get(time: number): Float32Array | [number, number, number] {
+    const t = this.input.getRange(time, 3);
+    if (typeof (t) == 'number') {
+      return this.output.subarray(t, t + 3);
+    }
+    const { index, ratio } = t;
+    const values = this.output.subarray(index, index + 6);
+    return [
+      lerp(values[0], values[3], ratio),
+      lerp(values[1], values[4], ratio),
+      lerp(values[2], values[5], ratio),
+    ];
   }
 }
+
 
 class QuatCurve {
   input: InputCurve;
   output: Float32Array;
+  tmp = new quat();
   constructor(
     public readonly _input: BufferSourceArray,
     public readonly _output: BufferSourceArray
@@ -103,8 +142,15 @@ class QuatCurve {
   }
 
   get(time: number): Float32Array {
-    const start = this.input.getIndex(time) * 4;
-    return this.output.subarray(start, start + 4);
+    const t = this.input.getRange(time, 4);
+    if (typeof (t) == 'number') {
+      return this.output.subarray(t, t + 4);
+    }
+    const { index, ratio } = t;
+    const b = this.output.subarray(index, index + 4);
+    const e = this.output.subarray(index + 4, index + 8);
+    new quat(b).slerp(new quat(e), ratio, { out: this.tmp })
+    return this.tmp.array;
   }
 }
 
@@ -128,18 +174,57 @@ class NodeAnimation {
       node.s.array.set(value);
     }
   }
+
+  get lastTime(): number {
+    let endTime = 0;
+    if (this.translation) {
+      const lastTime = this.translation.input.lastTime;
+      if (lastTime > endTime) {
+        endTime = lastTime;
+      }
+    }
+    if (this.rotation) {
+      const lastTime = this.rotation.input.lastTime;
+      if (lastTime > endTime) {
+        endTime = lastTime;
+      }
+    }
+    if (this.scale) {
+      const lastTime = this.scale.input.lastTime;
+      if (lastTime > endTime) {
+        endTime = lastTime;
+      }
+    }
+    return endTime;
+  }
 }
 
 
 class SceneAnimation {
+  endTime = 0;
   constructor(
     public readonly nodeAnimationMap: Map<number, NodeAnimation>,
     public readonly nodeMap: Map<number, TRSNode>,
     public readonly root: TRSNode,
   ) {
+    nodeAnimationMap.forEach((value: NodeAnimation) => {
+
+      const lastTime = value.lastTime;
+      if (lastTime > this.endTime) {
+        this.endTime = lastTime;
+      }
+
+    });
+
+    console.log(this.endTime);
   }
 
   update(time: number) {
+    while (time > this.endTime) {
+      // loop
+      time -= this.endTime;
+    }
+
     this.nodeAnimationMap.forEach((value, key) => {
       value.updateLocalValue(time, this.nodeMap.get(key)!);
     });
@@ -200,16 +285,16 @@ export class Scene {
         }
 
         for (const channel of animation.channels) {
-          if (channel.target.path == 'translation') {
-            const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
-            const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.glb.json.accessors![sampler.input];
-            const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.glb.json.accessors![sampler.output];
-            const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
-            nodeAnimation.translation = new Vec3Curve(input.array, output.array);
-          }
-          else if (channel.target.path == 'rotation') {
+          // if (channel.target.path == 'translation') {
+          //   const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
+          //   const sampler = animation.samplers[channel.sampler];
+          //   const inputAccessor = this.glb.json.accessors![sampler.input];
+          //   const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
+          //   const ouputAccessor = this.glb.json.accessors![sampler.output];
+          //   const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
+          //   nodeAnimation.translation = new Vec3Curve(input.array, output.array);
+          // } else
+          if (channel.target.path == 'rotation') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
             const inputAccessor = this.glb.json.accessors![sampler.input];
@@ -218,15 +303,15 @@ export class Scene {
             const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.rotation = new QuatCurve(input.array, output.array);
           }
-          else if (channel.target.path == 'scale') {
-            const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
-            const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.glb.json.accessors![sampler.input];
-            const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.glb.json.accessors![sampler.output];
-            const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
-            nodeAnimation.scale = new Vec3Curve(input.array, output.array);
-          }
+          // if (channel.target.path == 'scale') {
+          //   const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
+          //   const sampler = animation.samplers[channel.sampler];
+          //   const inputAccessor = this.glb.json.accessors![sampler.input];
+          //   const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
+          //   const ouputAccessor = this.glb.json.accessors![sampler.output];
+          //   const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
+          //   nodeAnimation.scale = new Vec3Curve(input.array, output.array);
+          // }
           else {
             throw new Error(`${channel.target.path} not implemented`);
           }
