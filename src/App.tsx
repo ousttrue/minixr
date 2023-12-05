@@ -3,7 +3,7 @@ import './App.css'
 import MyDropzone from './dropzone.jsx';
 import { Glb } from '../lib/glb.js';
 import type * as GLTF2 from '../lib/GLTF2.d.ts';
-import JsonTree, { JsonItem } from './jsontree.jsx';
+import JsonTree from './jsontree.jsx';
 import Split from 'react-split'
 import WebGLCanvas from './webgl.jsx';
 import { World } from '../lib/uecs/index.mjs';
@@ -18,10 +18,10 @@ class FileState {
   glb: Glb | null = null;
   status = '';
   world = new World();
-  setContent: Function;
+  setJson: Function;
 
   constructor() {
-    this.setContent = () => { };
+    this.setJson = () => { };
   }
 
   toString(): string {
@@ -61,9 +61,10 @@ class FileState {
   setGlb(glb: Glb) {
     this.glb = glb;
     this.status = 'glb';
+    this.world = new World();
 
     if (this.glb) {
-      this.setContent(this.glb.json);
+      this.setJson(this.glb.json);
       const loader = new Gltf2Loader(this.glb.json, { binaryChunk: this.glb.bin });
       loader.load().then(() => {
         this.setLoader(loader);
@@ -137,8 +138,8 @@ class FileState {
 const state = new FileState();
 
 export default function App() {
-  const [content, setContent] = React.useState<JsonItem>({ json: {} });
-  state.setContent = (json: JsonItem) => setContent({ json })
+  const [json, setJson] = React.useState(null);
+  state.setJson = setJson
   const ref = React.useRef(state);
 
   return (
@@ -154,12 +155,7 @@ export default function App() {
         className="split"
       >
         <div style={{ overflowY: 'auto' }}>
-          {ref.current.glb
-            ? <JsonTree
-              content={content}
-              onChange={setContent}
-            />
-            : ''}
+          <JsonTree json={json} />
         </div>
         <WebGLCanvas world={ref.current.world} />
       </Split>
