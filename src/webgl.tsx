@@ -80,7 +80,13 @@ export class Renderer {
     {
       const gl = this.gl;
       gl.clearColor(0.2, 0.2, 0.2, 1);
-      gl.clear(GL.COLOR_BUFFER_BIT);
+
+      gl.enable(GL.DEPTH_TEST);
+      gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+
+      gl.enable(GL.CULL_FACE);
+
+      gl.clearDepth(1);
       gl.viewport(0, 0, width, height);
     }
 
