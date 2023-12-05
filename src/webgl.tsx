@@ -4,8 +4,8 @@ import {
 } from '../lib/math/gl-matrix.mjs';
 import { Mesh } from '../lib/buffer/primitive.mjs';
 import { Material } from '../lib/materials/material.mjs';
-import { ShaderProgram } from '../lib/wgl/shader.mjs';
-import { Vao } from '../lib/wgl/geometry.mjs';
+import { WglShader } from '../lib/wgl/shader.mjs';
+import { WglVao } from '../lib/wgl/geometry.mjs';
 import { WglBuffer } from '../lib/wgl/buffer.mjs';
 import { World } from '../lib/uecs/index.mjs';
 import Stats from 'stats-gl'
@@ -43,12 +43,12 @@ class Env {
 
 export class Renderer {
 
-  meshVaoMap: Map<Mesh, Vao> = new Map();
-  materialShaderMap: Map<Material, ShaderProgram> = new Map();
+  meshVaoMap: Map<Mesh, WglVao> = new Map();
+  materialShaderMap: Map<Material, WglShader> = new Map();
 
   env = new Env();
   ubo: WglBuffer;
-  shader: ShaderProgram | null = null;
+  shader: WglShader | null = null;
   model = mat4.identity();
 
   constructor(
@@ -96,7 +96,7 @@ export class Renderer {
     stats.end();
   }
 
-  private _getOrCreateVao(mesh: Mesh): Vao {
+  private _getOrCreateVao(mesh: Mesh): WglVao {
     {
       const vao = this.meshVaoMap.get(mesh);
       if (vao) {
@@ -108,7 +108,7 @@ export class Renderer {
       const vertices = mesh.attributes[0]!.source;
       const vbo = WglBuffer.create(this.gl,
         GL.ARRAY_BUFFER, vertices.array);
-      const vao = Vao.create(this.gl, [
+      const vao = WglVao.create(this.gl, [
         {
           name: 'POSITION',
           buffer: vbo,
@@ -145,7 +145,7 @@ export class Renderer {
   }
 
   private _getOrCreateShader(
-    material: Material): ShaderProgram {
+    material: Material): WglShader {
     {
       const shader = this.materialShaderMap.get(material);
       if (shader) {
@@ -154,7 +154,7 @@ export class Renderer {
     }
 
     {
-      const shader = ShaderProgram.createDefault(this.gl);
+      const shader = WglShader.createDefault(this.gl);
       this.materialShaderMap.set(material, shader);
       return shader;
     }

@@ -14,7 +14,7 @@ export type VertexAttribute = {
 }
 
 
-export class Vao implements Disposable {
+export class WglVao implements Disposable {
   vao: WebGLVertexArrayObject;
   constructor(
     public readonly gl: WebGL2RenderingContext,
@@ -33,7 +33,7 @@ export class Vao implements Disposable {
   static create(gl: WebGL2RenderingContext,
     attributes: VertexAttribute[],
     indices?: WglBuffer) {
-    const vao = new Vao(gl, indices?.componentType);
+    const vao = new WglVao(gl, indices?.componentType);
     gl.bindVertexArray(vao.vao);
     let location = 0;
     for (const a of attributes) {

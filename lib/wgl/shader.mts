@@ -53,7 +53,7 @@ function compileShader(errorPrefix: string, gl: WebGL2RenderingContext,
 }
 
 
-export class ShaderProgram implements Disposable {
+export class WglShader implements Disposable {
   program: WebGLProgram;
 
   constructor(public readonly gl: WebGL2RenderingContext) {
@@ -68,17 +68,17 @@ export class ShaderProgram implements Disposable {
   }
 
   // compile, attach, link
-  static create(gl: WebGL2RenderingContext, vsSrc: string, fsSrc: string): ShaderProgram {
+  static create(gl: WebGL2RenderingContext, vsSrc: string, fsSrc: string): WglShader {
     const vs = compileShader('[VERTEX_SHADER]: ', gl, vsSrc, GL.VERTEX_SHADER);
     const fs = compileShader('[FRAGMENT_SHADER]: ', gl, fsSrc, GL.FRAGMENT_SHADER);
-    const program = new ShaderProgram(gl);
+    const program = new WglShader(gl);
     program.link(vs, fs);
     return program;
   }
 
   static createDefault(
-    gl: WebGL2RenderingContext): ShaderProgram {
-    return ShaderProgram.create(gl, VS, FS);
+    gl: WebGL2RenderingContext): WglShader {
+    return WglShader.create(gl, VS, FS);
   }
 
   link(vs: WebGLShader, fs: WebGLShader) {
