@@ -1,48 +1,12 @@
+import type { WglBuffer, ElementType } from './buffer.mjs';
+
+
 const GL = WebGL2RenderingContext;
-
-
-type ElementType = GL.UNSIGNED_BYTE | GL.UNSIGNED_SHORT | GL.UNSIGNED_INT;
-
-
-export class Buffer implements Disposable {
-  buffer: WebGLBuffer;
-  constructor(
-    public readonly gl: WebGL2RenderingContext,
-    public readonly type = GL.ARRAY_BUFFER,
-    public readonly componentType?: ElementType,
-  ) {
-    this.buffer = gl.createBuffer()!;
-    if (!this.buffer) {
-      throw new Error('createBuffer');
-    }
-  }
-
-  [Symbol.dispose](): void {
-    this.gl.deleteBuffer(this.buffer);
-  }
-
-  static create(gl: WebGL2RenderingContext,
-    type: (GL.ARRAY_BUFFER | GL.ELEMENT_ARRAY_BUFFER),
-    bytes: ArrayBuffer,
-    componetType?: ElementType
-  ): Buffer {
-    const buffer = new Buffer(gl, type, componetType);
-    buffer.upload(bytes);
-    return buffer;
-  }
-
-  upload(bytes: ArrayBuffer) {
-    const gl = this.gl;
-    gl.bindBuffer(this.type, this.buffer);
-    gl.bufferData(this.type, bytes, gl.STATIC_DRAW);
-    gl.bindBuffer(this.type, null);
-  }
-}
 
 
 export type VertexAttribute = {
   name: string,
-  buffer: Buffer,
+  buffer: WglBuffer,
   componentType: number,
   componentCount: number,
   bufferStride: number,
@@ -68,7 +32,7 @@ export class Vao implements Disposable {
 
   static create(gl: WebGL2RenderingContext,
     attributes: VertexAttribute[],
-    indices?: Buffer) {
+    indices?: WglBuffer) {
     const vao = new Vao(gl, indices?.componentType);
     gl.bindVertexArray(vao.vao);
     let location = 0;

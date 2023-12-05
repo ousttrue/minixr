@@ -1,21 +1,25 @@
 import { mat4 } from '../math/gl-matrix.mjs';
+import type { WglBuffer } from './buffer.mjs';
 
 
 const GL = WebGL2RenderingContext;
 
 
 const VS = `#version 300 es
-in vec3 aPosition;
-in vec3 aNormal;
-in vec2 aUv;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUv;
 out vec2 fUv;
 uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProjection;
+
+layout (std140) uniform uEnv {
+  mat4 view;
+  mat4 projection;
+};
 
 void main()
 {
-  gl_Position = uProjection * uView * uModel * vec4(aPosition, 1);
+  gl_Position = projection * view * uModel * vec4(aPosition, 1);
   fUv = aUv;
 }
 `;
@@ -99,5 +103,13 @@ export class ShaderProgram implements Disposable {
       console.warn(`getUniformLocation${name} not found`);
     }
     gl.uniformMatrix4fv(location, false, matrix.array);
+  }
+
+  setUbo(name: string, ubo: WglBuffer, bind: number) {
+    const gl = this.gl;
+    const block = gl.getUniformBlockIndex(this.program, name);
+    gl.uniformBlockBinding(this.program, block, bind);
+    gl.bindBufferBase(GL.UNIFORM_BUFFER, bind, ubo.buffer);
+    // ubo.bind();
   }
 }

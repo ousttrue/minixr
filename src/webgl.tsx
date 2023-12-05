@@ -5,7 +5,8 @@ import {
 import { Mesh } from '../lib/buffer/primitive.mjs';
 import { Material } from '../lib/materials/material.mjs';
 import { ShaderProgram } from '../lib/wgl/shader.mjs';
-import { Vao, Buffer } from '../lib/wgl/geometry.mjs';
+import { Vao } from '../lib/wgl/geometry.mjs';
+import { WglBuffer } from '../lib/wgl/buffer.mjs';
 import { World } from '../lib/uecs/index.mjs';
 import Stats from 'stats-gl'
 
@@ -24,25 +25,44 @@ const stats = new Stats({
 const GL = WebGL2RenderingContext;
 
 
-export class Renderer {
-  shader: ShaderProgram | null = null;
-  model = mat4.identity();
+class Env {
+  buffer: Float32Array = new Float32Array(16 + 16);
+  view: OrbitView;
+  projection: PerspectiveProjection;
 
-  view = new OrbitView(mat4.identity(), vec3.fromValues(0, 0, 5));
-  projection = new PerspectiveProjection(mat4.identity());
+  constructor() {
+    this.view = new OrbitView(
+      new mat4(this.buffer.subarray(0, 16)),
+      vec3.fromValues(0, 0, 5));
+
+    this.projection = new PerspectiveProjection(
+      new mat4(this.buffer.subarray(16, 32)));
+  }
+}
+
+
+export class Renderer {
 
   meshVaoMap: Map<Mesh, Vao> = new Map();
   materialShaderMap: Map<Material, ShaderProgram> = new Map();
 
+  env = new Env();
+  ubo: WglBuffer;
+  shader: ShaderProgram | null = null;
+  model = mat4.identity();
+
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly observer: ResizeObserver,
-  ) { }
+  ) {
+    this.ubo = WglBuffer.create(gl, GL.UNIFORM_BUFFER, this.env.buffer.buffer);
+  }
 
   render(time: number, width: number, height: number, world: World) {
     stats.begin();
 
-    this.projection.resize(width, height);
+    this.env.projection.resize(width, height);
+    this.ubo.upload(this.env.buffer);
 
     {
       const gl = this.gl;
@@ -63,9 +83,8 @@ export class Renderer {
         shader.use();
 
         // update camera matrix
-        shader.setMatrix('uProjection', this.projection.matrix);
-        shader.setMatrix('uView', this.view.matrix);
-        shader.setMatrix('uModel', matrix);
+        shader.setUbo('uEnv', this.ubo, 0);
+        shader.setMatrix('uModel', this.model);
 
         vao.draw(submesh.drawCount, offset);
         offset += submesh.drawCount;
@@ -87,7 +106,7 @@ export class Renderer {
 
     {
       const vertices = mesh.attributes[0]!.source;
-      const vbo = Buffer.create(this.gl,
+      const vbo = WglBuffer.create(this.gl,
         GL.ARRAY_BUFFER, vertices.array);
       const vao = Vao.create(this.gl, [
         {
@@ -115,7 +134,7 @@ export class Renderer {
           componentType: GL.FLOAT,
         }
       ], mesh.indices
-        ? Buffer.create(this.gl, GL.ELEMENT_ARRAY_BUFFER,
+        ? WglBuffer.create(this.gl, GL.ELEMENT_ARRAY_BUFFER,
           mesh.indices.array, mesh.indices.glType)
         : undefined
       );
@@ -197,17 +216,17 @@ export default function WebGLCanvas(props: {
     // Only rotate when the left button is pressed
     if (renderer) {
       if (event.buttons & 1) {
-        renderer.view.rotate(event.movementX, event.movementY);
+        renderer.env.view.rotate(event.movementX, event.movementY);
       }
       if (event.buttons & 4) {
-        renderer.view.shift(event.movementX, event.movementY);
+        renderer.env.view.shift(event.movementX, event.movementY);
       }
     }
   };
 
   const handleWheel: React.WheelEventHandler<HTMLCanvasElement> = (event) => {
     if (renderer) {
-      renderer.view.dolly(event.deltaY);
+      renderer.env.view.dolly(event.deltaY);
     }
   };
 
