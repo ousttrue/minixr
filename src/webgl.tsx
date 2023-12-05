@@ -8,7 +8,10 @@ import { WglShader } from '../lib/wgl/shader.mjs';
 import { WglVao } from '../lib/wgl/geometry.mjs';
 import { WglBuffer } from '../lib/wgl/buffer.mjs';
 import { World } from '../lib/uecs/index.mjs';
+import { Animation } from '../lib/animation.mjs';
+import { Scene } from './scene.mjs';
 import Stats from 'stats-gl'
+
 
 // create a new Stats object
 const stats = new Stats({
@@ -70,48 +73,58 @@ export class Renderer {
       GL.UNIFORM_BUFFER, this.color.array);
   }
 
-  render(time: number, width: number, height: number, world: World) {
+  render(width: number, height: number, scene?: Scene) {
     stats.begin();
 
-    this.env.projection.resize(width, height);
-    this.envUbo.upload(this.env.buffer);
-    this.materialUbo.upload(this.color.array);
+    if (scene) {
+      // update scene
+      const world = scene.world;
+      const seconds = scene.timeSeconds;
+      // console.log(seconds);
+      world.view(Animation).each((entity, animation) => {
+        animation.update(seconds);
+      });
 
-    {
-      const gl = this.gl;
-      gl.clearColor(0.2, 0.2, 0.2, 1);
+      this.env.projection.resize(width, height);
+      this.envUbo.upload(this.env.buffer);
+      this.materialUbo.upload(this.color.array);
 
-      gl.enable(GL.DEPTH_TEST);
-      gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+      {
+        const gl = this.gl;
+        gl.clearColor(0.2, 0.2, 0.2, 1);
 
-      gl.enable(GL.CULL_FACE);
+        gl.enable(GL.DEPTH_TEST);
+        gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-      gl.clearDepth(1);
-      gl.viewport(0, 0, width, height);
-    }
+        gl.enable(GL.CULL_FACE);
 
-    world.view(mat4, Mesh).each((entity, matrix, mesh) => {
-      const vao = this._getOrCreateVao(mesh);
-
-      vao.bind();
-
-      let offset = 0
-      for (const submesh of mesh.submeshes) {
-
-        const shader = this._getOrCreateShader(submesh.material);
-        shader.use();
-
-        // update camera matrix
-        shader.setUbo('uEnv', this.envUbo, 0);
-        shader.setUbo('uMaterial', this.materialUbo, 1);
-        shader.setMatrix('uModel', matrix);
-
-        vao.draw(submesh.drawCount, offset);
-        offset += submesh.drawCount;
+        gl.clearDepth(1);
+        gl.viewport(0, 0, width, height);
       }
 
-      vao.unbind();
-    });
+      world.view(mat4, Mesh).each((entity, matrix, mesh) => {
+        const vao = this._getOrCreateVao(mesh);
+
+        vao.bind();
+
+        let offset = 0
+        for (const submesh of mesh.submeshes) {
+
+          const shader = this._getOrCreateShader(submesh.material);
+          shader.use();
+
+          // update camera matrix
+          shader.setUbo('uEnv', this.envUbo, 0);
+          shader.setUbo('uMaterial', this.materialUbo, 1);
+          shader.setMatrix('uModel', matrix);
+
+          vao.draw(submesh.drawCount, offset);
+          offset += submesh.drawCount;
+        }
+
+        vao.unbind();
+      });
+    }
 
     stats.end();
   }
@@ -183,7 +196,7 @@ export class Renderer {
 
 
 export default function WebGLCanvas(props: {
-  world: World,
+  scene?: Scene,
 }) {
   const ref = React.useRef<HTMLCanvasElement>(null);
   const [renderer, setRenderer] = React.useState<Renderer | null>(null);
@@ -224,7 +237,7 @@ export default function WebGLCanvas(props: {
 
     const state = getOrCreateState();
 
-    state.render(Date.now(), ref.current.width, ref.current.height, props.world);
+    state.render(ref.current.width, ref.current.height, props.scene);
   });
 
   const [count, setCount] = React.useState(0);

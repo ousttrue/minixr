@@ -1,24 +1,21 @@
 import React from 'react'
 import './App.css'
 import MyDropzone from './dropzone.jsx';
-import { Glb } from '../lib/glb.js';
-import type * as GLTF2 from '../lib/GLTF2.d.ts';
+import { Glb } from '../lib/glb.mjs';
 import JsonTree from './jsontree.jsx';
 import Split from 'react-split'
 import WebGLCanvas from './webgl.jsx';
-import { World } from '../lib/uecs/index.mjs';
 import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
-import { vec3, quat, mat4 } from '../lib/math/gl-matrix.mjs';
+import { Scene } from '../lib/scene.mjs';
 
 
 class FileState {
   file: File | null = null;
   bytes: ArrayBuffer | null = null;
   reader: FileReader | null = null;
-  glb: Glb | null = null;
   status = '';
-  world = new World();
   setJson: Function;
+  scene: Scene | null = null;
 
   constructor() {
     this.setJson = () => { };
@@ -48,88 +45,25 @@ class FileState {
     }
   }
 
-  setBytes(bytes: ArrayBuffer) {
+  async setBytes(bytes: ArrayBuffer) {
     this.bytes = bytes;
-    if (bytes) {
-      // ArrayBuffer => Glb
-      this.status = 'parse...';
-      const glb = Glb.parse(bytes);
-      this.setGlb(glb);
+    if (!bytes) {
+      return;
     }
-  }
 
-  setGlb(glb: Glb) {
-    this.glb = glb;
+    // ArrayBuffer => Glb
+    this.status = 'parse...';
+    const glb = Glb.parse(bytes);
     this.status = 'glb';
-    this.world = new World();
-
-    if (this.glb) {
-      this.setJson(this.glb.json);
-      const loader = new Gltf2Loader(this.glb.json, { binaryChunk: this.glb.bin });
-      loader.load().then(() => {
-        this.setLoader(loader);
-      });
+    if (glb) {
+      const loader = new Gltf2Loader(glb.json, { binaryChunk: glb.bin });
+      await loader.load();
+      this.scene = new Scene(glb, loader);
+      await this.scene.load();
+      this.setJson(glb.json);
     }
     else {
-      // dispose ?
-      // this.loader = null;
-    }
-  }
-
-  setLoader(loader: Gltf2Loader) {
-    if (!this.glb) {
-      return;
-    }
-    const gltf = this.glb.json;
-    if (gltf.scenes) {
-      for (const scene of gltf.scenes) {
-        if (scene.nodes) {
-          for (const i of scene.nodes) {
-            this.loadNode(loader, gltf, i);
-          }
-        }
-      }
-    }
-  }
-
-  loadNode(loader: Gltf2Loader, gltf: GLTF2.GlTf, i: number, parent?: mat4) {
-    if (!gltf.nodes) {
-      return;
-    }
-    const node = gltf.nodes[i];
-
-    const matrix = mat4.identity();
-    if (node.matrix) {
-      matrix.array.set(node.matrix);
-    }
-    else {
-      const t = vec3.fromValues(0, 0, 0);
-      if (node.translation) {
-        t.array.set(node.translation);
-      }
-      const r = quat.fromValues(0, 0, 0, 1);
-      if (node.rotation) {
-        r.array.set(node.rotation);
-      }
-      const s = vec3.fromValues(1, 1, 1);
-      if (node.scale) {
-        s.array.set(node.scale);
-      }
-      mat4.fromTRS(t, r, s, { out: matrix })
-    }
-    if (parent) {
-      parent.mul(matrix, { out: matrix })
-    }
-
-    if (node.mesh != null) {
-      const mesh = loader.meshes[node.mesh]
-      this.world.create(matrix, mesh);
-      // console.log(i, mesh);
-    }
-    if (node.children) {
-      for (const child of node.children) {
-        this.loadNode(loader, gltf, child, matrix);
-      }
+      this.setJson(null);
     }
   }
 }
@@ -157,7 +91,9 @@ export default function App() {
         <div style={{ overflowY: 'auto' }}>
           <JsonTree json={json} />
         </div>
-        <WebGLCanvas world={ref.current.world} />
+        <WebGLCanvas
+          scene={ref.current.scene ?? undefined}
+        />
       </Split>
     </div>
   )

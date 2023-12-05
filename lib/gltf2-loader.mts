@@ -24,7 +24,7 @@ import { ImageTexture, ColorTexture } from './materials/texture.mjs';
 import { Mesh, SubMesh, MeshVertexAttribute } from './buffer/primitive.mjs';
 import { BufferSource } from './buffer/buffersource.mjs';
 import type * as GLTF2 from './GLTF2.d.ts';
-import { Glb } from './glb.js';
+import { Glb } from './glb.mjs';
 import { vec2, vec3, vec4, quat, mat4 } from './math/gl-matrix.mjs';
 
 const GL = WebGLRenderingContext; // For enums
@@ -236,7 +236,7 @@ export class Gltf2Loader {
     return bytes.subarray(offset, offset + buffer.byteLength);
   }
 
-  private async _bufferSourceFromAccessor(accessor: GLTF2.Accessor):
+  async bufferSourceFromAccessor(accessor: GLTF2.Accessor):
     Promise<BufferSource> {
     if (!this.json.bufferViews) {
       throw new Error("no bufferViews");
@@ -291,7 +291,7 @@ export class Gltf2Loader {
   }
 
   private async _primitiveAttributeFromAccessor(name: string, accessor: GLTF2.Accessor): Promise<MeshVertexAttribute> {
-    const bufferSource = await this._bufferSourceFromAccessor(accessor);
+    const bufferSource = await this.bufferSourceFromAccessor(accessor);
 
     return new MeshVertexAttribute(
       name,
