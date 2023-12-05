@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  vec3, mat4, OrbitView, PerspectiveProjection
+  vec3, vec4, mat4, OrbitView, PerspectiveProjection
 } from '../lib/math/gl-matrix.mjs';
 import { Mesh } from '../lib/buffer/primitive.mjs';
 import { Material } from '../lib/materials/material.mjs';
@@ -26,9 +26,11 @@ const GL = WebGL2RenderingContext;
 
 
 class Env {
-  buffer: Float32Array = new Float32Array(16 + 16);
+  buffer: Float32Array = new Float32Array(16 + 16 + 4 + 4);
   view: OrbitView;
   projection: PerspectiveProjection;
+  lightPosDir: vec4;
+  lightColor: vec4;
 
   constructor() {
     this.view = new OrbitView(
@@ -37,6 +39,10 @@ class Env {
 
     this.projection = new PerspectiveProjection(
       new mat4(this.buffer.subarray(16, 32)));
+
+    this.lightPosDir = new vec4(this.buffer.subarray(32, 36));
+    this.lightPosDir.set(0, 0, 0, 1);
+    this.lightColor = new vec4(this.buffer.subarray(36, 40));
   }
 }
 
@@ -46,23 +52,30 @@ export class Renderer {
   meshVaoMap: Map<Mesh, WglVao> = new Map();
   materialShaderMap: Map<Material, WglShader> = new Map();
 
-  env = new Env();
-  ubo: WglBuffer;
   shader: WglShader | null = null;
-  model = mat4.identity();
+
+  env = new Env();
+  envUbo: WglBuffer;
+
+  color = vec4.fromValues(0.9, 0.9, 0.9, 1);
+  materialUbo: WglBuffer;
 
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly observer: ResizeObserver,
   ) {
-    this.ubo = WglBuffer.create(gl, GL.UNIFORM_BUFFER, this.env.buffer.buffer);
+    this.envUbo = WglBuffer.create(gl,
+      GL.UNIFORM_BUFFER, this.env.buffer.buffer);
+    this.materialUbo = WglBuffer.create(gl,
+      GL.UNIFORM_BUFFER, this.color.array);
   }
 
   render(time: number, width: number, height: number, world: World) {
     stats.begin();
 
     this.env.projection.resize(width, height);
-    this.ubo.upload(this.env.buffer);
+    this.envUbo.upload(this.env.buffer);
+    this.materialUbo.upload(this.color.array);
 
     {
       const gl = this.gl;
@@ -83,8 +96,9 @@ export class Renderer {
         shader.use();
 
         // update camera matrix
-        shader.setUbo('uEnv', this.ubo, 0);
-        shader.setMatrix('uModel', this.model);
+        shader.setUbo('uEnv', this.envUbo, 0);
+        shader.setUbo('uMaterial', this.materialUbo, 1);
+        shader.setMatrix('uModel', matrix);
 
         vao.draw(submesh.drawCount, offset);
         offset += submesh.drawCount;

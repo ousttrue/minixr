@@ -6,31 +6,56 @@ const GL = WebGL2RenderingContext;
 
 
 const VS = `#version 300 es
+precision mediump float;
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aUv;
+out vec3 fPosition;
+out vec3 fNormal;
 out vec2 fUv;
 uniform mat4 uModel;
 
 layout (std140) uniform uEnv {
-  mat4 view;
-  mat4 projection;
+  mat4 uView;
+  mat4 uProjection;
+  vec4 uLightPosDir;
+  vec4 uLightColor;
 };
 
 void main()
 {
-  gl_Position = projection * view * uModel * vec4(aPosition, 1);
+  gl_Position = uProjection * uView * uModel * vec4(aPosition, 1);
+  fPosition = vec3(uModel * vec4(aPosition, 1.0));
+  fNormal = aNormal;
   fUv = aUv;
 }
 `;
 
 const FS = `#version 300 es
 precision mediump float;
+in vec3 fPosition;
+in vec3 fNormal;
 in vec2 fUv;
 out vec4 _Color;
 
+layout (std140) uniform uEnv {
+  mat4 uView;
+  mat4 uProjection;
+  vec4 uLightPosDir;
+  vec4 uLightColor;
+};
+layout (std140) uniform uMaterial {
+  vec4 uColor;
+};
+
 void main(){
-  _Color = vec4(fUv,1,1);
+  vec3 norm = normalize(fNormal);
+  vec3 lightDir = normalize(uLightPosDir.w == 0.0
+    ? vec3(uLightPosDir) 
+    : uLightPosDir.xyz - fPosition
+  );  
+  float diffuse = max(dot(norm, lightDir), 0.0);
+  _Color = vec4(uColor.xyz * diffuse, uColor.w);
 }
 `;
 
@@ -110,6 +135,5 @@ export class WglShader implements Disposable {
     const block = gl.getUniformBlockIndex(this.program, name);
     gl.uniformBlockBinding(this.program, block, bind);
     gl.bindBufferBase(GL.UNIFORM_BUFFER, bind, ubo.buffer);
-    // ubo.bind();
   }
 }
