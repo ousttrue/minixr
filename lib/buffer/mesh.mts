@@ -17,7 +17,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-import { vec3, BoundingBox } from '../math/gl-matrix.mjs';
+import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
 import { BufferSource, BufferSourceArray } from './buffersource.mjs';
 
@@ -162,5 +162,25 @@ export class Mesh {
       }
     }
     return this.bb.contains(p);
+  }
+}
+
+
+export class Skin {
+  constructor(
+    public readonly joints: number[],
+    public readonly inverseBindMatrices: Float32Array,
+    public readonly skeleton?: number
+  ) {
+    if (joints.length * 16 != inverseBindMatrices.length) {
+      throw new Error("invalid");
+    }
+  }
+
+  getJoint(i: number): { joint: number, inverseBindMatrix: mat4 } {
+    return {
+      joint: this.joints[i],
+      inverseBindMatrix: new mat4(this.inverseBindMatrices.subarray(i * 16, i * 16 + 16))
+    }
   }
 }

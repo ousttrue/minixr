@@ -2,14 +2,13 @@ import React from 'react';
 import {
   vec3, vec4, mat4, OrbitView, PerspectiveProjection
 } from '../lib/math/gl-matrix.mjs';
-import { Mesh } from '../lib/buffer/primitive.mjs';
+import { Mesh, Skin } from '../lib/buffer/mesh.mjs';
 import { Material } from '../lib/materials/material.mjs';
 import { WglShader } from '../lib/wgl/shader.mjs';
 import { WglVao } from '../lib/wgl/geometry.mjs';
 import { WglBuffer } from '../lib/wgl/buffer.mjs';
-import { World } from '../lib/uecs/index.mjs';
 import { Animation } from '../lib/animation.mjs';
-import { Scene } from './scene.mjs';
+import { Scene } from '../lib/scene.mjs';
 import Stats from 'stats-gl'
 
 
@@ -106,6 +105,21 @@ export class Renderer {
         const vao = this._getOrCreateVao(mesh);
 
         vao.bind();
+
+        const skin = world.get(entity, Skin)
+        if (skin) {
+          const matrices = new Float32Array(skin.joints.length * 16)
+          for (let i = 0; i < skin.joints.length; ++i) {
+            const { joint, inverseBindMatrix } = skin.getJoint(i)
+            const node = scene.nodeMap.get(joint)!
+
+            // world inv p
+            const dst = new mat4(matrices.subarray(i * 16, i * 16 + 16))
+            node.matrix.mul(inverseBindMatrix, { out: dst })
+
+            i += 16
+          }
+        }
 
         let offset = 0
         for (const submesh of mesh.submeshes) {

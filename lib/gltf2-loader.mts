@@ -21,7 +21,7 @@
 import { PbrMaterial } from './materials/pbr.mjs';
 import { Material } from './materials/material.mjs';
 import { ImageTexture, ColorTexture } from './materials/texture.mjs';
-import { Mesh, SubMesh, MeshVertexAttribute } from './buffer/primitive.mjs';
+import { Mesh, SubMesh, MeshVertexAttribute, Skin } from './buffer/mesh.mjs';
 import { BufferSource } from './buffer/buffersource.mjs';
 import type * as GLTF2 from './GLTF2.d.ts';
 import { Glb } from './glb.mjs';
@@ -56,7 +56,8 @@ function getComponentCount(type: string): number {
     case 'VEC2': return 2;
     case 'VEC3': return 3;
     case 'VEC4': return 4;
-    default: throw new Error("unknown");
+    case 'MAT4': return 16;
+    default: throw new Error(`unknown: ${type}`);
   }
 }
 
@@ -138,6 +139,7 @@ function toInterleavedSubmesh(primitives: Mesh[],
   return mesh;
 }
 
+
 /**
  * Gltf2SceneLoader
  * Loads glTF 2.0 scenes into a renderable node tree.
@@ -147,6 +149,7 @@ export class Gltf2Loader {
   textures: ImageTexture[] = [];
   materials: Material[] = [];
   meshes: Mesh[] = [];
+  skins: Skin[] = [];
   urlBytesMap: { [key: string]: Uint8Array } = {}
 
   constructor(
@@ -489,6 +492,21 @@ export class Gltf2Loader {
           totalVertexCount, totalIndexCount);
 
         this.meshes.push(mesh);
+      }
+    }
+
+    if (this.json.skins) {
+      for (const glSkin of this.json.skins) {
+        const accessor = this.json.accessors![glSkin.inverseBindMatrices!];
+        const matrices = await this._primitiveAttributeFromAccessor('inverseBindMatrices', accessor);
+        if (matrices.source.array instanceof Float32Array) {
+          const skin = new Skin([...glSkin.joints],
+            matrices.source.array, glSkin.skeleton);
+          this.skins.push(skin);
+        }
+        else {
+          throw new Error('invalid');
+        }
       }
     }
   }

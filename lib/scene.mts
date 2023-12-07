@@ -359,7 +359,13 @@ export class Scene {
 
     if (node.mesh != null) {
       const mesh = this.loader.meshes[node.mesh]
-      this.world.create(matrix, mesh);
+      if (node.skin != null) {
+        const skin = this.loader.skins[node.skin]
+        this.world.create(matrix, mesh, skin);
+      }
+      else {
+        this.world.create(matrix, mesh)
+      }
     }
     if (node.children) {
       for (const child of node.children) {

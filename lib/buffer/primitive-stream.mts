@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Primitive, PrimitiveAttribute } from './primitive.mjs';
+import { Primitive, PrimitiveAttribute } from './mesh.mjs';
 import { Material } from '../materials/material.mjs';
 import { mat3, vec3, BoundingBox } from '../math/gl-matrix.mjs';
 import { BufferSource } from '../buffer/buffersource.mjs';
