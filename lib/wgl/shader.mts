@@ -65,7 +65,7 @@ vec3 skinning()
 
 void main()
 {
-  gl_Position = uProjection * uView * uModel * vec4(skinning(), 1);
+  gl_Position = uProjection * uView * vec4(skinning(), 1);
   fPosition = vec3(uModel * vec4(aPosition, 1.0));
   fNormal = vec3(uModel * vec4(aNormal, 0));
   fUv = aUv;

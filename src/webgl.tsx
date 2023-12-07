@@ -125,11 +125,11 @@ export class Renderer {
             const dst = new mat4(this.skinningMatrices.subarray(j, j + 16))
             jointNode.matrix.mul(inverseBindMatrix, { out: dst })
 
-            if (skin.skeleton) {
-              const skeletonNode = scene.nodeMap.get(skin.skeleton)!
-              const skeletonMatrix = skeletonNode.matrix.invert()!;
-              skeletonMatrix.mul(dst, { out: dst })
-            }
+            // if (skin.skeleton) {
+            //   const skeletonNode = scene.nodeMap.get(skin.skeleton)!
+            //   const skeletonMatrix = skeletonNode.matrix.invert()!;
+            //   skeletonMatrix.mul(dst, { out: dst })
+            // }
 
             // mat4.identity({ out: dst })
           }
