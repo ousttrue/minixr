@@ -4,35 +4,8 @@ import type { BufferSourceArray } from '../lib/buffer/buffersource.mts';
 import { Animation } from '../lib/animation.mjs';
 import { Glb } from '../lib/glb.mjs';
 import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
+import { TrsNode } from './node.mjs';
 
-
-class TRSNode {
-  // local transform
-  t: vec3 = vec3.fromValues(0, 0, 0);
-  r: quat = quat.fromValues(0, 0, 0, 1);
-  s: vec3 = vec3.fromValues(1, 1, 1);
-
-  children: TRSNode[] = []
-  constructor(
-    public readonly name: string,
-    // world matrix
-    public readonly matrix: mat4,
-  ) { }
-
-  toString(): string {
-    return `[${this.name}]`;
-  }
-
-  updateRecursive(parent?: mat4) {
-    mat4.fromTRS(this.t, this.r, this.s, { out: this.matrix })
-    if (parent) {
-      parent.mul(this.matrix, { out: this.matrix })
-    }
-    for (const child of this.children) {
-      child.updateRecursive(this.matrix);
-    }
-  }
-}
 
 type TimeRange = {
   index: number;
@@ -167,7 +140,7 @@ class NodeAnimation {
   rotation: QuatCurve | null = null;
   scale: Vec3Curve | null = null;
 
-  updateLocalValue(time: number, node: TRSNode) {
+  updateLocalValue(time: number, node: TrsNode) {
     if (this.translation) {
       const value = this.translation.get(time);
       node.t.array.set(value);
@@ -211,8 +184,8 @@ class SceneAnimation {
   endTime = 0;
   constructor(
     public readonly nodeAnimationMap: Map<number, NodeAnimation>,
-    public readonly nodeMap: Map<number, TRSNode>,
-    public readonly root: TRSNode,
+    public readonly nodeMap: Map<number, TrsNode>,
+    public readonly root: TrsNode,
   ) {
     nodeAnimationMap.forEach((value: NodeAnimation) => {
 
@@ -244,8 +217,8 @@ class SceneAnimation {
 
 export class Scene {
   world = new World();
-  root = new TRSNode('__root__', mat4.identity());
-  nodeMap: Map<number, TRSNode> = new Map();
+  root = new TrsNode('__root__', mat4.identity());
+  nodeMap: Map<number, TrsNode> = new Map();
   startTime = Date.now();
 
   constructor(
@@ -334,7 +307,7 @@ export class Scene {
     }
   }
 
-  loadNode(i: number, parent?: mat4): TRSNode {
+  loadNode(i: number, parent?: mat4): TrsNode {
     const gltf = this.glb.json;
     if (!gltf.nodes) {
       throw new Error("no nodes");
@@ -342,7 +315,7 @@ export class Scene {
     const node = gltf.nodes[i];
 
     const matrix = mat4.identity()
-    const trsNode = new TRSNode(node.name, matrix);
+    const trsNode = new TrsNode(node.name, matrix);
     this.nodeMap.set(i, trsNode);
     if (node.matrix) {
       matrix.array.set(node.matrix);
@@ -368,7 +341,7 @@ export class Scene {
       const mesh = this.loader.meshes[node.mesh]
       if (node.skin != null) {
         const skin = this.loader.skins[node.skin]
-        this.world.create(matrix, mesh, skin);
+        this.world.create(matrix, mesh, skin)
       }
       else {
         this.world.create(matrix, mesh)

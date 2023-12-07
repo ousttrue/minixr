@@ -10,6 +10,7 @@ import { WglVao } from '../lib/wgl/vao.mjs';
 import { WglBuffer } from '../lib/wgl/buffer.mjs';
 import { Animation } from '../lib/animation.mjs';
 import { Scene } from '../lib/scene.mjs';
+import { TrsNode } from '../lib/node.mjs';
 import Stats from 'stats-gl'
 
 
@@ -113,16 +114,16 @@ export class Renderer {
 
         vao.bind();
 
-        const skin = world.get(entity, Skin)
+        const skin = world.get(entity, Skin);
         if (skin) {
           let j = 0
           for (let i = 0; i < skin.joints.length; ++i, j += 16) {
             const { joint, inverseBindMatrix } = skin.getJoint(i)
-            const node = scene.nodeMap.get(joint)!
+            const jointNode = scene.nodeMap.get(joint)!
 
             // world inv skeleton p
             const dst = new mat4(this.skinningMatrices.subarray(j, j + 16))
-            node.matrix.mul(inverseBindMatrix, { out: dst })
+            jointNode.matrix.mul(inverseBindMatrix, { out: dst })
             if (skin.skeleton) {
               const skeletonNode = scene.nodeMap.get(skin.skeleton)!
               const skeletonMatrix = skeletonNode.matrix;
