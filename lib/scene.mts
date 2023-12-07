@@ -73,6 +73,7 @@ function lerp(b: number, e: number, r: number) {
 class Vec3Curve {
   input: InputCurve;
   output: Float32Array;
+  tmp = new vec3();
   constructor(
     public readonly _input: BufferSourceArray,
     public readonly _output: BufferSourceArray
@@ -87,18 +88,17 @@ class Vec3Curve {
     this.output = _output;
   }
 
-  get(time: number): Float32Array | [number, number, number] {
+  get(time: number): vec3 {
     const t = this.input.getRange(time, 3);
     if (typeof (t) == 'number') {
-      return this.output.subarray(t, t + 3);
+      return new vec3(this.output.subarray(t, t + 3));
     }
     const { index, ratio } = t;
     const values = this.output.subarray(index, index + 6);
-    return [
-      lerp(values[0], values[3], ratio),
-      lerp(values[1], values[4], ratio),
-      lerp(values[2], values[5], ratio),
-    ];
+    this.tmp.x = lerp(values[0], values[3], ratio)
+    this.tmp.y = lerp(values[1], values[4], ratio)
+    this.tmp.z = lerp(values[2], values[5], ratio)
+    return this.tmp;
   }
 }
 
@@ -121,16 +121,16 @@ class QuatCurve {
     this.output = _output;
   }
 
-  get(time: number): Float32Array {
+  get(time: number): quat {
     const t = this.input.getRange(time, 4);
     if (typeof (t) == 'number') {
-      return this.output.subarray(t, t + 4);
+      return new quat(this.output.subarray(t, t + 4));
     }
     const { index, ratio } = t;
     const b = this.output.subarray(index, index + 4);
     const e = this.output.subarray(index + 4, index + 8);
     new quat(b).slerp(new quat(e), ratio, { out: this.tmp })
-    return this.tmp.array;
+    return this.tmp;
   }
 }
 
@@ -143,15 +143,15 @@ class NodeAnimation {
   updateLocalValue(time: number, node: TrsNode) {
     if (this.translation) {
       const value = this.translation.get(time);
-      node.t.array.set(value);
+      node.transform.translation = value;
     }
     if (this.rotation) {
       const value = this.rotation.get(time);
-      node.r.array.set(value);
+      node.transform.rotation = value;
     }
     if (this.scale) {
       const value = this.scale.get(time);
-      node.s.array.set(value);
+      node.transform.scale = value;
     }
   }
 
@@ -315,22 +315,21 @@ export class Scene {
     const node = gltf.nodes[i];
 
     const matrix = mat4.identity()
-    const trsNode = new TrsNode(node.name, matrix);
+    const trsNode = new TrsNode(node.name ?? `node[${i}]`, matrix);
     this.nodeMap.set(i, trsNode);
     if (node.matrix) {
-      matrix.array.set(node.matrix);
+      trsNode.transform.matrix = mat4.fromValues(...node.matrix);
     }
     else {
       if (node.translation) {
-        trsNode.t.array.set(node.translation);
+        trsNode.transform.translation = vec3.fromValues(...node.translation);
       }
       if (node.rotation) {
-        trsNode.r.array.set(node.rotation);
+        trsNode.transform.rotation = quat.fromValues(...node.rotation);
       }
       if (node.scale) {
-        trsNode.s.array.set(node.scale);
+        trsNode.transform.scale = vec3.fromValues(...node.scale);
       }
-      mat4.fromTRS(trsNode.t, trsNode.r, trsNode.s, { out: matrix })
     }
 
     if (parent) {

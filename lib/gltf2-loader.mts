@@ -490,7 +490,7 @@ export class Gltf2Loader {
             const accessorIndex = glPrimitive.attributes[name];
             const accessor = this.json.accessors[accessorIndex];
             const attribute = await this._primitiveAttributeFromAccessor(name, accessor);
-            console.log(attribute.toString());
+            // console.log(attribute.toString());
             if (name == 'POSITION') {
               min = accessor.min;
               max = accessor.max;

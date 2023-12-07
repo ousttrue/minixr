@@ -121,14 +121,16 @@ export class Renderer {
             const { joint, inverseBindMatrix } = skin.getJoint(i)
             const jointNode = scene.nodeMap.get(joint)!
 
-            // world inv skeleton p
+            // model (inversedSkeleton) joint inversedBindMatrices p
             const dst = new mat4(this.skinningMatrices.subarray(j, j + 16))
             jointNode.matrix.mul(inverseBindMatrix, { out: dst })
+
             if (skin.skeleton) {
               const skeletonNode = scene.nodeMap.get(skin.skeleton)!
-              const skeletonMatrix = skeletonNode.matrix;
+              const skeletonMatrix = skeletonNode.matrix.invert()!;
               skeletonMatrix.mul(dst, { out: dst })
             }
+
             // mat4.identity({ out: dst })
           }
           this.skinningUbo.upload(this.skinningMatrices);

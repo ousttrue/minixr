@@ -11,7 +11,12 @@ export class Transform {
 
   private _translation = DEFAULT_TRANSLATION.copy();
   set translation(value: vec3) {
-    value.copy({ out: this._translation });
+    if (value instanceof vec3) {
+      value.copy({ out: this._translation });
+    }
+    else {
+      throw new Error('invalid')
+    }
     this._dirtyTRS = true;
     this.invalidate();
   }
@@ -21,7 +26,12 @@ export class Transform {
 
   private _rotation = DEFAULT_ROTATION.copy();
   set rotation(value: quat) {
-    value.copy({ out: this._rotation });
+    if (value instanceof quat) {
+      value.copy({ out: this._rotation });
+    }
+    else {
+      throw new Error('invalid')
+    }
     this._dirtyTRS = true;
     this.invalidate();
   }
@@ -31,7 +41,12 @@ export class Transform {
 
   private _scale = DEFAULT_SCALE.copy();
   set scale(value: vec3) {
-    value.copy({ out: this._scale });
+    if (value instanceof vec3) {
+      value.copy({ out: this._scale });
+    }
+    else {
+      throw new Error('invalid')
+    }
     this._dirtyTRS = true;
     this.invalidate();
   }
@@ -41,11 +56,13 @@ export class Transform {
 
   private _matrix = mat4.identity();
   set matrix(value: mat4) {
-    if (!value) {
-      throw new Error("no value");
+    if (value instanceof mat4) {
+      value.copy({ out: this._matrix });
+    }
+    else if (!value) {
+      throw new Error("invalid");
     }
 
-    value.copy({ out: this._matrix });
     this._dirtyTRS = false;
     // TODO: decompose
     this._translation.set(0, 0, 0);
@@ -55,10 +72,8 @@ export class Transform {
   }
   get matrix() {
     if (this._dirtyTRS) {
-      this._matrix.fromRotationTranslationScale(
-        this._rotation || DEFAULT_ROTATION,
-        this._translation || DEFAULT_TRANSLATION,
-        this._scale || DEFAULT_SCALE);
+      mat4.fromTRS(
+        this.translation, this.rotation, this.scale, { out: this._matrix })
     }
 
     if (this._dirtyTRS) {
