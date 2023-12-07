@@ -285,16 +285,15 @@ export class Scene {
         }
 
         for (const channel of animation.channels) {
-          // if (channel.target.path == 'translation') {
-          //   const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
-          //   const sampler = animation.samplers[channel.sampler];
-          //   const inputAccessor = this.glb.json.accessors![sampler.input];
-          //   const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-          //   const ouputAccessor = this.glb.json.accessors![sampler.output];
-          //   const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
-          //   nodeAnimation.translation = new Vec3Curve(input.array, output.array);
-          // } else
-          if (channel.target.path == 'rotation') {
+          if (channel.target.path == 'translation') {
+            const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
+            const sampler = animation.samplers[channel.sampler];
+            const inputAccessor = this.glb.json.accessors![sampler.input];
+            const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
+            const ouputAccessor = this.glb.json.accessors![sampler.output];
+            const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
+            nodeAnimation.translation = new Vec3Curve(input.array, output.array);
+          } else if (channel.target.path == 'rotation') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
             const inputAccessor = this.glb.json.accessors![sampler.input];
@@ -302,16 +301,15 @@ export class Scene {
             const ouputAccessor = this.glb.json.accessors![sampler.output];
             const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.rotation = new QuatCurve(input.array, output.array);
+          } else if (channel.target.path == 'scale') {
+            const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
+            const sampler = animation.samplers[channel.sampler];
+            const inputAccessor = this.glb.json.accessors![sampler.input];
+            const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
+            const ouputAccessor = this.glb.json.accessors![sampler.output];
+            const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
+            nodeAnimation.scale = new Vec3Curve(input.array, output.array);
           }
-          // if (channel.target.path == 'scale') {
-          //   const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
-          //   const sampler = animation.samplers[channel.sampler];
-          //   const inputAccessor = this.glb.json.accessors![sampler.input];
-          //   const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-          //   const ouputAccessor = this.glb.json.accessors![sampler.output];
-          //   const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
-          //   nodeAnimation.scale = new Vec3Curve(input.array, output.array);
-          // }
           else {
             throw new Error(`${channel.target.path} not implemented`);
           }
@@ -362,7 +360,6 @@ export class Scene {
     if (node.mesh != null) {
       const mesh = this.loader.meshes[node.mesh]
       this.world.create(matrix, mesh);
-      // console.log(i, mesh);
     }
     if (node.children) {
       for (const child of node.children) {
