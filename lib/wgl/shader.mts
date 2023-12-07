@@ -5,7 +5,7 @@ import type { WglBuffer } from './buffer.mjs';
 const GL = WebGL2RenderingContext;
 
 
-const VS = `#version 300 es
+export const VS = `#version 300 es
 precision mediump float;
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
@@ -31,7 +31,48 @@ void main()
 }
 `;
 
-const FS = `#version 300 es
+export const VS_SKINNING = `#version 300 es
+precision mediump float;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUv;
+layout(location = 3) in vec4 sJoints;
+layout(location = 4) in vec4 sWeights;
+out vec3 fPosition;
+out vec3 fNormal;
+out vec2 fUv;
+uniform mat4 uModel;
+
+layout (std140) uniform uEnv {
+  mat4 uView;
+  mat4 uProjection;
+  vec4 uLightPosDir;
+  vec4 uLightColor;
+};
+layout (std140) uniform uSkinning {
+  mat4 uSkin[256];
+};
+
+vec3 skinning()
+{
+  vec3 p = vec3(0,0,0);
+  p+=(uSkin[int(sJoints.x)] * vec4(aPosition,1)).xyz * sWeights.x;
+  p+=(uSkin[int(sJoints.y)] * vec4(aPosition,1)).xyz * sWeights.y;
+  p+=(uSkin[int(sJoints.z)] * vec4(aPosition,1)).xyz * sWeights.z;
+  p+=(uSkin[int(sJoints.w)] * vec4(aPosition,1)).xyz * sWeights.w;
+  return p;
+}
+
+void main()
+{
+  gl_Position = uProjection * uView * uModel * vec4(skinning(), 1);
+  fPosition = vec3(uModel * vec4(aPosition, 1.0));
+  fNormal = vec3(uModel * vec4(aNormal, 0));
+  fUv = aUv;
+}
+`;
+
+export const FS = `#version 300 es
 precision mediump float;
 in vec3 fPosition;
 in vec3 fNormal;
@@ -101,10 +142,10 @@ export class WglShader implements Disposable {
     return program;
   }
 
-  static createDefault(
-    gl: WebGL2RenderingContext): WglShader {
-    return WglShader.create(gl, VS, FS);
-  }
+  // static createDefault(
+  //   gl: WebGL2RenderingContext): WglShader {
+  //   return WglShader.create(gl, VS, FS);
+  // }
 
   link(vs: WebGLShader, fs: WebGLShader) {
     const gl = this.gl;

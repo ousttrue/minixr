@@ -35,13 +35,12 @@ export class WglVao implements Disposable {
     indices?: WglBuffer) {
     const vao = new WglVao(gl, indices?.componentType);
     gl.bindVertexArray(vao.vao);
-    let location = 0;
-    for (const a of attributes) {
+    for (let location = 0; location < attributes.length; ++location) {
+      const a = attributes[location];
       gl.bindBuffer(GL.ARRAY_BUFFER, a.buffer.buffer);
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(location, a.componentCount, a.componentType, false,
         a.bufferStride, a.bufferOffset);
-      ++location;
     }
 
     if (indices) {
@@ -51,6 +50,9 @@ export class WglVao implements Disposable {
     gl.bindVertexArray(null);
     gl.bindBuffer(GL.ARRAY_BUFFER, null);
     gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+    for (let location = 0; location < attributes.length; ++location) {
+      gl.disableVertexAttribArray(location);
+    }
     return vao;
   }
 

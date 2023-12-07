@@ -16,5 +16,12 @@ describe("mat4", () => {
     t.x = 2
     expect(m.m30).toEqual(2);
   });
+  test('mul', () => {
+    const l = mat4.fromTranslation(3, 2, 1);
+    const r = mat4.fromTranslation(1, 2, 3);
+    expect(l.mul(r, { out: r })).toEqual(mat4.fromTranslation(4, 4, 4));
+    expect(r).toEqual(mat4.fromTranslation(4, 4, 4));
+    expect(l).toEqual(mat4.fromTranslation(3, 2, 1));
+  });
 })
 

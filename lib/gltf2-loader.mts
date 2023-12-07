@@ -73,6 +73,17 @@ function getItemSize(accessor: GLTF2.Accessor): number {
   return getComponentCount(accessor.type) * getTypeSize(accessor.componentType)
 }
 
+function hasSkinning(primitives: Mesh[]) {
+  for (const primitive of primitives) {
+    for (const attrib of primitive.attributes) {
+      if (attrib.name == 'JOINTS_0') {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function toInterleavedSubmesh(primitives: Mesh[],
   totalVertexCount: number, totalIndexCount: number): Mesh {
 
@@ -85,7 +96,7 @@ function toInterleavedSubmesh(primitives: Mesh[],
     ? new Uint16Array(totalIndexCount)
     : null
     ;
-  const mesh = new Mesh([
+  const attributes = [
     new MeshVertexAttribute(
       'POSITION',
       vertices,
@@ -113,7 +124,31 @@ function toInterleavedSubmesh(primitives: Mesh[],
       24,
       false
     ),
-  ],
+  ]
+  if (hasSkinning(primitives)) {
+    // joints(xyzw), weights(xyzw)
+    const skinning = new BufferSource(
+      8, new Float32Array(totalVertexCount * 8));
+    attributes.push(new MeshVertexAttribute(
+      'JOINTS_0',
+      skinning,
+      4,
+      GL.FLOAT,
+      32,
+      0,
+      false
+    ));
+    attributes.push(new MeshVertexAttribute(
+      'WEIGHTS_0',
+      skinning,
+      4,
+      GL.FLOAT,
+      32,
+      16,
+      false
+    ));
+  }
+  const mesh = new Mesh(attributes,
     totalVertexCount,
     primitives.map(x => new SubMesh(
       x.submeshes[0].material,
@@ -455,6 +490,7 @@ export class Gltf2Loader {
             const accessorIndex = glPrimitive.attributes[name];
             const accessor = this.json.accessors[accessorIndex];
             const attribute = await this._primitiveAttributeFromAccessor(name, accessor);
+            console.log(attribute.toString());
             if (name == 'POSITION') {
               min = accessor.min;
               max = accessor.max;
@@ -462,6 +498,29 @@ export class Gltf2Loader {
               totalVertexCount += vertexCount;
             }
             attributes.push(attribute);
+            // if (name == 'WEIGHTS_0') {
+            //   for (let i = 0; i < accessor.count; i += 4) {
+            //     const w =
+            //       attribute.source.array[i]
+            //       + attribute.source.array[i + 1]
+            //       + attribute.source.array[i + 2]
+            //       + attribute.source.array[i + 3]
+            //     console.log(i, w);
+            //   }
+            // }
+            // if (name == 'JOINTS_0') {
+            //   const nodeCount = this.json.nodes!.length;
+            //   for (let i = 0; i < accessor.count; i += 4) {
+            //     const x = attribute.source.array[i];
+            //     if (x < 0 || x >= nodeCount) throw new Error("invalid joint");
+            //     const y = attribute.source.array[i + 1];
+            //     if (y < 0 || y >= nodeCount) throw new Error("invalid joint");
+            //     const z = attribute.source.array[i + 2];
+            //     if (z < 0 || z >= nodeCount) throw new Error("invalid joint");
+            //     const w = attribute.source.array[i + 3];
+            //     if (w < 0 || w >= nodeCount) throw new Error("invalid joint");
+            //   }
+            // }
           }
 
           const indexBuffer = await this._indexBufferFromAccessor(glPrimitive.indices);

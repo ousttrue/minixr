@@ -2,10 +2,11 @@ import React from 'react';
 import {
   vec3, vec4, mat4, OrbitView, PerspectiveProjection
 } from '../lib/math/gl-matrix.mjs';
-import { Mesh, Skin } from '../lib/buffer/mesh.mjs';
+import { Mesh, MeshVertexAttribute, Skin } from '../lib/buffer/mesh.mjs';
+import { BufferSource } from '../lib/buffer/buffersource.mjs';
 import { Material } from '../lib/materials/material.mjs';
-import { WglShader } from '../lib/wgl/shader.mjs';
-import { WglVao } from '../lib/wgl/geometry.mjs';
+import { WglShader, VS, FS, VS_SKINNING } from '../lib/wgl/shader.mjs';
+import { WglVao } from '../lib/wgl/vao.mjs';
 import { WglBuffer } from '../lib/wgl/buffer.mjs';
 import { Animation } from '../lib/animation.mjs';
 import { Scene } from '../lib/scene.mjs';
@@ -53,11 +54,15 @@ export class Renderer {
 
   meshVaoMap: Map<Mesh, WglVao> = new Map();
   materialShaderMap: Map<Material, WglShader> = new Map();
+  materialSkinningShaderMap: Map<Material, WglShader> = new Map();
 
   shader: WglShader | null = null;
 
   env = new Env();
   envUbo: WglBuffer;
+
+  skinningMatrices = new Float32Array(16 * 256);
+  skinningUbo: WglBuffer;
 
   color = vec4.fromValues(0.9, 0.9, 0.9, 1);
   materialUbo: WglBuffer;
@@ -70,6 +75,8 @@ export class Renderer {
       GL.UNIFORM_BUFFER, this.env.buffer.buffer);
     this.materialUbo = WglBuffer.create(gl,
       GL.UNIFORM_BUFFER, this.color.array);
+    this.skinningUbo = WglBuffer.create(gl,
+      GL.UNIFORM_BUFFER, this.skinningMatrices);
   }
 
   render(width: number, height: number, scene?: Scene) {
@@ -108,28 +115,36 @@ export class Renderer {
 
         const skin = world.get(entity, Skin)
         if (skin) {
-          const matrices = new Float32Array(skin.joints.length * 16)
-          for (let i = 0; i < skin.joints.length; ++i) {
+          let j = 0
+          for (let i = 0; i < skin.joints.length; ++i, j += 16) {
             const { joint, inverseBindMatrix } = skin.getJoint(i)
             const node = scene.nodeMap.get(joint)!
 
-            // world inv p
-            const dst = new mat4(matrices.subarray(i * 16, i * 16 + 16))
+            // world inv skeleton p
+            const dst = new mat4(this.skinningMatrices.subarray(j, j + 16))
             node.matrix.mul(inverseBindMatrix, { out: dst })
-
-            i += 16
+            if (skin.skeleton) {
+              const skeletonNode = scene.nodeMap.get(skin.skeleton)!
+              const skeletonMatrix = skeletonNode.matrix;
+              skeletonMatrix.mul(dst, { out: dst })
+            }
+            // mat4.identity({ out: dst })
           }
+          this.skinningUbo.upload(this.skinningMatrices);
         }
 
         let offset = 0
         for (const submesh of mesh.submeshes) {
 
-          const shader = this._getOrCreateShader(submesh.material);
+          const shader = this._getOrCreateShader(submesh.material, skin != null);
           shader.use();
 
           // update camera matrix
           shader.setUbo('uEnv', this.envUbo, 0);
           shader.setUbo('uMaterial', this.materialUbo, 1);
+          if (skin) {
+            shader.setUbo('uSkinning', this.skinningUbo, 2);
+          }
           shader.setMatrix('uModel', matrix);
 
           vao.draw(submesh.drawCount, offset);
@@ -152,58 +167,65 @@ export class Renderer {
     }
 
     {
-      const vertices = mesh.attributes[0]!.source;
-      const vbo = WglBuffer.create(this.gl,
-        GL.ARRAY_BUFFER, vertices.array);
-      const vao = WglVao.create(this.gl, [
-        {
-          name: 'POSITION',
-          buffer: vbo,
-          bufferStride: 8 * 4,
-          bufferOffset: 0,
-          componentCount: 3,
-          componentType: GL.FLOAT,
-        },
-        {
-          name: 'NORMAL',
-          buffer: vbo,
-          bufferStride: 8 * 4,
-          bufferOffset: 12,
-          componentCount: 3,
-          componentType: GL.FLOAT,
-        },
-        {
-          name: 'TEXCOORD_0',
-          buffer: vbo,
-          bufferStride: 8 * 4,
-          bufferOffset: 24,
-          componentCount: 2,
-          componentType: GL.FLOAT,
+      let indices: WglBuffer | undefined = undefined;
+      const vboMap: Map<BufferSource, WglBuffer> = new Map();
+      for (const attr of mesh.attributes) {
+        let vbo = vboMap.get(attr.source);
+        if (!vbo) {
+          vbo = WglBuffer.create(this.gl,
+            GL.ARRAY_BUFFER, attr.source.array);
+          vboMap.set(attr.source, vbo);
         }
-      ], mesh.indices
-        ? WglBuffer.create(this.gl, GL.ELEMENT_ARRAY_BUFFER,
-          mesh.indices.array, mesh.indices.glType)
-        : undefined
-      );
+      }
+      if (mesh.indices) {
+        indices = WglBuffer.create(this.gl,
+          GL.ELEMENT_ARRAY_BUFFER, mesh.indices.array, mesh.indices.glType);
+      }
 
+      const vao = WglVao.create(this.gl, mesh.attributes.map(
+        x => {
+          return {
+            name: x.name,
+            buffer: vboMap.get(x.source)!,
+            bufferStride: x.stride,
+            bufferOffset: x.byteOffset,
+            componentCount: x.componentCount,
+            componentType: x.componentType,
+          }
+        }
+      ), indices);
       this.meshVaoMap.set(mesh, vao);
       return vao;
     }
   }
 
   private _getOrCreateShader(
-    material: Material): WglShader {
-    {
-      const shader = this.materialShaderMap.get(material);
-      if (shader) {
+    material: Material, hasSKinning: boolean): WglShader {
+    if (hasSKinning) {
+      {
+        const shader = this.materialSkinningShaderMap.get(material);
+        if (shader) {
+          return shader;
+        }
+      }
+      {
+        const shader = WglShader.create(this.gl, VS_SKINNING, FS);
+        this.materialSkinningShaderMap.set(material, shader);
         return shader;
       }
     }
-
-    {
-      const shader = WglShader.createDefault(this.gl);
-      this.materialShaderMap.set(material, shader);
-      return shader;
+    else {
+      {
+        const shader = this.materialShaderMap.get(material);
+        if (shader) {
+          return shader;
+        }
+      }
+      {
+        const shader = WglShader.create(this.gl, VS, FS);
+        this.materialShaderMap.set(material, shader);
+        return shader;
+      }
     }
   }
 }

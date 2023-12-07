@@ -2,19 +2,26 @@ import { World } from '../lib/uecs/index.mjs';
 import { vec3, quat, mat4 } from '../lib/math/gl-matrix.mjs';
 import type { BufferSourceArray } from '../lib/buffer/buffersource.mts';
 import { Animation } from '../lib/animation.mjs';
-const tmp = new mat4();
 import { Glb } from '../lib/glb.mjs';
 import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
 
 
 class TRSNode {
+  // local transform
   t: vec3 = vec3.fromValues(0, 0, 0);
   r: quat = quat.fromValues(0, 0, 0, 1);
   s: vec3 = vec3.fromValues(1, 1, 1);
+
   children: TRSNode[] = []
   constructor(
+    public readonly name: string,
+    // world matrix
     public readonly matrix: mat4,
   ) { }
+
+  toString(): string {
+    return `[${this.name}]`;
+  }
 
   updateRecursive(parent?: mat4) {
     mat4.fromTRS(this.t, this.r, this.s, { out: this.matrix })
@@ -215,8 +222,10 @@ class SceneAnimation {
       }
 
     });
+  }
 
-    console.log(this.endTime);
+  toString(): string {
+    return `${this.endTime}sec`
   }
 
   update(time: number) {
@@ -235,7 +244,7 @@ class SceneAnimation {
 
 export class Scene {
   world = new World();
-  root = new TRSNode(mat4.identity());
+  root = new TRSNode('__root__', mat4.identity());
   nodeMap: Map<number, TRSNode> = new Map();
   startTime = Date.now();
 
@@ -272,13 +281,11 @@ export class Scene {
             throw new Error(`no node`);
           }
           {
-            const animation = nodeAnimationMap.get(node);
+            let animation = nodeAnimationMap.get(node);
             if (animation) {
               return animation;
             }
-          }
-          {
-            const animation = new NodeAnimation();
+            animation = new NodeAnimation();
             nodeAnimationMap.set(node, animation);
             return animation;
           }
@@ -315,13 +322,12 @@ export class Scene {
           }
         }
 
-        console.log(nodeAnimationMap);
-
         const sceneAnimation = new SceneAnimation(
           nodeAnimationMap,
           this.nodeMap,
           this.root,
         );
+        console.log(`${sceneAnimation}`);
 
         this.world.create(new Animation((time) => sceneAnimation.update(time)));
       }
@@ -335,8 +341,8 @@ export class Scene {
     }
     const node = gltf.nodes[i];
 
-    const matrix = mat4.identity();
-    const trsNode = new TRSNode(matrix);
+    const matrix = mat4.identity()
+    const trsNode = new TRSNode(node.name, matrix);
     this.nodeMap.set(i, trsNode);
     if (node.matrix) {
       matrix.array.set(node.matrix);
@@ -353,6 +359,7 @@ export class Scene {
       }
       mat4.fromTRS(trsNode.t, trsNode.r, trsNode.s, { out: matrix })
     }
+
     if (parent) {
       parent.mul(matrix, { out: matrix })
     }

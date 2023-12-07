@@ -136,3 +136,7 @@ export class Material {
     return [];
   }
 }
+
+// @ts-ignore
+export const DefaultMaterial = {};
+

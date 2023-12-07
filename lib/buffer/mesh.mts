@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
-import { Material } from '../materials/material.mjs';
+import { Material, DefaultMaterial } from '../materials/material.mjs';
 import { BufferSource, BufferSourceArray } from './buffersource.mjs';
 
 
@@ -28,9 +28,19 @@ const GL = WebGL2RenderingContext; // For enums
 function getComponentSize(componentType: number) {
   switch (componentType) {
     case GL.FLOAT: return 4;
+    case GL.UNSIGNED_BYTE: return 1;
+    case GL.UNSIGNED_SHORT: return 2;
     case GL.UNSIGNED_INT: return 4;
     default: throw new Error(`unknown component type: ${componentType}`);
   }
+}
+
+
+const TypeMap = {
+  [GL.FLOAT]: 'f32',
+  [GL.UNSIGNED_BYTE]: 'u8',
+  [GL.UNSIGNED_SHORT]: 'u16',
+  [GL.UNSIGNED_INT]: 'u32',
 }
 
 
@@ -47,6 +57,10 @@ export class MeshVertexAttribute {
     if (this.stride == 0) {
       // console.warn(name, 'stride=0');
     }
+  }
+
+  toString(): string {
+    return `${TypeMap[this.componentType]}[${this.componentCount}]`;
   }
 
   calcStride(): number {
@@ -113,10 +127,10 @@ export class Mesh {
 
     if (this.submeshes.length == 0) {
       if (indices) {
-        this.submeshes.push(new SubMesh(null, indices.length));
+        this.submeshes.push(new SubMesh(DefaultMaterial, indices.length));
       }
       else {
-        this.submeshes.push(new SubMesh(null, vertexCount));
+        this.submeshes.push(new SubMesh(DefaultMaterial, vertexCount));
       }
     }
   }
@@ -124,6 +138,11 @@ export class Mesh {
   setVertices(offset: number, attribute: MeshVertexAttribute) {
     for (const lhs of this.attributes) {
       if (lhs.name == attribute.name) {
+        const lStride = lhs.calcStride();
+        const rStride = attribute.calcStride();
+        // if (lStride != rStride) {
+        //   console.log(`${lhs.name}: ${lStride} => ${rStride}`)
+        // }
         for (let i = 0; i < attribute.source.length; ++i) {
           const src = attribute.getItem(i);
           lhs.setItem(offset + i, src);
@@ -131,6 +150,7 @@ export class Mesh {
         return;
       }
     }
+    console.warn(`skip: ${attribute.name}`)
   }
 
   setIndices(vertexOffset: number, indexOffset: number, indices: BufferSource) {
