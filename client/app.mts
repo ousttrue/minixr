@@ -92,12 +92,13 @@ class AppSession {
     textgrid.puts(0, 0.1, this.viewspace.toString());
 
     // await this._loadGltf('assets', 'garage');
-    // await this._loadGltf('glTF-Sample-Models', 'CesiumMan');
-    await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', mat4.fromTRS(
-      vec3.fromValues(0, 1, -3),
+    const m = mat4.fromTRS(
+      vec3.fromValues(0, 0, -2),
       new quat(),
       vec3.fromValues(1, 1, 1)
-    ));
+    )
+    await this._loadGltf('glTF-Sample-Models', 'CesiumMan', m);
+    // await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', );
   }
 
   private async _loadGltf(dir: string, name: string, origin?: mat4) {
