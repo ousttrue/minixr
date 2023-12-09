@@ -1,7 +1,7 @@
 import { BoxBuilder } from '../buffer/box-builder.mjs';
 import { vec3, quat, mat4 } from '../../../lib/math/gl-matrix.mjs';
 import { Spinner } from '../component/spinner.mjs';
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../../../lib/uecs/index.mjs';
 import { HoverPassive, HoverMaterial } from '../component/hover.mjs';
 import { CubeInstancing } from './cube-instance.mjs';
 

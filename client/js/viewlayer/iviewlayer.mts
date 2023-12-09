@@ -1,4 +1,4 @@
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../../../lib/uecs/index.mjs';
 
 
 // reder type

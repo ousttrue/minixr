@@ -1,9 +1,9 @@
 import { IViewLayer } from './iviewlayer.mjs';
 import { Renderer } from '../render/renderer.mjs';
 import { InlineViewerHelper } from '../util/inline-viewer-helper.mjs';
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../../../lib/uecs/index.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Mesh } from '../../../lib/buffer/primitive.mjs';
+import { Mesh } from '../../../lib/buffer/mesh.mjs';
 
 
 const GL = WebGL2RenderingContext;

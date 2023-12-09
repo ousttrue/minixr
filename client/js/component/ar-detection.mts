@@ -1,5 +1,5 @@
 import { Shader } from '../../../lib/materials/shader.mjs';
-import { Entity } from '../third-party/uecs-0.4.2/index.mjs';
+import { Entity } from '../../../lib/uecs/index.mjs';
 
 
 export const ArOcclusionShader: Shader = {

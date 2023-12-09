@@ -1,4 +1,4 @@
-import { Mesh } from '../../../lib/buffer/primitive.mjs';
+import { Mesh } from '../../../lib/buffer/mesh.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { Program } from './program.mjs';
 

@@ -21,7 +21,7 @@
 import { mat4, vec3 } from '../../../lib/math/gl-matrix.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
 import { MaterialState, CAP } from '../../../lib/materials/materialstate.mjs';
-import { Mesh } from '../../../lib/buffer/primitive.mjs';
+import { Mesh } from '../../../lib/buffer/mesh.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { Vao, Vbo, Ibo } from './vao.mjs';
 import { Program, ProgramFactory } from './program.mjs';

@@ -1,5 +1,5 @@
 import { vec3, mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../../../lib/uecs/index.mjs';
 
 export class Rotater {
   constructor(public readonly callback: Function | null = null) {

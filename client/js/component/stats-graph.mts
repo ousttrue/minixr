@@ -27,10 +27,10 @@ your scene.
 
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
-import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/mesh.mjs';
 import { vec3, mat4, BoundingBox } from '../../../lib/math/gl-matrix.mjs';
 import { Stats, now } from './stats-viewer.mjs';
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../../../lib/uecs/index.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 
 

@@ -19,7 +19,7 @@
 // SOFTWARE.
 import { Shader, MULTIVIEW_VP, DEFAULT_VP } from '../../../lib/materials/shader.mjs';
 import { Material, ProgramDefine } from '../../../lib/materials/material.mjs';
-import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh } from '../../../lib/buffer/mesh.mjs';
 import { Texture } from '../../../lib/materials/texture.mjs';
 import { Ubo, UboMap } from './ubo.mjs';
 

@@ -1,5 +1,5 @@
 import { vec3, mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { World, Entity } from '../third-party/uecs-0.4.2/index.mjs';
+import { World, Entity } from '../../../lib/uecs/index.mjs';
 import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material, MaterialUniform4f } from '../../../lib/materials/material.mjs';
 

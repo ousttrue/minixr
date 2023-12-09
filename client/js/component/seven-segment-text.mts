@@ -27,10 +27,10 @@ import { Shader } from '../../../lib/materials/shader.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
 import {
   Mesh, MeshVertexAttribute, SubMesh, Instancing
-} from '../../../lib/buffer/primitive.mjs';
+} from '../../../lib/buffer/mesh.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 import { SevenSegmentDefinition } from './seven-segment-definition.mjs';
-import { World } from '../third-party/uecs-0.4.2/index.mjs';
+import { World } from '../../../lib/uecs/index.mjs';
 import { Stats, now } from './stats-viewer.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
 

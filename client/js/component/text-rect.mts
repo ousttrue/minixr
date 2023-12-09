@@ -1,6 +1,6 @@
 import { Material } from '../../../lib/materials/material.mjs';
 import { Shader } from '../../../lib/materials/shader.mjs';
-import { Mesh, MeshVertexAttribute, SubMesh, Instancing } from '../../../lib/buffer/primitive.mjs';
+import { Mesh, MeshVertexAttribute, SubMesh, Instancing } from '../../../lib/buffer/mesh.mjs';
 import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
 
 const GL = WebGLRenderingContext; // For enums

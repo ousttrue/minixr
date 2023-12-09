@@ -23,7 +23,7 @@ Node for displaying 360 equirect images as a skybox.
 */
 
 import { Material, RENDER_ORDER } from '../material.mjs';
-import { Primitive, PrimitiveAttribute } from '../geometry/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../geometry/mesh.mjs';
 import { Node } from '../node.mjs';
 import { UrlTexture } from '../../render/texture.mjs';
 

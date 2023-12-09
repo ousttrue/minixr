@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { Primitive } from '../buffer/primitive.mjs';
+import { Primitive } from '../buffer/mesh.mjs';
 import { mat4, vec3, quat, Ray, Transform } from '../../math/gl-matrix.mjs';
 
 export type ActionType = 'active' | 'passive';

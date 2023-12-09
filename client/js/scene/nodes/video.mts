@@ -23,7 +23,7 @@ Node for displaying 2D or stereo videos on a quad.
 */
 
 import { Material } from '../material.mjs';
-import { Primitive, PrimitiveAttribute } from '../buffer/primitive.mjs';
+import { Primitive, PrimitiveAttribute } from '../buffer/mesh.mjs';
 import { Node } from '../node.mjs';
 import { VideoTexture } from '../../render/texture.mjs';
 import { vec3, BoundingBox } from '../../math/gl-matrix.mjs';

@@ -10,7 +10,7 @@ import { cubeSeaFactory } from './js/component/cube-sea.mjs';
 import { interactionFactory } from './js/component/interaction.mjs';
 // import { XRTerm } from './js/xterm/xrterm.mjs';
 import { bitmapFontFactory } from './js/component/bitmap-font.mjs';
-import { World } from './js/third-party/uecs-0.4.2/index.mjs';
+import { World } from './js/../../lib/uecs/index.mjs';
 import { Rotater } from './js/component/rotater.mjs';
 import { Spinner } from './js/component/spinner.mjs';
 import { HandTracking } from './js/component/hand-tracking.mjs';

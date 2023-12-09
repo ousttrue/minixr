@@ -1,5 +1,5 @@
 import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
-import { World } from './js/third-party/uecs-0.4.2/index.mjs';
+import { World } from '../lib/uecs/index.mjs';
 import { vec3, quat, mat4 } from '../lib/math/gl-matrix.mjs';
 import type * as GLTF2 from '../lib/GLTF2.d.ts';
 
@@ -44,8 +44,8 @@ function _processNodes(world: World,
     const primitive = loader.meshes[glNode.mesh];
     // for (const primitive of mesh.primitives) {
 
-      world.create(matrix, primitive);
-      ++prims;
+    world.create(matrix, primitive);
+    ++prims;
     // }
   }
 
