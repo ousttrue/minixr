@@ -5,73 +5,90 @@ import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
 
 
 type State = {
-  status: string;
-  file: File | null;
-  reader: FileReader | null;
-  glb: Glb | null;
-  scene: Scene | null;
+  status: string
+  loader: Gltf2Loader | null
+  scene: Scene | null
 }
 
 
 type Action = {
-  setFile: (file: File) => void;
-  setBytes: (bytes: ArrayBuffer) => void;
-  setScene: (scene: Scene) => void;
+  setItems: (items: DataTransferItemList) => void
+  setLoader: (loader: Gltf2Loader) => void
+  setScene: (scene: Scene) => void
 }
 
 
-export const useStore = create<State & Action>((set) => ({
+export const useStore = create<State & Action>((set, get) => ({
   status: 'no file',
-  file: null,
-  reader: null,
-  glb: null,
+  loader: null,
   scene: null,
 
-  setFile: (file: File) => set((state) => {
-    if (file instanceof File) {
-      // File => ArrayBuffer
-      const reader = new FileReader()
-      reader.onabort = () => console.log('file reading was aborted')
-      reader.onerror = () => console.log('file reading has failed')
-      reader.onload = () => {
-        const bytes = reader.result;
-        if (bytes instanceof ArrayBuffer) {
-          state.setBytes(bytes);
+  setItems: async (items: DataTransferItemList) => {
+    if (items.length == 1) {
+      const handle = await items[0].getAsFileSystemHandle();
+      if (handle instanceof FileSystemFileHandle) {
+        const file = await handle.getFile();
+        if (file) {
+          const bytes = await file.arrayBuffer();
+          try {
+            const glb = Glb.parse(bytes);
+            const loader = new Gltf2Loader(glb.json, { binaryChunk: glb.bin });
+            get().setLoader(loader);
+            set({
+              status: 'glb',
+            })
+          }
+          catch (err) {
+            const decoder = new TextDecoder();
+            const text = decoder.decode(bytes);
+            const json = JSON.parse(text);
+            const loader = new Gltf2Loader(json, {});
+            get().setLoader(loader);
+            set({
+              status: 'gltf',
+            })
+          }
         }
       }
-      reader.readAsArrayBuffer(file);
-      return {
-        status: `file: ${file.name}`,
-        reader: reader,
-      };
+      else if (handle instanceof FileSystemDirectoryHandle) {
+        set({
+          status: 'directory',
+        })
+      }
+      else {
+        set({
+          status: 'not file',
+        })
+      }
     }
     else {
-      return {
-        status: 'no file',
-      };
+      set({
+        status: 'multi',
+      })
     }
-  }),
+  },
 
-  setBytes: (bytes: ArrayBuffer) => set((state) => {
-    const glb = Glb.parse(bytes);
-    if (glb) {
-      const loader = new Gltf2Loader(glb.json, { binaryChunk: glb.bin });
-      loader.load().then(() => {
-        const scene = new Scene(glb, loader);
-        state.setScene(scene);
-      });
-      return {
-        glb
-      };
-    }
-    else {
-      return {};
-    }
-  }),
+  setLoader: (loader: Gltf2Loader) => {
+    loader.load().then(() => {
+      const scene = new Scene(loader);
+      get().setScene(scene);
+    }).catch((err) => {
+      console.log(err);
+      set({
+        status: `error: ${err}`
+      })
+    });
+    set({
+      status: 'load',
+      loader
+    });
+  },
 
-  setScene: (scene: Scene) => set((state) => {
-    scene.load().then(() => {
+  setScene: async (scene: Scene) => {
+    await scene.load()
+    set({
+      status: 'scene',
+      scene
     })
-    return { scene }
-  })
+  },
 }));

@@ -2,7 +2,6 @@ import { World } from '../lib/uecs/index.mjs';
 import { vec3, quat, mat4 } from '../lib/math/gl-matrix.mjs';
 import type { BufferSourceArray } from '../lib/buffer/buffersource.mts';
 import { Animation } from '../lib/animation.mjs';
-import { Glb } from '../lib/glb.mjs';
 import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
 import { TrsNode } from './node.mjs';
 
@@ -222,7 +221,6 @@ export class Scene {
   startTime = Date.now();
 
   constructor(
-    public readonly glb: Glb,
     public readonly loader: Gltf2Loader,
   ) {
   }
@@ -234,7 +232,7 @@ export class Scene {
   }
 
   async load() {
-    const gltf = this.glb.json;
+    const gltf = this.loader.json;
     if (gltf.scenes) {
       for (const scene of gltf.scenes) {
         if (scene.nodes) {
@@ -268,25 +266,25 @@ export class Scene {
           if (channel.target.path == 'translation') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.glb.json.accessors![sampler.input];
+            const inputAccessor = this.loader.json.accessors![sampler.input];
             const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.glb.json.accessors![sampler.output];
+            const ouputAccessor = this.loader.json.accessors![sampler.output];
             const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.translation = new Vec3Curve(input.array, output.array);
           } else if (channel.target.path == 'rotation') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.glb.json.accessors![sampler.input];
+            const inputAccessor = this.loader.json.accessors![sampler.input];
             const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.glb.json.accessors![sampler.output];
+            const ouputAccessor = this.loader.json.accessors![sampler.output];
             const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.rotation = new QuatCurve(input.array, output.array);
           } else if (channel.target.path == 'scale') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.glb.json.accessors![sampler.input];
+            const inputAccessor = this.loader.json.accessors![sampler.input];
             const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.glb.json.accessors![sampler.output];
+            const ouputAccessor = this.loader.json.accessors![sampler.output];
             const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.scale = new Vec3Curve(input.array, output.array);
           }
@@ -308,7 +306,7 @@ export class Scene {
   }
 
   loadNode(i: number, parent?: mat4): TrsNode {
-    const gltf = this.glb.json;
+    const gltf = this.loader.json;
     if (!gltf.nodes) {
       throw new Error("no nodes");
     }
