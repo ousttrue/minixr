@@ -19,7 +19,8 @@ import { BoundsRenderer } from './js/component/bounds-renderer.mjs';
 import { animationSystem } from './js/component/animation.mjs';
 import { createViewLayer } from './js/viewlayer/index.mjs';
 import { CubeInstancing } from './js/component/cube-instance.mjs';
-import { buildGltf } from './gltf2-builder.mjs';
+import { Scene } from '../lib/scene.mjs';
+import { Animation } from '../lib/animation.mjs';
 
 
 class AppSession {
@@ -93,7 +94,7 @@ class AppSession {
 
     // await this._loadGltf('assets', 'garage');
     const m = mat4.fromTRS(
-      vec3.fromValues(0, 0, -2),
+      vec3.fromValues(1, 0, -2),
       new quat(),
       vec3.fromValues(1, 1, 1)
     )
@@ -104,12 +105,14 @@ class AppSession {
   private async _loadGltf(dir: string, name: string, origin?: mat4) {
     if (dir == 'assets') {
       const loader = await Gltf2Loader.loadFromUrl(`./assets/gltf/${name}/${name}.gltf`);
-      await buildGltf(this.world, loader, origin);
+      const scene = new Scene(loader, this.world);
+      await scene.load(origin);
     }
     else if (dir == 'glTF-Sample-Models') {
       const loader = await Gltf2Loader.loadFromUrl(
         `./glTF-Sample-Models/2.0/${name}/glTF-Binary/${name}.glb`);
-      await buildGltf(this.world, loader, origin);
+      const scene = new Scene(loader, this.world);
+      await scene.load(origin);
     }
   }
 
@@ -138,6 +141,10 @@ class AppSession {
     this._detection(xrRefSpace, frame);
     hoverSystem(this.world);
     animationSystem(this.world);
+
+    this.world.view(Animation).each((_entity, animation) => {
+      animation.update(time);
+    });
 
     if (session.visibilityState === 'visible-blurred') {
       return;

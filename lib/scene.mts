@@ -215,14 +215,16 @@ class SceneAnimation {
 
 
 export class Scene {
-  world = new World();
+  world: World;
   root = new TrsNode('__root__', mat4.identity());
   nodeMap: Map<number, TrsNode> = new Map();
   startTime = Date.now();
 
   constructor(
     public readonly loader: Gltf2Loader,
+    world?: World,
   ) {
+    this.world = world ?? new World();
   }
 
   get timeSeconds(): number {
@@ -231,16 +233,20 @@ export class Scene {
     return t * 0.001;
   }
 
-  async load() {
+  async load(origin?: mat4) {
     const gltf = this.loader.json;
     if (gltf.scenes) {
+      if (origin) {
+        this.root.transform.matrix = origin;
+      }
       for (const scene of gltf.scenes) {
         if (scene.nodes) {
           for (const i of scene.nodes) {
-            this.root.children.push(this.loadNode(i));
+            this.root.children.push(this.loadNode(i, this.root.matrix));
           }
         }
       }
+      this.root.updateRecursive()
     }
 
     if (gltf.animations) {

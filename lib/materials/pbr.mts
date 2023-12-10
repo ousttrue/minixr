@@ -27,7 +27,6 @@ export const ATTRIB: { [key: string]: number } = {
   NORMAL: 2,
   TANGENT: 3,
   TEXCOORD_0: 4,
-  TEXCOORD_1: 5,
   COLOR_0: 6,
 };
 
@@ -36,14 +35,14 @@ export const ATTRIB_MASK: { [key: string]: number } = {
   NORMAL: 0x0002,
   TANGENT: 0x0004,
   TEXCOORD_0: 0x0008,
-  TEXCOORD_1: 0x0010,
   COLOR_0: 0x0020,
 };
 
 const VERTEX_SOURCE = `
 
-in vec3 POSITION, NORMAL;
-in vec2 TEXCOORD_0, TEXCOORD_1;
+layout(location = 0) in vec3 POSITION;
+layout(location = 1) in vec3 NORMAL;
+layout(location = 2) in vec2 TEXCOORD_0;
 
 uniform vec3 CAMERA_POSITION;
 uniform vec3 LIGHT_DIRECTION;
