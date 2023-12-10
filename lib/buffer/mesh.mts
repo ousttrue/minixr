@@ -103,7 +103,8 @@ export class Instancing {
 
   constructor(
     public readonly instanceAttributes: MeshVertexAttribute[]
-  ) { }
+  ) {
+  }
 }
 
 
@@ -112,37 +113,33 @@ export class Mesh {
 
   constructor(
     public readonly attributes: MeshVertexAttribute[],
-    public vertexCount: number,
+    public readonly vertexCount: number,
     public readonly submeshes: SubMesh[] = [],
-    public indices?: BufferSource,
-    public options?: {
-      min?: any,
-      max?: any,
-    },
+    public readonly indices?: BufferSource,
     public readonly instancing?: Instancing,
   ) {
-    if (options?.min && options?.max) {
-      this.bb.expand(vec3.fromValues(
-        options.min[0], options.min[1], options.min[2]));
-      this.bb.expand(vec3.fromValues(
-        options.max[0], options.max[1], options.max[2]));
-    }
-    else {
-      for (const attr of attributes) {
-        if (attr.name == 'POSITION') {
-          attr.source.updateBBFromPositions(this.bb);
-        }
-      }
-    }
+    // if (options?.min && options?.max) {
+    //   this.bb.expand(vec3.fromValues(
+    //     options.min[0], options.min[1], options.min[2]));
+    //   this.bb.expand(vec3.fromValues(
+    //     options.max[0], options.max[1], options.max[2]));
+    // }
+    // else {
+    //   for (const attr of attributes) {
+    //     if (attr.name == 'POSITION') {
+    //       attr.source.updateBBFromPositions(this.bb);
+    //     }
+    //   }
+    // }
 
-    if (this.submeshes.length == 0) {
-      if (indices) {
-        this.submeshes.push(new SubMesh(DefaultMaterial, indices.length));
-      }
-      else {
-        this.submeshes.push(new SubMesh(DefaultMaterial, vertexCount));
-      }
-    }
+    // if (this.submeshes.length == 0) {
+    //   if (indices) {
+    //     this.submeshes.push(new SubMesh(DefaultMaterial, indices.length));
+    //   }
+    //   else {
+    //     this.submeshes.push(new SubMesh(DefaultMaterial, vertexCount));
+    //   }
+    // }
   }
 
   setVertices(offset: number, attribute: MeshVertexAttribute) {

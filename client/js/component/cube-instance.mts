@@ -348,7 +348,7 @@ export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
   const primitive = new Mesh(
     attributes, vertices.length / 8,
     [new SubMesh(material, indices.length)],
-    new BufferSource(1, indices), {},
+    new BufferSource(1, indices),
     new Instancing(instanceAttributes)
   );
 

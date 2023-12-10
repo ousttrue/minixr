@@ -17,6 +17,7 @@ export type VertexAttribute = {
 
 export class WglVao implements Disposable {
   vao: WebGLVertexArrayObject;
+  attributeBinds: string[] = [];
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly attributes: VertexAttribute[],
@@ -29,25 +30,30 @@ export class WglVao implements Disposable {
     }
 
     gl.bindVertexArray(this.vao);
-    let location = 0;
+    let location = 0
     for (let i = 0; i < attributes.length; ++i, ++location) {
       const a = attributes[i];
+      // const location = program.attrib[a.name];
       gl.bindBuffer(GL.ARRAY_BUFFER, a.buffer.buffer);
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(location, a.componentCount, a.componentType, false,
         a.bufferStride, a.bufferOffset);
       gl.vertexAttribDivisor(location, 0)
+      this.attributeBinds.push(a.name);
     }
     if (instances) {
       for (let i = 0; i < instances.length; ++i, ++location) {
         const a = instances[i];
+        // const location = program.attrib[a.name];
         gl.bindBuffer(GL.ARRAY_BUFFER, a.buffer.buffer);
         gl.enableVertexAttribArray(location);
         gl.vertexAttribPointer(location, a.componentCount, a.componentType, false,
           a.bufferStride, a.bufferOffset);
         gl.vertexAttribDivisor(location, 1)
+        this.attributeBinds.push(a.name);
       }
     }
+    // console.log(this.attributeBinds);
 
     if (indices) {
       gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, indices.buffer);
@@ -73,23 +79,21 @@ export class WglVao implements Disposable {
     this.gl.bindVertexArray(null);
   }
 
-  draw(mode: DrawMode, count: number, offset: number = 0, instanceCount?: number) {
-    if (instanceCount != null) {
-      if (instanceCount > 0) {
-        if (this.indices) {
-          this.gl.drawElementsInstanced(mode, count, this.indices.componentType!, offset, instanceCount);
-        } else {
-          this.gl.drawArraysInstanced(mode, offset, count, instanceCount);
-        }
-      }
+  draw(mode: DrawMode, count: number, offset: number = 0) {
+    if (this.indices) {
+      this.gl.drawElements(mode, count, this.indices.componentType!, offset);
     }
     else {
-      if (this.indices) {
-        this.gl.drawElements(mode, count, this.indices.componentType!, offset);
-      }
-      else {
-        this.gl.drawArrays(mode, offset, count);
-      }
+      this.gl.drawArrays(mode, offset, count);
+    }
+  }
+
+  drawInstancing(mode: DrawMode, count: number, offset: number, instanceCount: number) {
+    if (this.indices) {
+      this.gl.drawElementsInstanced(mode, count,
+        this.indices.componentType!, offset, instanceCount);
+    } else {
+      this.gl.drawArraysInstanced(mode, offset, count, instanceCount);
     }
   }
 }

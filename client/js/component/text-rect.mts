@@ -131,7 +131,6 @@ export class TextRect extends Node {
     const primitive = new Mesh(attributes, 4,
       [new SubMesh(material, indices.length)],
       new BufferSource(1, indices),
-      {},
       new Instancing(instanceAttributes),
     );
 

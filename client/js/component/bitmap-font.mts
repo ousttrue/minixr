@@ -157,7 +157,6 @@ export async function bitmapFontFactory(world: World, pos: vec3): Promise<TextGr
     attributes, 4,
     [new SubMesh(material, ibo.length)],
     new BufferSource(1, ibo),
-    {},
     instancing
   );
 

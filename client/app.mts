@@ -79,18 +79,18 @@ class AppSession {
         vec3.fromValues(0.3, 0.3, 0.3),
       );
       await StatsGraph.factory(this.world, matrix);
-      // await SevenSegmentText.factory(this.world, matrix);
+      await SevenSegmentText.factory(this.world, matrix);
     }
 
     const instancing = new CubeInstancing(65535, this.world);
 
-    // await HandTracking.factory(this.world, instancing, "left");
-    // await HandTracking.factory(this.world, instancing, "right");
-    // await interactionFactory(this.world, instancing);
-    // await cubeSeaFactory(this.world, instancing, 6, 0.5)
+    await HandTracking.factory(this.world, instancing, "left");
+    await HandTracking.factory(this.world, instancing, "right");
+    await interactionFactory(this.world, instancing);
+    await cubeSeaFactory(this.world, instancing, 6, 0.5)
     const textgrid = await bitmapFontFactory(this.world, vec3.fromValues(0.2, 1.2, -0.4));
-    // textgrid.puts(0, 0, window.navigator.userAgent);
-    // textgrid.puts(0, 0.1, this.viewspace.toString());
+    textgrid.puts(0, 0, window.navigator.userAgent);
+    textgrid.puts(0, 0.1, this.viewspace.toString());
 
     await this._loadGltf('assets', 'garage');
     const m = mat4.fromTRS(

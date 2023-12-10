@@ -75,19 +75,20 @@ export class Renderer {
   _ubo: WglBuffer;
 
   constructor(
-    private readonly gl: WebGL2RenderingContext,
-    multiview = false,
+    public readonly gl: WebGL2RenderingContext,
+    public readonly multiview = false,
   ) {
     this._ubo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
   }
 
-  private _getOrCreateProgram(submesh: SubMesh): WglShader {
+  private _getOrCreateProgram(submesh: SubMesh, attributesBinds: string[]): WglShader {
     let shader = this._shaderMap.get(submesh);
     if (shader) {
       return shader;
     }
 
-    shader = new ModShader(this.gl, submesh.material.shader);
+    shader = new ModShader(
+      this.gl, submesh.material.shader, undefined, this.multiview, attributesBinds);
     this._shaderMap.set(submesh, shader);
     return shader;
   }
@@ -162,7 +163,7 @@ export class Renderer {
     vao = new WglVao(this.gl,
       mesh.attributes.map(createAttribute),
       ibo,
-      mesh.instancing?.instanceAttributes.map(createAttribute));
+      (mesh.instancing) ? mesh.instancing.instanceAttributes.map(createAttribute) : []);
     this._primVaoMap.set(mesh, vao);
     return vao;
   }
@@ -182,13 +183,13 @@ export class Renderer {
     const vao = this._getOrCreateMesh(mesh);
 
     if (vao != state.prevVao) {
-      vao.bind();
       state.prevVao = vao;
     }
 
+    vao.bind();
     let drawOffset = 0
     for (const submesh of mesh.submeshes) {
-      const program = this._getOrCreateProgram(submesh);
+      const program = this._getOrCreateProgram(submesh, vao.attributeBinds);
       const programChanged = state.prevProgram != program
       if (programChanged) {
         state.prevProgram = program;
@@ -232,9 +233,17 @@ export class Renderer {
 
       gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
 
-      vao.draw(submesh.mode, submesh.drawCount, mesh.instancing?.instanceCount);
+      if (mesh.instancing) {
+        vao.drawInstancing(submesh.mode, submesh.drawCount,
+          drawOffset, mesh.instancing.instanceCount);
+      }
+      else {
+        vao.draw(submesh.mode, submesh.drawCount,
+          drawOffset);
+      }
       drawOffset += submesh.drawCount;
     }
+    vao.unbind();
   }
 
   _colorMaskNeedsReset = false;

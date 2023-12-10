@@ -181,7 +181,7 @@ class SevenSegment {
     this.primitive = new Mesh(
       vertexAttribs, this.vertices.length / 2,
       [new SubMesh(material, this.indices.length)],
-      new BufferSource(1, this.indices), {},
+      new BufferSource(1, this.indices),
       this.instancing,
     );
   }

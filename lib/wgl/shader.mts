@@ -58,6 +58,7 @@ export class WglShader implements Disposable {
     public readonly name: string,
     public readonly vertSrc: string,
     public readonly fragSrc: string,
+    attributeBinds: string[] = [],
   ) {
     this.program = gl.createProgram()!;
     if (!this.program) {
@@ -67,6 +68,12 @@ export class WglShader implements Disposable {
 
     const vertShader = compileShader('[VERTEX_SHADER]', gl, vertSrc, GL.VERTEX_SHADER);
     const fragShader = compileShader('[FRAGMENT_SHADER]', gl, fragSrc, GL.FRAGMENT_SHADER);
+
+    if (attributeBinds) {
+      for (let i = 0; i < attributeBinds.length; ++i) {
+        gl.bindAttribLocation(this.program, i, attributeBinds[i]);
+      }
+    }
 
     gl.attachShader(this.program, fragShader);
     gl.attachShader(this.program, vertShader);
@@ -251,11 +258,14 @@ export class ModShader extends WglShader {
   constructor(
     gl: WebGL2RenderingContext, shader: Shader,
     defines: ProgramDefine[] = [],
-    multiview: boolean = false
+    multiview: boolean = false,
+    attributeBinds: string[] = [],
   ) {
     super(gl, shader.name,
       vsSource(shader.vertexSource, defines, multiview),
-      fsSource(shader.fragmentSource, defines))
+      fsSource(shader.fragmentSource, defines),
+      attributeBinds
+    )
   }
 }
 
