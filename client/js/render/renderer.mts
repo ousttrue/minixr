@@ -22,7 +22,8 @@ import { mat4, vec3 } from '../../../lib/math/gl-matrix.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
 import { VS_SKINNING, FS } from '../../../lib/materials/pbr.mjs';
 import { MaterialState, CAP } from '../../../lib/materials/materialstate.mjs';
-import { Mesh, SubMesh, MeshVertexAttribute } from '../../../lib/buffer/mesh.mjs';
+import { Mesh, SubMesh, MeshVertexAttribute, Skin } from '../../../lib/buffer/mesh.mjs';
+import { Scene } from '../../../lib/scene.mjs';
 import { BufferSource, ElementType } from '../../../lib/buffer/buffersource.mjs';
 import { WglVao, VertexAttribute } from '../../../lib/wgl/vao.mjs';
 import { WglBuffer, BufferType } from '../../../lib/wgl/buffer.mjs';
@@ -73,6 +74,7 @@ export class Renderer {
   private _primVaoMap: Map<Mesh, WglVao> = new Map();
   private _shaderMap: Map<SubMesh, WglShader> = new Map();
   private _uboMap: Map<ArrayBuffer, WglBuffer> = new Map();
+  skinningUbo: WglBuffer;
 
   // layout (std140) uniform uEnv {
   //   mat4 uView;
@@ -80,12 +82,17 @@ export class Renderer {
   //   vec4 uLightPosDir;
   //   vec4 uLightColor;
   // };  
-  _uboEnv = new Float32Array(40);
+  _uboEnv = new Float32Array([
+    1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+    1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+    1, 1, 1, 0, 1, 1, 1, 1,
+  ]);
 
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly multiview = false,
   ) {
+    this.skinningUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
   }
 
   private _getOrCreateUbo(src: ArrayBuffer): WglBuffer {
@@ -193,15 +200,17 @@ export class Renderer {
     return vao;
   }
 
-  drawPrimitive(
+  drawMesh(
     view: XRView,
+    scene: Scene,
     matrix: mat4, mesh: Mesh,
     state: {
       prevProgram: WglShader | null,
       prevMaterial: Material | null,
       prevVao: WglVao | null,
     },
-    rightView?: XRView
+    rightView?: XRView,
+    skin?: Skin,
   ) {
 
     let gl = this.gl;
@@ -225,10 +234,14 @@ export class Renderer {
       const ubo = this._getOrCreateUbo(this._uboEnv);
       ubo.upload(this._uboEnv);
     }
+    if (skin) {
+      const matrices = skin.updateSkinningMatrix(
+        (joint) => scene.nodeMap.get(joint)!.matrix)
+      this.skinningUbo.upload(matrices);
+    }
 
     for (const submesh of mesh.submeshes) {
-      const program = this._getOrCreateProgram(submesh, vao.attributeBinds,
-        mesh.uboMap.has('uSkinning'));
+      const program = this._getOrCreateProgram(submesh, vao.attributeBinds, skin != null)
       const programChanged = state.prevProgram != program
       if (programChanged) {
         state.prevProgram = program;
@@ -281,6 +294,14 @@ export class Renderer {
           program.setUbo('uEnv', ubo, uboInfo.index);
         }
       }
+      {
+        const uboInfo = program.uboIndexMap['uSkinning'];
+        if (uboInfo) {
+          program.setUbo('uSkinning', this.skinningUbo, uboInfo.index);
+          program.setMatrix('uModel', matrix);
+        }
+      }
+
 
       if (mesh.instancing) {
         vao.drawInstancing(submesh.mode, submesh.drawCount,

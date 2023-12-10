@@ -220,10 +220,7 @@ export class Scene {
   nodeMap: Map<number, TrsNode> = new Map();
   startTime = Date.now();
 
-  constructor(
-    public readonly loader: Gltf2Loader,
-    world?: World,
-  ) {
+  constructor(world?: World) {
     this.world = world ?? new World();
   }
 
@@ -233,8 +230,8 @@ export class Scene {
     return t * 0.001;
   }
 
-  async load(origin?: mat4) {
-    const gltf = this.loader.json;
+  async load(loader: Gltf2Loader, origin?: mat4) {
+    const gltf = loader.json;
     if (gltf.scenes) {
       if (origin) {
         this.root.transform.matrix = origin;
@@ -242,7 +239,7 @@ export class Scene {
       for (const scene of gltf.scenes) {
         if (scene.nodes) {
           for (const i of scene.nodes) {
-            this.root.children.push(this.loadNode(i, this.root.matrix));
+            this.root.children.push(this.loadNode(loader, i, this.root.matrix));
           }
         }
       }
@@ -272,26 +269,26 @@ export class Scene {
           if (channel.target.path == 'translation') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.loader.json.accessors![sampler.input];
-            const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.loader.json.accessors![sampler.output];
-            const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
+            const inputAccessor = loader.json.accessors![sampler.input];
+            const input = await loader.bufferSourceFromAccessor(inputAccessor);
+            const ouputAccessor = loader.json.accessors![sampler.output];
+            const output = await loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.translation = new Vec3Curve(input.array, output.array);
           } else if (channel.target.path == 'rotation') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.loader.json.accessors![sampler.input];
-            const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.loader.json.accessors![sampler.output];
-            const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
+            const inputAccessor = loader.json.accessors![sampler.input];
+            const input = await loader.bufferSourceFromAccessor(inputAccessor);
+            const ouputAccessor = loader.json.accessors![sampler.output];
+            const output = await loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.rotation = new QuatCurve(input.array, output.array);
           } else if (channel.target.path == 'scale') {
             const nodeAnimation = getOrCreateNodeAnimation(channel.target.node);
             const sampler = animation.samplers[channel.sampler];
-            const inputAccessor = this.loader.json.accessors![sampler.input];
-            const input = await this.loader.bufferSourceFromAccessor(inputAccessor);
-            const ouputAccessor = this.loader.json.accessors![sampler.output];
-            const output = await this.loader.bufferSourceFromAccessor(ouputAccessor);
+            const inputAccessor = loader.json.accessors![sampler.input];
+            const input = await loader.bufferSourceFromAccessor(inputAccessor);
+            const ouputAccessor = loader.json.accessors![sampler.output];
+            const output = await loader.bufferSourceFromAccessor(ouputAccessor);
             nodeAnimation.scale = new Vec3Curve(input.array, output.array);
           }
           else {
@@ -311,8 +308,8 @@ export class Scene {
     }
   }
 
-  loadNode(i: number, parent?: mat4): TrsNode {
-    const gltf = this.loader.json;
+  loadNode(loader: Gltf2Loader, i: number, parent?: mat4): TrsNode {
+    const gltf = loader.json;
     if (!gltf.nodes) {
       throw new Error("no nodes");
     }
@@ -341,9 +338,9 @@ export class Scene {
     }
 
     if (node.mesh != null) {
-      const mesh = this.loader.meshes[node.mesh]
+      const mesh = loader.meshes[node.mesh]
       if (node.skin != null) {
-        const skin = this.loader.skins[node.skin]
+        const skin = loader.skins[node.skin]
         this.world.create(matrix, mesh, skin)
       }
       else {
@@ -352,7 +349,7 @@ export class Scene {
     }
     if (node.children) {
       for (const child of node.children) {
-        trsNode.children.push(this.loadNode(child, matrix));
+        trsNode.children.push(this.loadNode(loader, child, matrix));
       }
     }
     return trsNode;

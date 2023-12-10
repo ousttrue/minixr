@@ -63,7 +63,7 @@ export class Renderer {
   env = new Env();
   envUbo: WglBuffer;
 
-  skinningUbo: WglBuffer | null = null;
+  skinningUbo: WglBuffer;
 
   color = vec4.fromValues(0.9, 0.9, 0.9, 1);
   materialUbo: WglBuffer;
@@ -76,6 +76,7 @@ export class Renderer {
     this.envUbo.upload(this.env.buffer.buffer);
     this.materialUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER)
     this.materialUbo.upload(this.color.array);
+    this.skinningUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
   }
 
   render(width: number, height: number, scene?: Scene) {
@@ -116,9 +117,6 @@ export class Renderer {
         if (skin) {
           const matrices = skin.updateSkinningMatrix(
             (joint) => scene.nodeMap.get(joint)!.matrix)
-          if (!this.skinningUbo) {
-            this.skinningUbo = new WglBuffer(this.gl, GL.UNIFORM_BUFFER);
-          }
           this.skinningUbo.upload(matrices);
         }
 
@@ -131,7 +129,7 @@ export class Renderer {
           // update camera matrix
           shader.setUbo('uEnv', this.envUbo, 0);
           shader.setUbo('uMaterial', this.materialUbo, 1);
-          if (skin && this.skinningUbo) {
+          if (skin) {
             shader.setUbo('uSkinning', this.skinningUbo, 2);
           }
           shader.setMatrix('uModel', matrix);

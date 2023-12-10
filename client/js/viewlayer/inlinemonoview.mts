@@ -1,9 +1,9 @@
 import { IViewLayer } from './iviewlayer.mjs';
 import { Renderer } from '../render/renderer.mjs';
 import { InlineViewerHelper } from '../util/inline-viewer-helper.mjs';
-import { World } from '../../../lib/uecs/index.mjs';
+import { Scene } from '../../../lib/scene.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Mesh } from '../../../lib/buffer/mesh.mjs';
+import { Mesh, Skin } from '../../../lib/buffer/mesh.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -46,7 +46,7 @@ export class InlineMonoView implements IViewLayer {
     return this._inlineViewerHelper.referenceSpace;
   }
 
-  render(pose: XRViewerPose, world: World): void {
+  render(pose: XRViewerPose, scene: Scene): void {
     if (pose.views.length != 1) {
       throw new Error("not 1?");
     }
@@ -58,7 +58,7 @@ export class InlineMonoView implements IViewLayer {
     // Clear the framebuffer
     this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-    const renderList = world.view(mat4, Mesh);
+    const renderList = scene.world.view(mat4, Mesh);
     {
       const view = pose.views[0];
       // Loop through each of the views reported by the frame and draw them
@@ -70,8 +70,9 @@ export class InlineMonoView implements IViewLayer {
         prevMaterial: null,
         prevVao: null,
       }
-      renderList.each((_entity, matrix, primitive) => {
-        this.renderer.drawPrimitive(view, matrix, primitive, state);
+      renderList.each((entity, matrix, primitive) => {
+        const skin = scene.world.get(entity, Skin)
+        this.renderer.drawMesh(view, scene, matrix, primitive, state, undefined, skin);
       });
     }
   }

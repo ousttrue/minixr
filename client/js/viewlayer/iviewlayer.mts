@@ -1,5 +1,4 @@
-import { World } from '../../../lib/uecs/index.mjs';
-
+import { Scene } from '../../../lib/scene.mjs';
 
 // reder type
 // | mode          | view | drawcall |
@@ -10,5 +9,5 @@ import { World } from '../../../lib/uecs/index.mjs';
 
 export interface IViewLayer {
   get referenceSpace(): XRReferenceSpace;
-  render(pose: XRViewerPose, world: World): void;
+  render(pose: XRViewerPose, scene: Scene): void;
 }

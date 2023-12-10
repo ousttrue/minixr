@@ -1,8 +1,8 @@
 import { IViewLayer } from './iviewlayer.mjs';
 import { Renderer } from '../render/renderer.mjs';
-import { World } from '../../../lib/uecs/index.mjs';
+import { Scene } from '../../../lib/scene.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Mesh } from '../../../lib/buffer/mesh.mjs';
+import { Mesh, Skin } from '../../../lib/buffer/mesh.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -36,7 +36,7 @@ export class ImmersiveStereoView implements IViewLayer {
     return this.space;
   }
 
-  render(pose: XRViewerPose, world: World): void {
+  render(pose: XRViewerPose, scene: Scene): void {
     if (pose.views.length != 2) {
       throw new Error("not 2?");
     }
@@ -48,7 +48,7 @@ export class ImmersiveStereoView implements IViewLayer {
     // Clear the framebuffer
     this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-    const renderList = world.view(mat4, Mesh);
+    const renderList = scene.world.view(mat4, Mesh);
     {
       // left eye
       const view = pose.views[0];
@@ -59,8 +59,8 @@ export class ImmersiveStereoView implements IViewLayer {
         prevMaterial: null,
         prevVao: null,
       }
-      renderList.each((_entity, matrix, primitive) => {
-        this.renderer.drawPrimitive(view, matrix, primitive, state);
+      renderList.each((entity, matrix, primitive) => {
+        this.renderer.drawMesh(view, scene, matrix, primitive, state, undefined);
       });
     }
     {
@@ -74,8 +74,9 @@ export class ImmersiveStereoView implements IViewLayer {
           prevMaterial: null,
           prevVao: null,
         }
-        renderList.each((_entity, matrix, primitive) => {
-          this.renderer.drawPrimitive(view, matrix, primitive, state);
+        renderList.each((entity, matrix, primitive) => {
+          const skin = scene.world.get(entity, Skin);
+          this.renderer.drawMesh(view, scene, matrix, primitive, state, undefined, skin);
         });
       }
       else {

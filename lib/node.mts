@@ -1,6 +1,4 @@
 import { vec3, quat, mat4, Transform } from './math/gl-matrix.mjs';
-import type { Skin } from '../lib/buffer/mesh.mjs';
-import type { Mesh } from '../lib/buffer/mesh.mjs';
 
 
 export class TrsNode {

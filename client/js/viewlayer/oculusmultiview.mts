@@ -1,7 +1,7 @@
 import { IViewLayer } from './iviewlayer.mjs';
-import { World } from '../../../lib/uecs/index.mjs';
 import { mat4 } from '../../../lib/math/gl-matrix.mjs';
-import { Mesh } from '../../../lib/buffer/mesh.mjs';
+import { Mesh, Skin } from '../../../lib/buffer/mesh.mjs';
+import { Scene } from '../../../lib/scene.mjs';
 import { Renderer } from '../render/renderer.mjs';
 
 
@@ -39,7 +39,7 @@ export class OculusMultiview implements IViewLayer {
     return this.space;
   }
 
-  render(pose: XRViewerPose, world: World): void {
+  render(pose: XRViewerPose, scene: Scene): void {
     const gl = this.gl;
 
     for (let i = 0; i < pose.views.length; ++i) {
@@ -79,15 +79,16 @@ export class OculusMultiview implements IViewLayer {
       }
     }
 
-    const renderList = world.view(mat4, Mesh);
+    const renderList = scene.world.view(mat4, Mesh);
     {
       const state = {
         prevProgram: null,
         prevMaterial: null,
         prevVao: null,
       }
-      renderList.each((_entity, matrix, primitive) => {
-        this.renderer.drawPrimitive(pose.views[0], matrix, primitive, state, pose.views[1]);
+      renderList.each((entity, matrix, primitive) => {
+        const skin = scene.world.get(entity, Skin);
+        this.renderer.drawMesh(pose.views[0], scene, matrix, primitive, state, pose.views[1], skin);
       });
     }
   }

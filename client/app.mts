@@ -10,7 +10,6 @@ import { cubeSeaFactory } from './js/component/cube-sea.mjs';
 import { interactionFactory } from './js/component/interaction.mjs';
 // import { XRTerm } from './js/xterm/xrterm.mjs';
 import { bitmapFontFactory } from './js/component/bitmap-font.mjs';
-import { World } from './js/../../lib/uecs/index.mjs';
 import { Rotater } from './js/component/rotater.mjs';
 import { Spinner } from './js/component/spinner.mjs';
 import { HandTracking } from './js/component/hand-tracking.mjs';
@@ -21,10 +20,15 @@ import { createViewLayer } from './js/viewlayer/index.mjs';
 import { CubeInstancing } from './js/component/cube-instance.mjs';
 import { Scene } from '../lib/scene.mjs';
 import { Animation } from '../lib/animation.mjs';
+import { IViewLayer } from './js/viewlayer/iviewlayer.mjs';
 
+
+function toSeconds(xrTime: number) {
+  return xrTime * 0.001;
+}
 
 class AppSession {
-  world = new World();
+  scene = new Scene()
 
   _stats: StatsViewer = new StatsViewer();
   _prevTime: number = 0;
@@ -39,27 +43,27 @@ class AppSession {
     public readonly mode: XRSessionMode,
     public readonly session: XRSession,
     public readonly gl: WebGL2RenderingContext,
-    private readonly viewspace: IViewSpace
+    private readonly viewspace: IViewLayer
   ) {
     // this.term = new XRTerm(gl);
 
     if (navigator.userAgent.includes('Quest 3')) {
       const meshDetection = new ArMeshDetection(mode);
       this._detection = (refsp: XRReferenceSpace, frame: XRFrame) => {
-        meshDetection.update(this.world, refsp, frame);
+        meshDetection.update(this.scene.world, refsp, frame);
       }
     }
     else {
       const planeDetection = new ArPlaneDetection(mode);
       this._detection = (refsp: XRReferenceSpace, frame: XRFrame) => {
-        planeDetection.update(this.world, refsp, frame);
+        planeDetection.update(this.scene.world, refsp, frame);
       }
     }
   }
 
   async start() {
     if (this.viewspace.referenceSpace instanceof XRBoundedReferenceSpace) {
-      await BoundsRenderer.factory(this.world, this.viewspace.referenceSpace);
+      await BoundsRenderer.factory(this.scene.world, this.viewspace.referenceSpace);
     }
 
     await this._setupScene();
@@ -78,17 +82,17 @@ class AppSession {
         quat.fromEuler(-10.0, 0.0, 0.0),
         vec3.fromValues(0.3, 0.3, 0.3),
       );
-      await StatsGraph.factory(this.world, matrix);
-      await SevenSegmentText.factory(this.world, matrix);
+      await StatsGraph.factory(this.scene.world, matrix);
+      await SevenSegmentText.factory(this.scene.world, matrix);
     }
 
-    const instancing = new CubeInstancing(65535, this.world);
+    const instancing = new CubeInstancing(65535, this.scene.world);
 
-    await HandTracking.factory(this.world, instancing, "left");
-    await HandTracking.factory(this.world, instancing, "right");
-    await interactionFactory(this.world, instancing);
-    await cubeSeaFactory(this.world, instancing, 6, 0.5)
-    const textgrid = await bitmapFontFactory(this.world, vec3.fromValues(0.2, 1.2, -0.4));
+    await HandTracking.factory(this.scene.world, instancing, "left");
+    await HandTracking.factory(this.scene.world, instancing, "right");
+    await interactionFactory(this.scene.world, instancing);
+    await cubeSeaFactory(this.scene.world, instancing, 6, 0.5)
+    const textgrid = await bitmapFontFactory(this.scene.world, vec3.fromValues(0.2, 1.2, -0.4));
     textgrid.puts(0, 0, window.navigator.userAgent);
     textgrid.puts(0, 0.1, this.viewspace.toString());
 
@@ -105,20 +109,20 @@ class AppSession {
   private async _loadGltf(dir: string, name: string, origin?: mat4) {
     if (dir == 'assets') {
       const loader = await Gltf2Loader.loadFromUrl(`./assets/gltf/${name}/${name}.gltf`);
-      const scene = new Scene(loader, this.world);
-      await scene.load(origin);
+      this.scene = new Scene(this.scene.world);
+      await this.scene.load(loader, origin);
     }
     else if (dir == 'glTF-Sample-Models') {
       const loader = await Gltf2Loader.loadFromUrl(
         `./glTF-Sample-Models/2.0/${name}/glTF-Binary/${name}.glb`);
-      const scene = new Scene(loader, this.world);
-      await scene.load(origin);
+      this.scene = new Scene(this.scene.world);
+      await this.scene.load(loader, origin);
     }
   }
 
   onXRFrame(time: number, frame: XRFrame) {
     // stats
-    this._stats.begin(this.world);
+    this._stats.begin(this.scene.world);
     let frameDelta = 0;
     if (this._prevTime >= 0) {
       frameDelta = time - this._prevTime;
@@ -134,16 +138,16 @@ class AppSession {
     //
     // update scene
     //
-    Rotater.system(this.world, time);
-    Spinner.system(this.world, time, frameDelta);
+    Rotater.system(this.scene.world, time);
+    Spinner.system(this.scene.world, time, frameDelta);
     HandTracking.system(
-      this.world, time, frameDelta, xrRefSpace, frame, session.inputSources);
+      this.scene.world, time, frameDelta, xrRefSpace, frame, session.inputSources);
     this._detection(xrRefSpace, frame);
-    hoverSystem(this.world);
-    animationSystem(this.world);
+    hoverSystem(this.scene.world);
+    animationSystem(this.scene.world);
 
-    this.world.view(Animation).each((_entity, animation) => {
-      animation.update(time);
+    this.scene.world.view(Animation).each((_entity, animation) => {
+      animation.update(toSeconds(time));
     });
 
     if (session.visibilityState === 'visible-blurred') {
@@ -164,7 +168,7 @@ class AppSession {
       //
       // render scene
       //
-      this.viewspace.render(pose, this.world);
+      this.viewspace.render(pose, this.scene);
 
     } else {
       // There's several options for handling cases where no pose is given.
@@ -180,7 +184,7 @@ class AppSession {
       // use.
     }
 
-    this._stats.end(this.world);
+    this._stats.end(this.scene.world);
   }
 }
 
