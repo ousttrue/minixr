@@ -20,6 +20,7 @@
 
 import { mat4, vec3 } from '../../../lib/math/gl-matrix.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
+import { VS_SKINNING, FS } from '../../../lib/materials/pbr.mjs';
 import { MaterialState, CAP } from '../../../lib/materials/materialstate.mjs';
 import { Mesh, SubMesh, MeshVertexAttribute } from '../../../lib/buffer/mesh.mjs';
 import { BufferSource, ElementType } from '../../../lib/buffer/buffersource.mjs';
@@ -71,26 +72,50 @@ export class Renderer {
   private _bufferMap: Map<BufferSource, WglBuffer> = new Map();
   private _primVaoMap: Map<Mesh, WglVao> = new Map();
   private _shaderMap: Map<SubMesh, WglShader> = new Map();
+  private _uboMap: Map<ArrayBuffer, WglBuffer> = new Map();
 
-  _ubo: WglBuffer;
+  // layout (std140) uniform uEnv {
+  //   mat4 uView;
+  //   mat4 uProjection;
+  //   vec4 uLightPosDir;
+  //   vec4 uLightColor;
+  // };  
+  _uboEnv = new Float32Array(40);
 
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly multiview = false,
   ) {
-    this._ubo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
   }
 
-  private _getOrCreateProgram(submesh: SubMesh, attributesBinds: string[]): WglShader {
+  private _getOrCreateUbo(src: ArrayBuffer): WglBuffer {
+    let buffer = this._uboMap.get(src);
+    if (buffer) {
+      return buffer;
+    }
+    buffer = new WglBuffer(this.gl, GL.UNIFORM_BUFFER);
+    buffer.upload(src);
+    return buffer;
+  }
+
+  private _getOrCreateProgram(submesh: SubMesh, attributesBinds: string[], hasSkinning: boolean): WglShader {
     let shader = this._shaderMap.get(submesh);
     if (shader) {
       return shader;
     }
 
-    shader = new ModShader(
-      this.gl, submesh.material.shader, undefined, this.multiview, attributesBinds);
-    this._shaderMap.set(submesh, shader);
-    return shader;
+    if (hasSkinning) {
+      shader = new WglShader(
+        this.gl, 'skinning', VS_SKINNING, FS, attributesBinds);
+      this._shaderMap.set(submesh, shader);
+      return shader;
+    }
+    else {
+      shader = new ModShader(
+        this.gl, submesh.material.shader, undefined, this.multiview, attributesBinds);
+      this._shaderMap.set(submesh, shader);
+      return shader;
+    }
   }
 
   private _getOrCreateBuffer(source: BufferSource, buffertype: BufferType, elementtype?: ElementType): WglBuffer {
@@ -188,8 +213,22 @@ export class Renderer {
 
     vao.bind();
     let drawOffset = 0
+
+    // update ubo
+    mesh.uboMap.forEach((value, key) => {
+      const ubo = this._getOrCreateUbo(value);
+      ubo.upload(value);
+    });
+    {
+      this._uboEnv.set(view.transform.inverse.matrix);
+      this._uboEnv.set(view.projectionMatrix, 16);
+      const ubo = this._getOrCreateUbo(this._uboEnv);
+      ubo.upload(this._uboEnv);
+    }
+
     for (const submesh of mesh.submeshes) {
-      const program = this._getOrCreateProgram(submesh, vao.attributeBinds);
+      const program = this._getOrCreateProgram(submesh, vao.attributeBinds,
+        mesh.uboMap.has('uSkinning'));
       const programChanged = state.prevProgram != program
       if (programChanged) {
         state.prevProgram = program;
@@ -223,15 +262,25 @@ export class Renderer {
         // program.bindMaterial(submesh.material,
         //   (src) => this._textureFactory.getOrCreateTexture(src));
         state.prevMaterial = submesh.material;
-
-        for (const key in program.uboIndexMap) {
-          const { index, byteLength } = program.uboIndexMap[key];
-          this._ubo.upload(new ArrayBuffer(byteLength))
-          program.setUbo(key, this._ubo, index);
-        }
       }
 
       gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
+
+      // bind ubo
+      mesh.uboMap.forEach((value, key) => {
+        const ubo = this._getOrCreateUbo(value);
+        const uboInfo = program.uboIndexMap[key];
+        if (uboInfo) {
+          program.setUbo(key, ubo, uboInfo.index);
+        }
+      });
+      {
+        const uboInfo = program.uboIndexMap['uEnv'];
+        if (uboInfo) {
+          const ubo = this._getOrCreateUbo(this._uboEnv);
+          program.setUbo('uEnv', ubo, uboInfo.index);
+        }
+      }
 
       if (mesh.instancing) {
         vao.drawInstancing(submesh.mode, submesh.drawCount,

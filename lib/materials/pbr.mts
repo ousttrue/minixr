@@ -118,9 +118,9 @@ layout (std140) uniform uEnv {
   vec4 uLightPosDir;
   vec4 uLightColor;
 };
-layout (std140) uniform uMaterial {
-  vec4 uColor;
-};
+// layout (std140) uniform uMaterial {
+//   vec4 uColor;
+// };
 
 void main(){
   vec3 norm = normalize(fNormal);
@@ -129,6 +129,7 @@ void main(){
     : uLightPosDir.xyz - fPosition
   );  
   float diffuse = max(dot(norm, lightDir), 0.0);
+  vec4 uColor = vec4(1,1,1,1);
   _Color = vec4(uColor.xyz * diffuse, uColor.w);
 }
 `;

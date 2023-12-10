@@ -110,6 +110,7 @@ export class Instancing {
 
 export class Mesh {
   bb = new BoundingBox();
+  uboMap: Map<string, ArrayBuffer> = new Map();
 
   constructor(
     public readonly attributes: MeshVertexAttribute[],

@@ -156,6 +156,8 @@ function toInterleavedSubmesh(primitives: Mesh[],
     indices ? new BufferSource(1, indices) : undefined,
   );
 
+  mesh.uboMap.set('uSkinning', new ArrayBuffer(4 * 16 * 256));
+
   let vertexOffset = 0;
   let indexOffset = 0;
   for (const primitive of primitives) {

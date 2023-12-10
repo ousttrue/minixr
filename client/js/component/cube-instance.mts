@@ -345,14 +345,16 @@ export function cubeInstancePrimitive(cubes: number, isCCW: boolean = true):
   material.setPaletteColor(7, White);
   material.setPaletteColor(8, Black);
 
-  const primitive = new Mesh(
+  const mesh = new Mesh(
     attributes, vertices.length / 8,
     [new SubMesh(material, indices.length)],
     new BufferSource(1, indices),
     new Instancing(instanceAttributes)
   );
 
-  return [primitive, matrixArrayView, faceInfoArrayView];
+  mesh.uboMap.set('palette', new ArrayBuffer(4 * 4 * (32 + 32)));
+
+  return [mesh, matrixArrayView, faceInfoArrayView];
 }
 
 
