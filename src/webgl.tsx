@@ -63,8 +63,7 @@ export class Renderer {
   env = new Env();
   envUbo: WglBuffer;
 
-  skinningMatrices = new Float32Array(16 * 256);
-  skinningUbo: WglBuffer;
+  skinningUbo: WglBuffer | null = null;
 
   color = vec4.fromValues(0.9, 0.9, 0.9, 1);
   materialUbo: WglBuffer;
@@ -73,12 +72,10 @@ export class Renderer {
     public readonly gl: WebGL2RenderingContext,
     public readonly observer: ResizeObserver,
   ) {
-    this.envUbo = WglBuffer.create(gl,
-      GL.UNIFORM_BUFFER, this.env.buffer.buffer);
-    this.materialUbo = WglBuffer.create(gl,
-      GL.UNIFORM_BUFFER, this.color.array);
-    this.skinningUbo = WglBuffer.create(gl,
-      GL.UNIFORM_BUFFER, this.skinningMatrices);
+    this.envUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
+    this.envUbo.upload(this.env.buffer.buffer);
+    this.materialUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER)
+    this.materialUbo.upload(this.color.array);
   }
 
   render(width: number, height: number, scene?: Scene) {
@@ -117,24 +114,12 @@ export class Renderer {
 
         const skin = world.get(entity, Skin);
         if (skin) {
-          let j = 0
-          for (let i = 0; i < skin.joints.length; ++i, j += 16) {
-            const { joint, inverseBindMatrix } = skin.getJoint(i)
-            const jointNode = scene.nodeMap.get(joint)!
-
-            // model (inversedSkeleton) joint inversedBindMatrices p
-            const dst = new mat4(this.skinningMatrices.subarray(j, j + 16))
-            jointNode.matrix.mul(inverseBindMatrix, { out: dst })
-
-            // if (skin.skeleton) {
-            //   const skeletonNode = scene.nodeMap.get(skin.skeleton)!
-            //   const skeletonMatrix = skeletonNode.matrix.invert()!;
-            //   skeletonMatrix.mul(dst, { out: dst })
-            // }
-
-            // mat4.identity({ out: dst })
+          const matrices = skin.updateSkinningMatrix(
+            (joint) => scene.nodeMap.get(joint)!.matrix)
+          if (!this.skinningUbo) {
+            this.skinningUbo = new WglBuffer(this.gl, GL.UNIFORM_BUFFER);
           }
-          this.skinningUbo.upload(this.skinningMatrices);
+          this.skinningUbo.upload(matrices);
         }
 
         let offset = 0
@@ -146,7 +131,7 @@ export class Renderer {
           // update camera matrix
           shader.setUbo('uEnv', this.envUbo, 0);
           shader.setUbo('uMaterial', this.materialUbo, 1);
-          if (skin) {
+          if (skin && this.skinningUbo) {
             shader.setUbo('uSkinning', this.skinningUbo, 2);
           }
           shader.setMatrix('uModel', matrix);
@@ -176,14 +161,14 @@ export class Renderer {
       for (const attr of mesh.attributes) {
         let vbo = vboMap.get(attr.source);
         if (!vbo) {
-          vbo = WglBuffer.create(this.gl,
-            GL.ARRAY_BUFFER, attr.source.array);
+          vbo = new WglBuffer(this.gl, GL.ARRAY_BUFFER)
+          vbo.upload(attr.source.array);
           vboMap.set(attr.source, vbo);
         }
       }
       if (mesh.indices) {
-        indices = WglBuffer.create(this.gl,
-          GL.ELEMENT_ARRAY_BUFFER, mesh.indices.array, mesh.indices.glType);
+        indices = new WglBuffer(this.gl, GL.ELEMENT_ARRAY_BUFFER, mesh.indices.glType);
+        indices.upload(mesh.indices.array);
       }
 
       const vao = new WglVao(this.gl, mesh.attributes.map(

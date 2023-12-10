@@ -195,6 +195,8 @@ export class Mesh {
 
 
 export class Skin {
+  skinningMatrices = new Float32Array(16 * 256);
+
   constructor(
     public readonly joints: number[],
     public readonly inverseBindMatrices: Float32Array,
@@ -210,5 +212,27 @@ export class Skin {
       joint: this.joints[i],
       inverseBindMatrix: new mat4(this.inverseBindMatrices.subarray(i * 16, i * 16 + 16))
     }
+  }
+
+  updateSkinningMatrix(getJointMatrix: (index: number) => mat4): Float32Array {
+    let j = 0
+    for (let i = 0; i < this.joints.length; ++i, j += 16) {
+      const { joint, inverseBindMatrix } = this.getJoint(i)
+
+      const jointMatrix = getJointMatrix(joint);
+
+      // model (inversedSkeleton) joint inversedBindMatrices p
+      const dst = new mat4(this.skinningMatrices.subarray(j, j + 16))
+      jointMatrix.mul(inverseBindMatrix, { out: dst })
+
+      // if (skin.skeleton) {
+      //   const skeletonNode = scene.nodeMap.get(skin.skeleton)!
+      //   const skeletonMatrix = skeletonNode.matrix.invert()!;
+      //   skeletonMatrix.mul(dst, { out: dst })
+      // }
+
+      // mat4.identity({ out: dst })
+    }
+    return this.skinningMatrices;
   }
 }

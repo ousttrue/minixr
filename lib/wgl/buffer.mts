@@ -27,15 +27,15 @@ export class WglBuffer implements Disposable {
     this.gl.deleteBuffer(this.buffer);
   }
 
-  static create(gl: WebGL2RenderingContext,
-    type: BufferType,
-    bytes: ArrayBuffer,
-    componetType?: ElementType
-  ): WglBuffer {
-    const buffer = new WglBuffer(gl, type, componetType);
-    buffer.upload(bytes);
-    return buffer;
-  }
+  // static create(gl: WebGL2RenderingContext,
+  //   type: BufferType,
+  //   bytes: ArrayBuffer,
+  //   componetType?: ElementType
+  // ): WglBuffer {
+  //   const buffer = new WglBuffer(gl, type, componetType);
+  //   buffer.upload(bytes);
+  //   return buffer;
+  // }
 
   bind() {
     this.gl.bindBuffer(this.type, this.buffer);
