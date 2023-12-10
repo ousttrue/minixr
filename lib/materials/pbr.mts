@@ -38,6 +38,102 @@ export const ATTRIB_MASK: { [key: string]: number } = {
   COLOR_0: 0x0020,
 };
 
+export const VS = `#version 300 es
+precision mediump float;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUv;
+out vec3 fPosition;
+out vec3 fNormal;
+out vec2 fUv;
+uniform mat4 uModel;
+
+layout (std140) uniform uEnv {
+  mat4 uView;
+  mat4 uProjection;
+  vec4 uLightPosDir;
+  vec4 uLightColor;
+};
+
+void main()
+{
+  gl_Position = uProjection * uView * uModel * vec4(aPosition, 1);
+  fPosition = vec3(uModel * vec4(aPosition, 1.0));
+  fNormal = vec3(uModel * vec4(aNormal, 0));
+  fUv = aUv;
+}
+`;
+
+export const VS_SKINNING = `#version 300 es
+precision mediump float;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUv;
+layout(location = 3) in vec4 sJoints;
+layout(location = 4) in vec4 sWeights;
+out vec3 fPosition;
+out vec3 fNormal;
+out vec2 fUv;
+uniform mat4 uModel;
+
+layout (std140) uniform uEnv {
+  mat4 uView;
+  mat4 uProjection;
+  vec4 uLightPosDir;
+  vec4 uLightColor;
+};
+layout (std140) uniform uSkinning {
+  mat4 uSkin[256];
+};
+
+vec3 skinning()
+{
+  vec3 p = vec3(0,0,0);
+  p+=(uSkin[int(sJoints.x)] * vec4(aPosition,1)).xyz * sWeights.x;
+  p+=(uSkin[int(sJoints.y)] * vec4(aPosition,1)).xyz * sWeights.y;
+  p+=(uSkin[int(sJoints.z)] * vec4(aPosition,1)).xyz * sWeights.z;
+  p+=(uSkin[int(sJoints.w)] * vec4(aPosition,1)).xyz * sWeights.w;
+  return p;
+}
+
+void main()
+{
+  gl_Position = uProjection * uView * vec4(skinning(), 1);
+  fPosition = vec3(uModel * vec4(aPosition, 1.0));
+  fNormal = vec3(uModel * vec4(aNormal, 0));
+  fUv = aUv;
+}
+`;
+
+export const FS = `#version 300 es
+precision mediump float;
+in vec3 fPosition;
+in vec3 fNormal;
+in vec2 fUv;
+out vec4 _Color;
+
+layout (std140) uniform uEnv {
+  mat4 uView;
+  mat4 uProjection;
+  vec4 uLightPosDir;
+  vec4 uLightColor;
+};
+layout (std140) uniform uMaterial {
+  vec4 uColor;
+};
+
+void main(){
+  vec3 norm = normalize(fNormal);
+  vec3 lightDir = normalize(uLightPosDir.w == 0.0
+    ? vec3(uLightPosDir) 
+    : uLightPosDir.xyz - fPosition
+  );  
+  float diffuse = max(dot(norm, lightDir), 0.0);
+  _Color = vec4(uColor.xyz * diffuse, uColor.w);
+}
+`;
+
+
 const VERTEX_SOURCE = `
 
 layout(location = 0) in vec3 POSITION;

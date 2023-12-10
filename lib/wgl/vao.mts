@@ -1,4 +1,5 @@
-import type { WglBuffer, ElementType } from './buffer.mjs';
+import type { WglBuffer } from './buffer.mjs';
+import type { DrawMode } from '../buffer/mesh.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -18,29 +19,34 @@ export class WglVao implements Disposable {
   vao: WebGLVertexArrayObject;
   constructor(
     public readonly gl: WebGL2RenderingContext,
-    public readonly elementType?: ElementType,
+    public readonly attributes: VertexAttribute[],
+    public readonly indices?: WglBuffer,
+    public readonly instances: VertexAttribute[] = [],
   ) {
     this.vao = gl.createVertexArray()!;
     if (!this.vao) {
       throw new Error('createVertexArray');
     }
-  }
 
-  [Symbol.dispose](): void {
-    this.gl.deleteVertexArray(this.vao);
-  }
-
-  static create(gl: WebGL2RenderingContext,
-    attributes: VertexAttribute[],
-    indices?: WglBuffer) {
-    const vao = new WglVao(gl, indices?.componentType);
-    gl.bindVertexArray(vao.vao);
-    for (let location = 0; location < attributes.length; ++location) {
-      const a = attributes[location];
+    gl.bindVertexArray(this.vao);
+    let location = 0;
+    for (let i = 0; i < attributes.length; ++i, ++location) {
+      const a = attributes[i];
       gl.bindBuffer(GL.ARRAY_BUFFER, a.buffer.buffer);
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(location, a.componentCount, a.componentType, false,
         a.bufferStride, a.bufferOffset);
+      gl.vertexAttribDivisor(location, 0)
+    }
+    if (instances) {
+      for (let i = 0; i < instances.length; ++i, ++location) {
+        const a = instances[i];
+        gl.bindBuffer(GL.ARRAY_BUFFER, a.buffer.buffer);
+        gl.enableVertexAttribArray(location);
+        gl.vertexAttribPointer(location, a.componentCount, a.componentType, false,
+          a.bufferStride, a.bufferOffset);
+        gl.vertexAttribDivisor(location, 1)
+      }
     }
 
     if (indices) {
@@ -53,7 +59,10 @@ export class WglVao implements Disposable {
     for (let location = 0; location < attributes.length; ++location) {
       gl.disableVertexAttribArray(location);
     }
-    return vao;
+  }
+
+  [Symbol.dispose](): void {
+    this.gl.deleteVertexArray(this.vao);
   }
 
   bind() {
@@ -64,12 +73,23 @@ export class WglVao implements Disposable {
     this.gl.bindVertexArray(null);
   }
 
-  draw(count: number, offset: number = 0) {
-    if (this.elementType) {
-      this.gl.drawElements(GL.TRIANGLES, count, this.elementType, offset);
+  draw(mode: DrawMode, count: number, offset: number = 0, instanceCount?: number) {
+    if (instanceCount != null) {
+      if (instanceCount > 0) {
+        if (this.indices) {
+          this.gl.drawElementsInstanced(mode, count, this.indices.componentType!, offset, instanceCount);
+        } else {
+          this.gl.drawArraysInstanced(mode, offset, count, instanceCount);
+        }
+      }
     }
     else {
-      this.gl.drawArrays(GL.TRIANGLES, offset, count);
+      if (this.indices) {
+        this.gl.drawElements(mode, count, this.indices.componentType!, offset);
+      }
+      else {
+        this.gl.drawArrays(mode, offset, count);
+      }
     }
   }
 }

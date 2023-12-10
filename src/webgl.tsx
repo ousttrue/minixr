@@ -5,7 +5,8 @@ import {
 import { Mesh, MeshVertexAttribute, Skin } from '../lib/buffer/mesh.mjs';
 import { BufferSource } from '../lib/buffer/buffersource.mjs';
 import { Material } from '../lib/materials/material.mjs';
-import { WglShader, VS, FS, VS_SKINNING } from '../lib/wgl/shader.mjs';
+import { WglShader } from '../lib/wgl/shader.mjs';
+import { VS, FS, VS_SKINNING } from '../lib/materials/pbr.mjs';
 import { WglVao } from '../lib/wgl/vao.mjs';
 import { WglBuffer } from '../lib/wgl/buffer.mjs';
 import { Animation } from '../lib/animation.mjs';
@@ -150,7 +151,7 @@ export class Renderer {
           }
           shader.setMatrix('uModel', matrix);
 
-          vao.draw(submesh.drawCount, offset);
+          vao.draw(submesh.mode, submesh.drawCount, offset);
           offset += submesh.drawCount;
         }
 
@@ -185,7 +186,7 @@ export class Renderer {
           GL.ELEMENT_ARRAY_BUFFER, mesh.indices.array, mesh.indices.glType);
       }
 
-      const vao = WglVao.create(this.gl, mesh.attributes.map(
+      const vao = new WglVao(this.gl, mesh.attributes.map(
         x => {
           return {
             name: x.name,
@@ -212,7 +213,9 @@ export class Renderer {
         }
       }
       {
-        const shader = WglShader.create(this.gl, VS_SKINNING, FS);
+        const shader = new WglShader(this.gl, material.name,
+          VS_SKINNING, FS
+        );
         this.materialSkinningShaderMap.set(material, shader);
         return shader;
       }
@@ -225,7 +228,9 @@ export class Renderer {
         }
       }
       {
-        const shader = WglShader.create(this.gl, VS, FS);
+        const shader = new WglShader(this.gl, material.name,
+          VS, FS,
+        );
         this.materialShaderMap.set(material, shader);
         return shader;
       }

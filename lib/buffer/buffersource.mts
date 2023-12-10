@@ -10,6 +10,12 @@ export type BufferSourceArray = (
 );
 
 
+// UNSIGNED_BYTE: 0x1401;
+// UNSIGNED_SHORT: 0x1403;
+// UNSIGNED_INT: 0x1405;
+export type ElementType = 0x1401 | 0x1403 | 0x1405;
+
+
 export class BufferSource {
   dirty = false;
 
@@ -20,7 +26,7 @@ export class BufferSource {
   ) {
   }
 
-  get glType(): number {
+  get glType(): ElementType {
     if (this.array instanceof Uint16Array) {
       return GL.UNSIGNED_SHORT;
     }

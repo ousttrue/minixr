@@ -21,13 +21,13 @@
 import { mat4, vec3 } from '../../../lib/math/gl-matrix.mjs';
 import { Material } from '../../../lib/materials/material.mjs';
 import { MaterialState, CAP } from '../../../lib/materials/materialstate.mjs';
-import { Mesh } from '../../../lib/buffer/mesh.mjs';
-import { BufferSource } from '../../../lib/buffer/buffersource.mjs';
-import { Vao, Vbo, Ibo } from './vao.mjs';
-import { Program, ProgramFactory } from './program.mjs';
-import { TextureFactory } from './texturefactory.mjs';
+import { Mesh, SubMesh, MeshVertexAttribute } from '../../../lib/buffer/mesh.mjs';
+import { BufferSource, ElementType } from '../../../lib/buffer/buffersource.mjs';
+import { WglVao, VertexAttribute } from '../../../lib/wgl/vao.mjs';
+import { WglBuffer, BufferType } from '../../../lib/wgl/buffer.mjs';
+import { WglShader, ModShader } from '../../../lib/wgl/shader.mjs';
 
-const GL = WebGLRenderingContext; // For enums
+const GL = WebGL2RenderingContext; // For enums
 
 const DEF_LIGHT_DIR = vec3.fromValues(-0.1, -1.0, -0.2);
 const DEF_LIGHT_COLOR = vec3.fromValues(3.0, 3.0, 3.0);
@@ -68,72 +68,72 @@ class Lighting {
 
 export class Renderer {
   private _lighting = new Lighting();
-  private _textureFactory: TextureFactory;
-  private _programFactory: ProgramFactory;
-  private _iboMap: Map<BufferSource, Ibo> = new Map();
-  private _vboMap: Map<BufferSource, Vbo> = new Map();
-  private _primVaoMap: Map<Mesh, Vao> = new Map();
+  private _bufferMap: Map<BufferSource, WglBuffer> = new Map();
+  private _primVaoMap: Map<Mesh, WglVao> = new Map();
+  private _shaderMap: Map<SubMesh, WglShader> = new Map();
+
+  _ubo: WglBuffer;
 
   constructor(
     private readonly gl: WebGL2RenderingContext,
     multiview = false,
   ) {
-    this._programFactory = new ProgramFactory(gl, multiview);
-    this._textureFactory = new TextureFactory(gl);
+    this._ubo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
   }
 
-  private _getOrCreateVertexBuffer(source: BufferSource) {
-    let vbo = this._vboMap.get(source);
-    if (vbo) {
-      return vbo;
+  private _getOrCreateProgram(submesh: SubMesh): WglShader {
+    let shader = this._shaderMap.get(submesh);
+    if (shader) {
+      return shader;
     }
 
-    vbo = new Vbo(this.gl, GL.ARRAY_BUFFER, source, source.usage);
-    this._vboMap.set(source, vbo);
-    return vbo;
+    shader = new ModShader(this.gl, submesh.material.shader);
+    this._shaderMap.set(submesh, shader);
+    return shader;
   }
 
-  private _getOrCreateIndexBuffer(source: BufferSource): Ibo {
-    let ibo = this._iboMap.get(source);
-    if (ibo) {
-      return ibo;
+  private _getOrCreateBuffer(source: BufferSource, buffertype: BufferType, elementtype?: ElementType): WglBuffer {
+    let buffer = this._bufferMap.get(source);
+    if (buffer) {
+      return buffer;
     }
 
-    const indexBuffer = new Vbo(this.gl,
-      GL.ELEMENT_ARRAY_BUFFER, source, source.usage);
-
-    ibo = new Ibo(indexBuffer, source);
-    this._iboMap.set(source, ibo);
-    return ibo;
+    buffer = new WglBuffer(this.gl, buffertype, elementtype);
+    buffer.upload(source.array);
+    this._bufferMap.set(source, buffer);
+    return buffer;
   }
 
-  private _getOrCreatePrimtive(primitive: Mesh, program: Program) {
-    let vao = this._primVaoMap.get(primitive);
+  private _getOrCreateMesh(mesh: Mesh): WglVao {
+    let vao = this._primVaoMap.get(mesh);
     if (vao) {
-      for (const attrib of primitive.attributes) {
-        if (attrib.source.dirty || attrib.source.usage == GL.STREAM_DRAW) {
-          const vbo = vao.vboMap.get(attrib.source);
+      for (const attrib of mesh.attributes) {
+        if (attrib.source.dirty) {
+          const vbo = this._bufferMap.get(attrib.source);
           if (vbo) {
+            // update vbo
             this.gl.bindVertexArray(null);
             attrib.source.dirty = false;
-            vbo.updateRenderBuffer(this.gl, attrib.source);
+            vbo.upload(attrib.source.array);
           }
         }
       }
-      if (primitive.indices && vao.ibo) {
-        if (primitive.indices.dirty || primitive.indices.usage == GL.STREAM_DRAW) {
-          primitive.indices.dirty = false;
-          vao.ibo.indexBuffer.updateRenderBuffer(this.gl, primitive.indices);
+      if (mesh.indices && vao.indices) {
+        if (mesh.indices.dirty) {
+          // update ibo
+          mesh.indices.dirty = false;
+          vao.indices.upload(mesh.indices.array);
         }
       }
-      if (primitive.instancing) {
-        for (const attrib of primitive.instancing.instanceAttributes!) {
+      if (mesh.instancing) {
+        for (const attrib of mesh.instancing.instanceAttributes!) {
           if (attrib.source.dirty || attrib.source.usage == GL.STREAM_DRAW) {
-            const vbo = vao.vboMap.get(attrib.source);
+            const vbo = this._bufferMap.get(attrib.source);
             if (vbo) {
+              // update instancing
               this.gl.bindVertexArray(null);
               attrib.source.dirty = false;
-              vbo.updateRenderBuffer(this.gl, attrib.source);
+              vbo.upload(attrib.source.array);
             }
           }
         }
@@ -143,102 +143,98 @@ export class Renderer {
 
     this.gl.bindVertexArray(null);
 
-    // VBO
-    const vboList: Vbo[] = [];
-    for (let attrib of primitive.attributes) {
-      const vbo = this._getOrCreateVertexBuffer(attrib.source);
-      vboList.push(vbo);
-    }
-
     // IBO
-    let ibo: Ibo | undefined = undefined;
-    if (primitive.indices) {
-      ibo = this._getOrCreateIndexBuffer(primitive.indices);
+    let ibo: WglBuffer | undefined = undefined;
+    if (mesh.indices) {
+      ibo = this._getOrCreateBuffer(mesh.indices, GL.ELEMENT_ARRAY_BUFFER, mesh.indices.glType);
     }
 
-    // Instancing
-    const instanceList: Vbo[] = [];
-    if (primitive.instancing) {
-      for (let attrib of primitive.instancing.instanceAttributes) {
-        const vbo = this._getOrCreateVertexBuffer(attrib.source);
-        instanceList.push(vbo);
-      }
-    }
+    const createAttribute = (src: MeshVertexAttribute): VertexAttribute => ({
+      name: src.name,
+      buffer: this._getOrCreateBuffer(src.source, GL.ARRAY_BUFFER),
+      componentType: src.componentType,
+      componentCount: src.componentCount,
+      bufferStride: src.stride,
+      bufferOffset: src.byteOffset,
+    });
 
     // VAO
-    vao = new Vao(this.gl, program, primitive, vboList, ibo, instanceList);
-    this._primVaoMap.set(primitive, vao);
+    vao = new WglVao(this.gl,
+      mesh.attributes.map(createAttribute),
+      ibo,
+      mesh.instancing?.instanceAttributes.map(createAttribute));
+    this._primVaoMap.set(mesh, vao);
     return vao;
   }
 
   drawPrimitive(
     view: XRView,
-    matrix: mat4, primitive: Mesh,
+    matrix: mat4, mesh: Mesh,
     state: {
-      prevProgram: Program | null,
+      prevProgram: WglShader | null,
       prevMaterial: Material | null,
-      prevVao: Vao | null,
+      prevVao: WglVao | null,
     },
     rightView?: XRView
   ) {
 
-    const submesh = primitive.submeshes[0];
-
     let gl = this.gl;
-    const [program, uboMap] = this._programFactory.getOrCreateProgram(
-      gl, primitive, submesh);
-    const vao = this._getOrCreatePrimtive(primitive, program);
-    // Loop through every primitive known to the renderer.
-    // Bind the primitive material's program if it's different than the one we
-    // were using for the previous primitive.
-    // TODO: The ording of this could be more efficient.
-    const programChanged = state.prevProgram != program
-    if (programChanged) {
-      state.prevProgram = program;
-      if (!state.prevProgram) {
-        throw new Error("arienai");
-      }
-      program.use();
-
-      if (program.uniformMap.LIGHT_DIRECTION) {
-        gl.uniform3fv(program.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
-      }
-
-      if (program.uniformMap.LIGHT_COLOR) {
-        gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
-      }
-
-      gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
-        view.projectionMatrix);
-      gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
-        view.transform.inverse.matrix);
-      if (rightView) {
-        gl.uniformMatrix4fv(program.uniformMap.RIGHT_PROJECTION_MATRIX, false,
-          rightView.projectionMatrix);
-        gl.uniformMatrix4fv(program.uniformMap.RIGHT_VIEW_MATRIX, false,
-          rightView.transform.inverse.matrix);
-      }
-    }
-
-    if (programChanged || state.prevMaterial != submesh.material) {
-      this._bindMaterialState(submesh.material.state, state.prevMaterial?.state);
-      program.bindMaterial(submesh.material,
-        (src) => this._textureFactory.getOrCreateTexture(src));
-      state.prevMaterial = submesh.material;
-
-      for (const key in uboMap) {
-        const ubo = uboMap[key];
-        ubo.bind(gl, program.uboIndexMap[key].index);
-      }
-    }
-
-    gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
+    const vao = this._getOrCreateMesh(mesh);
 
     if (vao != state.prevVao) {
-      vao.bind(gl);
+      vao.bind();
       state.prevVao = vao;
     }
-    vao.draw(gl, submesh.drawCount, primitive.instancing?.instanceCount);
+
+    let drawOffset = 0
+    for (const submesh of mesh.submeshes) {
+      const program = this._getOrCreateProgram(submesh);
+      const programChanged = state.prevProgram != program
+      if (programChanged) {
+        state.prevProgram = program;
+        if (!state.prevProgram) {
+          throw new Error("arienai");
+        }
+        program.use();
+
+        if (program.uniformMap.LIGHT_DIRECTION) {
+          gl.uniform3fv(program.uniformMap.LIGHT_DIRECTION, this._lighting.globalLightDir.array);
+        }
+
+        if (program.uniformMap.LIGHT_COLOR) {
+          gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
+        }
+
+        gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
+          view.projectionMatrix);
+        gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
+          view.transform.inverse.matrix);
+        if (rightView) {
+          gl.uniformMatrix4fv(program.uniformMap.RIGHT_PROJECTION_MATRIX, false,
+            rightView.projectionMatrix);
+          gl.uniformMatrix4fv(program.uniformMap.RIGHT_VIEW_MATRIX, false,
+            rightView.transform.inverse.matrix);
+        }
+      }
+
+      if (programChanged || state.prevMaterial != submesh.material) {
+        this._bindMaterialState(submesh.material.state, state.prevMaterial?.state);
+        // program.bindMaterial(submesh.material,
+        //   (src) => this._textureFactory.getOrCreateTexture(src));
+        state.prevMaterial = submesh.material;
+
+        for (const key in program.uboIndexMap) {
+          const { index, byteLength } = program.uboIndexMap[key];
+          this._ubo.upload(new ArrayBuffer(byteLength))
+          program.setUbo(key, this._ubo, index);
+        }
+      }
+
+      gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
+
+      vao.draw(submesh.mode, submesh.drawCount, mesh.instancing?.instanceCount);
+      drawOffset += submesh.drawCount;
+    }
   }
 
   _colorMaskNeedsReset = false;
