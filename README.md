@@ -12,6 +12,22 @@ Mini WebXR Engine.
 - [ ] bitmapfont 
 - [ ] xrterm
 
+# folder
+
+## root
+
+electron App
+
+- electron 
+- src
+
+### webxr
+
+https `WebXR` hosting.
+
+- assets
+- js
+
 # third-party
 
 - `js/math` based on https://github.com/toji/gl-matrix
