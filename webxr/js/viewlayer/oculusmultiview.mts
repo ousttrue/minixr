@@ -80,17 +80,6 @@ export class OculusMultiview implements IViewLayer {
       }
     }
 
-    const renderList = scene.world.view(mat4, Mesh);
-    {
-      const state = {
-        prevProgram: null,
-        prevMaterial: null,
-        prevVao: null,
-      }
-      renderList.each((entity, matrix, primitive) => {
-        const skin = scene.world.get(entity, Skin);
-        this.renderer.drawMesh(pose.views[0], scene, matrix, primitive, state, pose.views[1], skin);
-      });
-    }
+    this.renderer.drawScene(pose.views[0], scene, pose.views[1]);
   }
 }

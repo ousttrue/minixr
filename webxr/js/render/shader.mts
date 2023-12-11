@@ -19,7 +19,6 @@ layout (std140) uniform uEnv {
 uniform mat4 MODEL_MATRIX;
 `
 
-
 // shaderSource
 // compile
 function compileShader(errorPrefix: string, gl: WebGL2RenderingContext,
@@ -157,7 +156,7 @@ export class WglShader implements Disposable {
     const gl = this.gl;
     const location = gl.getUniformLocation(this.program, name);
     if (!location) {
-      console.warn(`getUniformLocation${name} not found`);
+      console.warn(`getUniformLocation: [${name}] not found`);
     }
     gl.uniformMatrix4fv(location, false, matrix.array);
   }
@@ -201,7 +200,10 @@ export class WglShader implements Disposable {
 }
 
 
-function vsSource(vertexSource: string, defines: ProgramDefine[], multiview: boolean) {
+function vsSource(
+  vertexSource: string,
+  defines: ProgramDefine[],
+  multiview: boolean) {
   let definesString = '';
   if (defines) {
     for (let [key, value] of defines) {
@@ -273,7 +275,6 @@ export class ModShader extends WglShader {
     defines: ProgramDefine[] = [],
     multiview: boolean = false,
     attributeBinds: string[] = [],
-    hasSkinning = false,
   ) {
     super(gl, shader.name,
       vsSource(shader.vertexSource, defines, multiview),

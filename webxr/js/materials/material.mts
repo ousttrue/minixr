@@ -17,7 +17,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-import { Shader } from './shader.mjs';
 import { Texture } from './texture.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 import { MaterialState } from './materialstate.mjs';
@@ -71,25 +70,35 @@ export class Ubo {
 export type ProgramDefine = [string, number];
 
 
+export type Shader = {
+  name: string;
+  vertexSource: string;
+  fragmentSource: string;
+  // uniforms?: UniformDefaultValue[];
+  // ubos?: UboDefinition[],
+}
+
+
 export class Material {
   state = new MaterialState();
   _uniformMap: { [key: string]: MaterialUniform } = {}
   _textureMap: { [key: string]: Texture } = {}
   _uboMap: { [key: string]: ArrayBuffer } = {}
+  defines: ProgramDefine[] = [];
 
   constructor(
     public readonly name: string,
     public readonly shader: Shader) {
-    if (shader.uniforms) {
-      for (const [name, value] of shader.uniforms) {
-        this.setUniform(name, value);
-      }
-    }
-    if (shader.ubos) {
-      for (const ubo of shader.ubos) {
-        this.defineUbo(ubo.name, new ArrayBuffer(ubo.byteLength));
-      }
-    }
+    // if (shader.uniforms) {
+    //   for (const [name, value] of shader.uniforms) {
+    //     this.setUniform(name, value);
+    //   }
+    // }
+    // if (shader.ubos) {
+    //   for (const ubo of shader.ubos) {
+    //     this.defineUbo(ubo.name, new ArrayBuffer(ubo.byteLength));
+    //   }
+    // }
   }
 
   defineUbo(name: string, buffer: ArrayBuffer) {
@@ -130,10 +139,6 @@ export class Material {
     if (texture) {
       this._textureMap[name] = texture;
     }
-  }
-
-  getProgramDefines(attributeMask: number): ProgramDefine[] {
-    return [];
   }
 }
 

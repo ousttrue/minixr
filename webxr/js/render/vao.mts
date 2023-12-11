@@ -53,7 +53,7 @@ export class WglVao implements Disposable {
         this.attributeBinds.push(a.name);
       }
     }
-    // console.log(this.attributeBinds);
+    console.log(this.attributeBinds);
 
     if (indices) {
       gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, indices.buffer);

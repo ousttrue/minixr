@@ -2,14 +2,14 @@ import React from 'react';
 import {
   vec3, vec4, mat4, OrbitView, PerspectiveProjection
 } from '../webxr/js/math/gl-matrix.mjs';
-import { Mesh, Skin } from '../webxr/js/buffer/mesh.mjs';
+import { Mesh, SubMesh, Skin } from '../webxr/js/buffer/mesh.mjs';
 import { BufferSource } from '../webxr/js/buffer/buffersource.mjs';
 import { Material } from '../webxr/js/materials/material.mjs';
-import { WglShader } from '../webxr/js/render/shader.mjs';
-import { VS, FS, VS_SKINNING } from '../webxr/js/materials/pbr.mjs';
+import { WglShader, ModShader } from '../webxr/js/render/shader.mjs';
 import { WglVao } from '../webxr/js/render/vao.mjs';
 import { WglBuffer } from '../webxr/js/render/buffer.mjs';
 import { Animation } from '../webxr/js/animation.mjs';
+import { PbrMaterial } from '../webxr/js/gltf2-loader.mjs';
 import { Scene } from '../webxr/js/scene.mjs';
 import Stats from 'stats-gl'
 
@@ -30,7 +30,7 @@ const GL = WebGL2RenderingContext;
 
 
 class Env {
-  buffer: Float32Array = new Float32Array(16 + 16 + 4 + 4);
+  buffer: Float32Array = new Float32Array(16 * 4 + 4 + 4);
   view: OrbitView;
   projection: PerspectiveProjection;
   lightPosDir: vec4;
@@ -42,20 +42,23 @@ class Env {
       vec3.fromValues(0, 0, 5));
 
     this.projection = new PerspectiveProjection(
-      new mat4(this.buffer.subarray(16, 32)));
+      new mat4(this.buffer.subarray(32, 48)));
 
-    this.lightPosDir = new vec4(this.buffer.subarray(32, 36));
+    this.lightPosDir = new vec4(this.buffer.subarray(64, 68));
     this.lightPosDir.set(1, 1, 1, 0);
-    this.lightColor = new vec4(this.buffer.subarray(36, 40));
+    this.lightColor = new vec4(this.buffer.subarray(68, 72));
   }
 }
+
+
+const IDENTITY = mat4.identity()
 
 
 export class Renderer {
 
   meshVaoMap: Map<Mesh, WglVao> = new Map();
   materialShaderMap: Map<Material, WglShader> = new Map();
-  materialSkinningShaderMap: Map<Material, WglShader> = new Map();
+  materialSkinningShaderMap: Map<SubMesh, WglShader> = new Map();
 
   shader: WglShader | null = null;
 
@@ -122,7 +125,8 @@ export class Renderer {
         let offset = 0
         for (const submesh of mesh.submeshes) {
 
-          const shader = this._getOrCreateShader(submesh.material, skin != null);
+          const shader = this._getOrCreateShader(submesh,
+            vao.attributeBinds, skin != null);
           shader.use();
 
           // update camera matrix
@@ -131,7 +135,7 @@ export class Renderer {
           if (skin) {
             shader.setUbo('uSkinning', this.skinningUbo, 1);
           }
-          shader.setMatrix('uModel', matrix);
+          shader.setMatrix('MODEL_MATRIX', IDENTITY);
 
           vao.draw(submesh.mode, submesh.drawCount, offset);
           offset += submesh.drawCount;
@@ -186,37 +190,24 @@ export class Renderer {
   }
 
   private _getOrCreateShader(
-    material: Material, hasSKinning: boolean): WglShader {
-    if (hasSKinning) {
-      {
-        const shader = this.materialSkinningShaderMap.get(material);
-        if (shader) {
-          return shader;
-        }
-      }
-      {
-        const shader = new WglShader(this.gl, material.name,
-          VS_SKINNING, FS
-        );
-        this.materialSkinningShaderMap.set(material, shader);
-        return shader;
-      }
+    submesh: SubMesh, attributeBinds: string[], hasSkinning: boolean): WglShader {
+    let shader = this.materialSkinningShaderMap.get(submesh);
+    if (shader) {
+      return shader;
     }
-    else {
-      {
-        const shader = this.materialShaderMap.get(material);
-        if (shader) {
-          return shader;
-        }
-      }
-      {
-        const shader = new WglShader(this.gl, material.name,
-          VS, FS,
-        );
-        this.materialShaderMap.set(material, shader);
-        return shader;
-      }
+
+    const defines = [...submesh.material.defines]
+    if (hasSkinning) {
+      defines.push(['USE_SKIN', 1])
     }
+
+    shader = new ModShader(
+      this.gl, submesh.material.shader,
+      defines,
+      false, attributeBinds);
+    this.materialSkinningShaderMap.set(submesh, shader);
+    return shader;
+
   }
 }
 

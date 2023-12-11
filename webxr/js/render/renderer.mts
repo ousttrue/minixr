@@ -20,7 +20,6 @@
 
 import { mat4, vec3 } from '../math/gl-matrix.mjs';
 import { Material } from '../materials/material.mjs';
-import { VS_SKINNING, FS } from '../materials/pbr.mjs';
 import { MaterialState, CAP } from '../materials/materialstate.mjs';
 import { Mesh, SubMesh, MeshVertexAttribute, Skin } from '../buffer/mesh.mjs';
 import { Scene } from '../scene.mjs';
@@ -34,6 +33,8 @@ const GL = WebGL2RenderingContext; // For enums
 
 const DEF_LIGHT_DIR = vec3.fromValues(-0.1, -1.0, -0.2);
 const DEF_LIGHT_COLOR = vec3.fromValues(3.0, 3.0, 3.0);
+
+const IDENTITY = mat4.identity();
 
 
 function setCap(gl: WebGL2RenderingContext, glEnum: number, cap: any, prevState: any, state: any) {
@@ -113,8 +114,15 @@ export class Renderer {
       return shader;
     }
 
+    const defines = [...submesh.material.defines]
+    if (hasSkinning) {
+      defines.push(['USE_SKIN', 1])
+    }
+
     shader = new ModShader(
-      this.gl, submesh.material.shader, undefined, this.multiview, attributesBinds, hasSkinning);
+      this.gl, submesh.material.shader,
+      defines,
+      this.multiview, attributesBinds);
     this._shaderMap.set(submesh, shader);
     return shader;
   }
@@ -194,7 +202,33 @@ export class Renderer {
     return vao;
   }
 
-  drawMesh(
+  drawScene(
+    view: XRView,
+    scene: Scene,
+    rightView?: XRView,
+  ) {
+    {
+      this.envUboBuffer.set(view.transform.inverse.matrix);
+      this.envUboBuffer.set(view.projectionMatrix, 32);
+      if (rightView) {
+        this.envUboBuffer.set(rightView.transform.inverse.matrix, 16);
+        this.envUboBuffer.set(rightView.projectionMatrix, 48);
+      }
+      this.envUbo.upload(this.envUboBuffer);
+    }
+
+    const state = {
+      prevProgram: null,
+      prevMaterial: null,
+      prevVao: null,
+    }
+    scene.world.view(mat4, Mesh).each((entity, matrix, primitive) => {
+      const skin = scene.world.get(entity, Skin)
+      this._drawMesh(view, scene, matrix, primitive, state, rightView, skin);
+    });
+  }
+
+  private _drawMesh(
     view: XRView,
     scene: Scene,
     matrix: mat4, mesh: Mesh,
@@ -205,41 +239,27 @@ export class Renderer {
     rightView?: XRView,
     skin?: Skin,
   ) {
-
     let gl = this.gl;
-    const vao = this._getOrCreateMesh(mesh);
 
-    vao.bind();
-    let drawOffset = 0
 
     // update ubo
     mesh.uboMap.forEach((value, key) => {
       const ubo = this._getOrCreateUbo(value);
       ubo.upload(value);
     });
-    {
-      // gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
-      //   view.projectionMatrix);
-      // gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
-      //   view.transform.inverse.matrix);
-      // if (rightView) {
-      //   gl.uniformMatrix4fv(program.uniformMap.RIGHT_PROJECTION_MATRIX, false,
-      //     rightView.projectionMatrix);
-      //   gl.uniformMatrix4fv(program.uniformMap.RIGHT_VIEW_MATRIX, false,
-      //     rightView.transform.inverse.matrix);
-      // }
-      this.envUboBuffer.set(view.transform.inverse.matrix);
-      this.envUboBuffer.set(view.projectionMatrix, 32);
-      this.envUbo.upload(this.envUboBuffer);
-    }
     if (skin) {
       const matrices = skin.updateSkinningMatrix(
         (joint) => scene.nodeMap.get(joint)!.matrix)
       this.skinningUbo.upload(matrices);
     }
 
+
+    const vao = this._getOrCreateMesh(mesh);
+    vao.bind();
+    let drawOffset = 0
     for (const submesh of mesh.submeshes) {
-      const program = this._getOrCreateProgram(submesh, vao.attributeBinds, skin != null)
+      const program = this._getOrCreateProgram(
+        submesh, vao.attributeBinds, skin != null)
       const programChanged = state.prevProgram != program
       if (programChanged) {
         state.prevProgram = program;
@@ -265,7 +285,12 @@ export class Renderer {
         state.prevMaterial = submesh.material;
       }
 
-      gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
+      if (skin) {
+        program.setMatrix('MODEL_MATRIX', IDENTITY);
+      }
+      else {
+        gl.uniformMatrix4fv(program.uniformMap.MODEL_MATRIX, false, matrix.array);
+      }
 
       // bind ubo
       for (const key in submesh.material._uboMap) {
@@ -294,10 +319,8 @@ export class Renderer {
         const uboInfo = program.uboIndexMap['uSkinning'];
         if (uboInfo) {
           program.setUbo('uSkinning', this.skinningUbo, uboInfo.index);
-          program.setMatrix('uModel', matrix);
         }
       }
-
 
       if (mesh.instancing) {
         vao.drawInstancing(submesh.mode, submesh.drawCount,

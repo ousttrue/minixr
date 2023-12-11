@@ -49,20 +49,12 @@ export class ImmersiveStereoView implements IViewLayer {
     // Clear the framebuffer
     this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-    const renderList = scene.world.view(mat4, Mesh);
     {
       // left eye
       const view = pose.views[0];
       const vp = this.layer.getViewport(view)!;
       this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
-      const state = {
-        prevProgram: null,
-        prevMaterial: null,
-        prevVao: null,
-      }
-      renderList.each((entity, matrix, primitive) => {
-        this.renderer.drawMesh(view, scene, matrix, primitive, state, undefined);
-      });
+      this.renderer.drawScene(view, scene)
     }
     {
       // right eye
@@ -70,15 +62,7 @@ export class ImmersiveStereoView implements IViewLayer {
       const vp = this.layer.getViewport(view)!;
       if (vp.width > 0) {
         this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
-        const state = {
-          prevProgram: null,
-          prevMaterial: null,
-          prevVao: null,
-        }
-        renderList.each((entity, matrix, primitive) => {
-          const skin = scene.world.get(entity, Skin);
-          this.renderer.drawMesh(view, scene, matrix, primitive, state, undefined, skin);
-        });
+        this.renderer.drawScene(view, scene);
       }
       else {
         // polyfill emulator

@@ -59,22 +59,11 @@ export class InlineMonoView implements IViewLayer {
     // Clear the framebuffer
     this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-    const renderList = scene.world.view(mat4, Mesh);
     {
       const view = pose.views[0];
-      // Loop through each of the views reported by the frame and draw them
-      // into the corresponding viewport.
       const vp = this.layer.getViewport(view)!;
       this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
-      const state = {
-        prevProgram: null,
-        prevMaterial: null,
-        prevVao: null,
-      }
-      renderList.each((entity, matrix, primitive) => {
-        const skin = scene.world.get(entity, Skin)
-        this.renderer.drawMesh(view, scene, matrix, primitive, state, undefined, skin);
-      });
+      this.renderer.drawScene(view, scene);
     }
   }
 }

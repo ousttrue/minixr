@@ -86,23 +86,23 @@ class AppSession {
       await SevenSegmentText.factory(this.scene.world, matrix);
     }
 
-    // const instancing = new CubeInstancing(65535, this.scene.world);
-    //
-    // await HandTracking.factory(this.scene.world, instancing, "left");
-    // await HandTracking.factory(this.scene.world, instancing, "right");
-    // await interactionFactory(this.scene.world, instancing);
-    // await cubeSeaFactory(this.scene.world, instancing, 6, 0.5)
-    // const textgrid = await bitmapFontFactory(this.scene.world, vec3.fromValues(0.2, 1.2, -0.4));
-    // textgrid.puts(0, 0, window.navigator.userAgent);
-    // textgrid.puts(0, 0.1, this.viewspace.toString());
+    const instancing = new CubeInstancing(65535, this.scene.world);
 
-    // await this._loadGltf('assets', 'garage');
-    // const m = mat4.fromTRS(
-    //   vec3.fromValues(-0.5, 0, -1),
-    //   new quat(),
-    //   vec3.fromValues(1, 1, 1)
-    // )
-    // await this._loadGltf('glTF-Sample-Models', 'CesiumMan', m);
+    await HandTracking.factory(this.scene.world, instancing, "left");
+    await HandTracking.factory(this.scene.world, instancing, "right");
+    await interactionFactory(this.scene.world, instancing);
+    await cubeSeaFactory(this.scene.world, instancing, 6, 0.5)
+    const textgrid = await bitmapFontFactory(this.scene.world, vec3.fromValues(0.2, 1.2, -0.4));
+    textgrid.puts(0, 0, window.navigator.userAgent);
+    textgrid.puts(0, 0.1, this.viewspace.toString());
+
+    await this._loadGltf('assets', 'garage');
+    const m = mat4.fromTRS(
+      vec3.fromValues(-0.5, 0, -1),
+      new quat(),
+      vec3.fromValues(1, 1, 1)
+    )
+    await this._loadGltf('glTF-Sample-Models', 'CesiumMan', m);
     // await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', );
   }
 

@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
-import { Material, DefaultMaterial } from '../materials/material.mjs';
+import { Material } from '../materials/material.mjs';
 import { BufferSource, BufferSourceArray } from './buffersource.mjs';
 
 
