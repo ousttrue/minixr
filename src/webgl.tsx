@@ -1,17 +1,16 @@
 import React from 'react';
 import {
   vec3, vec4, mat4, OrbitView, PerspectiveProjection
-} from '../lib/math/gl-matrix.mjs';
-import { Mesh, MeshVertexAttribute, Skin } from '../lib/buffer/mesh.mjs';
-import { BufferSource } from '../lib/buffer/buffersource.mjs';
-import { Material } from '../lib/materials/material.mjs';
-import { WglShader } from '../lib/wgl/shader.mjs';
-import { VS, FS, VS_SKINNING } from '../lib/materials/pbr.mjs';
-import { WglVao } from '../lib/wgl/vao.mjs';
-import { WglBuffer } from '../lib/wgl/buffer.mjs';
-import { Animation } from '../lib/animation.mjs';
-import { Scene } from '../lib/scene.mjs';
-import { TrsNode } from '../lib/node.mjs';
+} from '../webxr/js/math/gl-matrix.mjs';
+import { Mesh, Skin } from '../webxr/js/buffer/mesh.mjs';
+import { BufferSource } from '../webxr/js/buffer/buffersource.mjs';
+import { Material } from '../webxr/js/materials/material.mjs';
+import { WglShader } from '../webxr/js/render/shader.mjs';
+import { VS, FS, VS_SKINNING } from '../webxr/js/materials/pbr.mjs';
+import { WglVao } from '../webxr/js/render/vao.mjs';
+import { WglBuffer } from '../webxr/js/render/buffer.mjs';
+import { Animation } from '../webxr/js/animation.mjs';
+import { Scene } from '../webxr/js/scene.mjs';
 import Stats from 'stats-gl'
 
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import { Scene } from '../lib/scene.mjs';
-import { Glb } from '../lib/glb.mjs';
-import { Gltf2Loader } from '../lib/gltf2-loader.mjs';
+import { Scene } from '../webxr/js/scene.mjs';
+import { Glb } from '../webxr/js/glb.mjs';
+import { Gltf2Loader } from '../webxr/js/gltf2-loader.mjs';
 
 
 type State = {
@@ -70,7 +70,7 @@ export const useStore = create<State & Action>((set, get) => ({
 
   setLoader: (loader: Gltf2Loader) => {
     loader.load().then(() => {
-      const scene = new Scene(loader);
+      const scene = new Scene();
       get().setScene(scene);
     }).catch((err) => {
       console.log(err);
@@ -85,7 +85,7 @@ export const useStore = create<State & Action>((set, get) => ({
   },
 
   setScene: async (scene: Scene) => {
-    await scene.load()
+    await scene.load(get().loader!)
     set({
       status: 'scene',
       scene
