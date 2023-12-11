@@ -127,9 +127,9 @@ export class Renderer {
 
           // update camera matrix
           shader.setUbo('uEnv', this.envUbo, 0);
-          shader.setUbo('uMaterial', this.materialUbo, 1);
+          // shader.setUbo('uMaterial', this.materialUbo, 1);
           if (skin) {
-            shader.setUbo('uSkinning', this.skinningUbo, 2);
+            shader.setUbo('uSkinning', this.skinningUbo, 1);
           }
           shader.setMatrix('uModel', matrix);
 

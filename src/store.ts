@@ -17,6 +17,26 @@ type Action = {
   setScene: (scene: Scene) => void
 }
 
+function processBytes(get, set, bytes: ArrayBuffer) {
+  try {
+    const glb = Glb.parse(bytes);
+    const loader = new Gltf2Loader(glb.json, { binaryChunk: glb.bin });
+    get().setLoader(loader);
+    set({
+      status: 'glb',
+    })
+  }
+  catch (err) {
+    const decoder = new TextDecoder();
+    const text = decoder.decode(bytes);
+    const json = JSON.parse(text);
+    const loader = new Gltf2Loader(json, {});
+    get().setLoader(loader);
+    set({
+      status: 'gltf',
+    })
+  }
+}
 
 export const useStore = create<State & Action>((set, get) => ({
   status: 'no file',
@@ -30,30 +50,29 @@ export const useStore = create<State & Action>((set, get) => ({
         const file = await handle.getFile();
         if (file) {
           const bytes = await file.arrayBuffer();
-          try {
-            const glb = Glb.parse(bytes);
-            const loader = new Gltf2Loader(glb.json, { binaryChunk: glb.bin });
-            get().setLoader(loader);
-            set({
-              status: 'glb',
-            })
-          }
-          catch (err) {
-            const decoder = new TextDecoder();
-            const text = decoder.decode(bytes);
-            const json = JSON.parse(text);
-            const loader = new Gltf2Loader(json, {});
-            get().setLoader(loader);
-            set({
-              status: 'gltf',
-            })
-          }
+          processBytes(get, set, bytes);
         }
       }
       else if (handle instanceof FileSystemDirectoryHandle) {
         set({
           status: 'directory',
         })
+        for await (const [key, value] of handle.entries()) {
+          if (key.endsWith(".glb")) {
+            const file = await value.getFile();
+            if (file) {
+              const bytes = await file.arrayBuffer();
+              processBytes(get, set, bytes);
+            }
+          }
+          else if (key.endsWith(".gltf")) {
+            const file = await value.getFile();
+            if (file) {
+              const bytes = await file.arrayBuffer();
+              processBytes(get, set, bytes);
+            }
+          }
+        }
       }
       else {
         set({
