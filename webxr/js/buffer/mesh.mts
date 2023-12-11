@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 import { vec3, mat4, BoundingBox } from '../math/gl-matrix.mjs';
-import { Material } from '../materials/material.mjs';
+import { Material, ProgramDefine } from '../materials/material.mjs';
 import { BufferSource, BufferSourceArray } from './buffersource.mjs';
 
 
@@ -111,6 +111,7 @@ export class Instancing {
 export class Mesh {
   bb = new BoundingBox();
   uboMap: Map<string, ArrayBuffer> = new Map();
+  defines: ProgramDefine[] = []
 
   constructor(
     public readonly attributes: MeshVertexAttribute[],
@@ -224,14 +225,6 @@ export class Skin {
       // model (inversedSkeleton) joint inversedBindMatrices p
       const dst = new mat4(this.skinningMatrices.subarray(j, j + 16))
       jointMatrix.mul(inverseBindMatrix, { out: dst })
-
-      // if (skin.skeleton) {
-      //   const skeletonNode = scene.nodeMap.get(skin.skeleton)!
-      //   const skeletonMatrix = skeletonNode.matrix.invert()!;
-      //   skeletonMatrix.mul(dst, { out: dst })
-      // }
-
-      // mat4.identity({ out: dst })
     }
     return this.skinningMatrices;
   }

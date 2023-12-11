@@ -12,6 +12,9 @@ const VERTEX_SOURCE = `
 layout(location = 0) in vec3 POSITION;
 layout(location = 1) in vec3 NORMAL;
 layout(location = 2) in vec2 TEXCOORD_0;
+#ifdef USE_VERTEX_COLOR
+layout(location = 3) in vec4 COLOR_0;
+#endif
 
 #ifdef USE_SKIN
 layout(location = 3) in vec4 sJoints;
@@ -54,7 +57,6 @@ out vec3 vNorm;
 #endif
 
 #ifdef USE_VERTEX_COLOR
-in vec4 COLOR_0;
 out vec4 vCol;
 #endif
 
@@ -300,22 +302,18 @@ function getItemSize(accessor: GLTF2.Accessor): number {
   return getComponentCount(accessor.type) * getTypeSize(accessor.componentType)
 }
 
-function hasSkinning(primitives: Mesh[]) {
-  for (const primitive of primitives) {
-    for (const attrib of primitive.attributes) {
-      if (attrib.name == 'JOINTS_0') {
-        return true;
-      }
-    }
-  }
-  return false;
+
+function hasAttribute(primitives: Mesh[], name: string) {
+  return primitives.some(
+    primitive => primitive.attributes.some(x => x.name == name));
 }
 
 function toInterleavedSubmesh(primitives: Mesh[],
   totalVertexCount: number, totalIndexCount: number): Mesh {
 
   // create interleaved vertex(POSITION + NORMAL + TEXCOORD_0)
-  const components = 8;
+  const hasColorVertex = hasAttribute(primitives, 'COLOR_0');
+  const components = hasColorVertex ? 12 : 8;
   const stride = components * 4;
   const vertices = new BufferSource(
     components, new Float32Array(totalVertexCount * components));
@@ -352,7 +350,20 @@ function toInterleavedSubmesh(primitives: Mesh[],
       false
     ),
   ]
-  if (hasSkinning(primitives)) {
+  if (hasColorVertex) {
+    attributes.push(
+      new MeshVertexAttribute(
+        'COLOR_0',
+        vertices,
+        4,
+        GL.FLOAT,
+        stride,
+        32,
+        false
+      ),
+    )
+  }
+  if (hasAttribute(primitives, 'JOINTS_0')) {
     // joints(xyzw), weights(xyzw)
     const skinning = new BufferSource(
       8, new Float32Array(totalVertexCount * 8));
@@ -791,10 +802,9 @@ export class Gltf2Loader {
         const mesh = toInterleavedSubmesh(primitives,
           totalVertexCount, totalIndexCount);
 
-        // vertex
-        // if (attributeMask & ATTRIB_MASK.COLOR_0) {
-        //   programDefines.push(['USE_VERTEX_COLOR', 1]);
-        // }
+        if (mesh.attributes.some(x => x.name == 'COLOR_0')) {
+          mesh.defines.push(['USE_VERTEX_COLOR', 1]);
+        }
 
         this.meshes.push(mesh);
       }
