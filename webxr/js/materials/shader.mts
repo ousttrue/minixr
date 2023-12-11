@@ -1,33 +1,3 @@
-export const MULTIVIEW_VP = `
-uniform mat4 PROJECTION_MATRIX;
-uniform mat4 VIEW_MATRIX;
-
-uniform mat4 RIGHT_PROJECTION_MATRIX;
-uniform mat4 RIGHT_VIEW_MATRIX;
-
-uniform mat4 MODEL_MATRIX;
-
-mat4 ViewProjection()
-{
-  return gl_ViewID_OVR == 0u 
-    ? (PROJECTION_MATRIX * VIEW_MATRIX)
-    : (RIGHT_PROJECTION_MATRIX * RIGHT_VIEW_MATRIX)
-  ;
-}
-`;
-
-export const DEFAULT_VP = `
-uniform mat4 PROJECTION_MATRIX;
-uniform mat4 VIEW_MATRIX;
-uniform mat4 MODEL_MATRIX;
-
-mat4 ViewProjection()
-{
-  return PROJECTION_MATRIX * VIEW_MATRIX;
-}
-`;
-
-
 // export class ProgramFactory {
 //   private _programCache: { [key: string]: Program } = {};
 //   private _uboMap: Map<Material, UboMap> = new Map();

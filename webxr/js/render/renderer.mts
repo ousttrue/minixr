@@ -74,27 +74,26 @@ export class Renderer {
   private _bufferMap: Map<BufferSource, WglBuffer> = new Map();
   private _primVaoMap: Map<Mesh, WglVao> = new Map();
   private _shaderMap: Map<SubMesh, WglShader> = new Map();
+
   private _uboMap: Map<ArrayBuffer, WglBuffer> = new Map();
-  private _textureFactory;
+  private _textureFactory: TextureFactory;
   skinningUbo: WglBuffer;
 
   // layout (std140) uniform uEnv {
-  //   mat4 uView;
-  //   mat4 uProjection;
+  //   mat4 uView[2];
+  //   mat4 uProjection[2];
   //   vec4 uLightPosDir;
   //   vec4 uLightColor;
-  // };  
-  _uboEnv = new Float32Array([
-    1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
-    1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
-    1, 1, 1, 0, 1, 1, 1, 1,
-  ]);
+  // };
+  envUboBuffer = new Float32Array(16 * 4 + 4 + 4);
+  envUbo: WglBuffer;
 
   constructor(
     public readonly gl: WebGL2RenderingContext,
     public readonly multiview = false,
   ) {
     this._textureFactory = new TextureFactory(gl);
+    this.envUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
     this.skinningUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
   }
 
@@ -219,10 +218,19 @@ export class Renderer {
       ubo.upload(value);
     });
     {
-      this._uboEnv.set(view.transform.inverse.matrix);
-      this._uboEnv.set(view.projectionMatrix, 16);
-      const ubo = this._getOrCreateUbo(this._uboEnv);
-      ubo.upload(this._uboEnv);
+      // gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
+      //   view.projectionMatrix);
+      // gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
+      //   view.transform.inverse.matrix);
+      // if (rightView) {
+      //   gl.uniformMatrix4fv(program.uniformMap.RIGHT_PROJECTION_MATRIX, false,
+      //     rightView.projectionMatrix);
+      //   gl.uniformMatrix4fv(program.uniformMap.RIGHT_VIEW_MATRIX, false,
+      //     rightView.transform.inverse.matrix);
+      // }
+      this.envUboBuffer.set(view.transform.inverse.matrix);
+      this.envUboBuffer.set(view.projectionMatrix, 32);
+      this.envUbo.upload(this.envUboBuffer);
     }
     if (skin) {
       const matrices = skin.updateSkinningMatrix(
@@ -248,16 +256,6 @@ export class Renderer {
           gl.uniform3fv(program.uniformMap.LIGHT_COLOR, this._lighting.globalLightColor.array);
         }
 
-        gl.uniformMatrix4fv(program.uniformMap.PROJECTION_MATRIX, false,
-          view.projectionMatrix);
-        gl.uniformMatrix4fv(program.uniformMap.VIEW_MATRIX, false,
-          view.transform.inverse.matrix);
-        if (rightView) {
-          gl.uniformMatrix4fv(program.uniformMap.RIGHT_PROJECTION_MATRIX, false,
-            rightView.projectionMatrix);
-          gl.uniformMatrix4fv(program.uniformMap.RIGHT_VIEW_MATRIX, false,
-            rightView.transform.inverse.matrix);
-        }
       }
 
       if (programChanged || state.prevMaterial != submesh.material) {
@@ -289,8 +287,7 @@ export class Renderer {
       {
         const uboInfo = program.uboIndexMap['uEnv'];
         if (uboInfo) {
-          const ubo = this._getOrCreateUbo(this._uboEnv);
-          program.setUbo('uEnv', ubo, uboInfo.index);
+          program.setUbo('uEnv', this.envUbo, uboInfo.index);
         }
       }
       {
