@@ -1,5 +1,4 @@
-import { Texture } from '../materials/texture.mjs';
-import { DataTexture, VideoTexture } from '../materials/texture.mjs';
+import { Texture } from '../materials/material.mjs';
 import { isPowerOfTwo } from '../math/gl-matrix.mjs';
 
 
@@ -26,8 +25,8 @@ export class TextureFactory {
     this._textureMap.set(texture, textureHandle);
 
     gl.bindTexture(gl.TEXTURE_2D, textureHandle);
-    gl.texImage2D(gl.TEXTURE_2D, 0, texture.format, texture.width, texture.height,
-      0, texture.format, GL.UNSIGNED_BYTE, texture.source);
+    gl.texImage2D(gl.TEXTURE_2D, 0, GL.RGBA, texture.image.width, texture.image.height,
+      0, GL.RGBA, GL.UNSIGNED_BYTE, texture.image);
     this._setSamplerParameters(texture);
 
     // renderTexture._complete = true;

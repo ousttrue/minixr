@@ -2,15 +2,13 @@ import { Mesh, SubMesh, MeshVertexAttribute, Instancing } from '../buffer/mesh.m
 import { BufferSource } from '../buffer/buffersource.mjs';
 import { vec3, mat4 } from '../math/gl-matrix.mjs';
 import { World } from '../uecs/index.mjs';
-import { Shader, RENDER_ORDER } from '../materials/shader.mjs';
-import { Material } from '../materials/material.mjs';
-import { BlobTexture, ImageTexture } from '../materials/texture.mjs';
+import { Material, Texture } from '../materials/material.mjs';
 
 
 const GL = WebGLRenderingContext; // For enums
 
 
-export const BitmapFontShader: Shader = {
+export const BitmapFontShader = {
   name: 'BitmapFont',
   vertexSource: `
 in vec2 a_Position;
@@ -75,12 +73,6 @@ void main() {
 }
 
 
-export async function loadTextureAsync(): Promise<BlobTexture> {
-  const img = document.getElementById("cozette") as HTMLImageElement;
-  // const imageBlob = await response.blob();
-  return new ImageTexture(img);
-}
-
 
 export class TextGrid {
   length = 0;
@@ -119,7 +111,13 @@ export class TextGrid {
 
 export async function bitmapFontFactory(world: World, pos: vec3): Promise<TextGrid> {
   const material = new Material('BitmapFontMaterial', BitmapFontShader)
-  material.setTexture('color', await loadTextureAsync());
+  const img = document.getElementById("cozette") as HTMLImageElement;
+  material.setTexture('color', new Texture(img));
+  // export async function loadTextureAsync(): Promise<BlobTexture> {
+  //   // const imageBlob = await response.blob();
+  //   return new ImageTexture(img);
+  // }
+
 
   // counter clock wise
   const vertices = new BufferSource(4, new Float32Array([

@@ -1,10 +1,12 @@
 import type * as GLTF2 from './GLTF2.d.ts';
 import { Glb } from './glb.mjs';
-import { Material, ProgramDefine } from '../materials/material.mjs';
-import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
+import { Material, ProgramDefine, Texture } from '../materials/material.mjs';
 import { Mesh, SubMesh, MeshVertexAttribute, Skin } from '../buffer/mesh.mjs';
 import { BufferSource } from '../buffer/buffersource.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
+
+
+const GL = WebGLRenderingContext; // For enums
 
 
 const VERTEX_SOURCE = `
@@ -232,7 +234,7 @@ void main() {
 }`;
 
 
-const PbrShader: Shader = {
+const PbrShader = {
   name: 'PBR',
 
   vertexSource: VERTEX_SOURCE,
@@ -256,7 +258,6 @@ export class PbrMaterial extends Material {
   }
 }
 
-const GL = WebGLRenderingContext; // For enums
 
 const DEFAULT_MATERIAL = new PbrMaterial('glTF-default-material')
 
@@ -455,7 +456,7 @@ function getProgramDefines(material: GLTF2.Material): ProgramDefine[] {
  */
 export class Gltf2Loader {
   images: HTMLImageElement[] = [];
-  textures: ImageTexture[] = [];
+  textures: Texture[] = [];
   materials: Material[] = [];
   meshes: Mesh[] = [];
   skins: Skin[] = [];
@@ -482,6 +483,7 @@ export class Gltf2Loader {
   }
 
   static async loadFromUrl(url: string): Promise<Gltf2Loader> {
+    console.log(url);
     const response =
       (url.startsWith('http://') || url.startsWith('https://'))
         ? await fetch(url, { mode: "cors" })
@@ -595,7 +597,8 @@ export class Gltf2Loader {
     }
   }
 
-  private _getTexture(textureInfo?: GLTF2.TextureInfo | GLTF2.MaterialNormalTextureInfo): ImageTexture | null {
+  private _getTexture(
+    textureInfo?: GLTF2.TextureInfo | GLTF2.MaterialNormalTextureInfo): Texture | null {
     if (!textureInfo) {
       return null;
     }
@@ -657,7 +660,6 @@ export class Gltf2Loader {
 
     if (this.json.images) {
       for (let glImage of this.json.images) {
-        // images.push(new Gltf2Resource(image, baseUrl));
         const image = new Image();
         if (glImage.uri) {
           if (isDataUri(glImage.uri)) {
@@ -665,12 +667,12 @@ export class Gltf2Loader {
           } else {
             image.src = `${this.data.baseUrl}${glImage.uri}`;
           }
-        } else if (glImage.bufferView != null && this.json.bufferViews) {
-          // this._texture.genDataKey();
-          // let view = bufferViews[this.json.bufferView];
+        } else if (glImage.bufferView != null) {
+          if (!this.json.bufferViews) {
+            throw new Error("no bufferViews");
+          }
           const bufferView = this.json.bufferViews[glImage.bufferView];
           const bytes = await this._bytesFromBufferView(bufferView);
-          // const bytes = await view.bytesAsync();
           const blob = new Blob([bytes], { type: glImage.mimeType });
           image.src = window.URL.createObjectURL(blob);
         }
@@ -679,21 +681,17 @@ export class Gltf2Loader {
     }
 
     if (this.json.textures) {
-      for (let texture of this.json.textures) {
-        if (texture.source == null) {
+      for (let glTexture of this.json.textures) {
+        if (glTexture.source == null) {
           throw new Error("invalid texture");
         }
-        let image = this.images[texture.source];
-        const glTexture = new ImageTexture(image);
-        if (texture.sampler != null && this.json.samplers) {
-          const sampler = this.json.samplers[texture.sampler];
-          glTexture.sampler.minFilter = sampler.minFilter!;
-          glTexture.sampler.magFilter = sampler.magFilter!;
-          glTexture.sampler.wrapS = sampler.wrapS!;
-          glTexture.sampler.wrapT = sampler.wrapT!;
-        }
-        await glTexture.waitForComplete();
-        this.textures.push(glTexture);
+        let image = this.images[glTexture.source];
+        const texture = new Texture(image,
+          glTexture.sampler != null
+            ? this.json.samplers![glTexture.sampler]
+            : DefaultSampler,
+        );
+        this.textures.push(texture);
       }
     }
 
@@ -717,9 +715,9 @@ export class Gltf2Loader {
             : 1.0);
         pbr.setUniform('emissiveFactor', glMaterial.emissiveFactor ?? [0, 0, 0]);
         pbr.setTexture('emissiveTex', this._getTexture(glMaterial.emissiveTexture));
-        if (!pbr._textureMap.emissive && glMaterial.emissiveFactor) {
-          pbr.setTexture('emissiveTex', new ColorTexture(1.0, 1.0, 1.0, 1.0));
-        }
+        // if (!pbr._textureMap.emissive && glMaterial.emissiveFactor) {
+        //   pbr.setTexture('emissiveTex', new ColorTexture(1.0, 1.0, 1.0, 1.0));
+        // }
 
         switch (glMaterial.alphaMode) {
           case 'BLEND':
@@ -786,6 +784,7 @@ export class Gltf2Loader {
             vertexCount,
             [new SubMesh(material,
               indexBuffer ? indexBuffer.length : vertexCount,
+              // @ts-ignore
               glPrimitive.mode ?? GL.TRIANGLES,
             )],
             indexBuffer ? new BufferSource(1, indexBuffer) : undefined,

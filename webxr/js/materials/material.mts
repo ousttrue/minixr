@@ -17,9 +17,27 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-import { Texture } from './texture.mjs';
 import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 import { MaterialState } from './materialstate.mjs';
+import type * as GLTF2 from '../gltf2/GLTF2.d.ts';
+
+
+const GL = WebGLRenderingContext;
+
+
+export const DefaultSampler: GLTF2.Sampler = {
+  magFilter: GL.LINEAR,
+  minFilter: GL.LINEAR,
+  wrapS: GL.CLAMP_TO_EDGE,
+  wrapT: GL.CLAMP_TO_EDGE,
+}
+
+
+export class Texture {
+  constructor(
+    public readonly image: HTMLImageElement,
+    public readonly sampler: GLTF2.Sampler = DefaultSampler) { }
+}
 
 
 abstract class MaterialUniform {
