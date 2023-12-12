@@ -1,18 +1,21 @@
 import React from 'react';
 import { create } from 'zustand'
+import Stats from 'stats-gl'
 
 import { Scene } from '../webxr/js/scene.mjs';
-import { Renderer } from './renderer.js';
+import { Renderer } from '../webxr/js/render/renderer.mjs';
 import { Env } from '../webxr/js/viewlayer/env.mjs';
-
-
-type State = {
-  renderer: Renderer | null;
-  env: Env;
-}
+import { Animation } from '../webxr/js/animation.mjs';
 
 
 const GL = WebGL2RenderingContext;
+
+
+type State = {
+  stats: Stats;
+  env: Env;
+  renderer: Renderer | null;
+}
 
 
 interface Action {
@@ -20,7 +23,17 @@ interface Action {
 }
 
 
-export const useStore = create<State & Action>((set, get) => ({
+export const useGlStore = create<State & Action>((set, get) => ({
+  // create a new Stats object
+  stats: new Stats({
+    logsPerSecond: 20,
+    samplesLog: 100,
+    samplesGraph: 10,
+    precision: 2,
+    horizontal: true,
+    minimal: false,
+    mode: 0
+  }),
   env: new Env(),
   renderer: null,
 
@@ -34,9 +47,10 @@ export default function WebGLCanvas(props: {
   scene?: Scene,
 }) {
   const ref = React.useRef<HTMLCanvasElement>(null);
-  const env = useStore((state) => state.env)
-  const renderer = useStore((state) => state.renderer)
-  const setRenderer = useStore((state) => state.setRenderer)
+  const env = useGlStore((state) => state.env)
+  const renderer = useGlStore((state) => state.renderer)
+  const stats = useGlStore((state) => state.stats)
+  const setRenderer = useGlStore((state) => state.setRenderer)
   const [count, setCount] = React.useState(0);
 
   requestAnimationFrame(() => {
@@ -66,13 +80,18 @@ export default function WebGLCanvas(props: {
       throw new Error('no webgl2');
     }
     const statsParent = document.getElementById('stats')!;
+    statsParent.appendChild(stats.container);
+    stats.container.style.position = 'absolute';
+    statsParent.style.position = 'relative';
 
-    const newRenderer = new Renderer(gl, observer, statsParent);
+    const newRenderer = new Renderer(gl);
     setRenderer(newRenderer);
   }, [])
 
   // render
   React.useEffect(() => {
+    stats.begin();
+
     if (!renderer) {
       return;
     }
@@ -94,7 +113,20 @@ export default function WebGLCanvas(props: {
       gl.viewport(0, 0, width, height);
     }
 
-    renderer.render(env.buffer, props.scene);
+    const scene = props.scene;
+    if (scene) {
+      // update scene
+      const world = scene.world;
+      const seconds = scene.timeSeconds;
+      // console.log(seconds);
+      world.view(Animation).each((_entity, animation) => {
+        animation.update(seconds);
+      });
+
+      renderer.drawScene(env.buffer, scene);
+    }
+
+    stats.end();
   }, [count]);
 
   const handleMouseMove: React.MouseEventHandler<HTMLCanvasElement> = (event) => {
