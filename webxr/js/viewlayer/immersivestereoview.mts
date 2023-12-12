@@ -1,8 +1,6 @@
 import { IViewLayer } from './iviewlayer.mjs';
 import { Renderer } from '../render/renderer.mjs';
 import { Scene } from '../scene.mjs';
-import { mat4 } from '../math/gl-matrix.mjs';
-import { Mesh, Skin } from '../buffer/mesh.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -12,6 +10,7 @@ const GL = WebGL2RenderingContext;
 export class ImmersiveStereoView implements IViewLayer {
   renderer: Renderer;
   layer: XRWebGLLayer;
+  envUboBuffer = new Float32Array(16 * 4 + 8);
 
   toString(): string {
     return "immersive mode";
@@ -49,20 +48,29 @@ export class ImmersiveStereoView implements IViewLayer {
     // Clear the framebuffer
     this.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
+    // if (rightView) {
+    //   this.envUboBuffer.set(rightView.transform.inverse.matrix, 16);
+    //   this.envUboBuffer.set(rightView.projectionMatrix, 48);
+    // }
+
     {
       // left eye
       const view = pose.views[0];
+      this.envUboBuffer.set(view.transform.inverse.matrix);
+      this.envUboBuffer.set(view.projectionMatrix, 32);
       const vp = this.layer.getViewport(view)!;
       this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
-      this.renderer.drawScene(view, scene)
+      this.renderer.drawScene(this.envUboBuffer, scene)
     }
     {
       // right eye
       const view = pose.views[1];
       const vp = this.layer.getViewport(view)!;
       if (vp.width > 0) {
+        this.envUboBuffer.set(view.transform.inverse.matrix);
+        this.envUboBuffer.set(view.projectionMatrix, 32);
         this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
-        this.renderer.drawScene(view, scene);
+        this.renderer.drawScene(this.envUboBuffer, scene);
       }
       else {
         // polyfill emulator

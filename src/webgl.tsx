@@ -1,227 +1,55 @@
 import React from 'react';
-import {
-  vec3, vec4, mat4, OrbitView, PerspectiveProjection
-} from '../webxr/js/math/gl-matrix.mjs';
-import { Mesh, SubMesh, Skin } from '../webxr/js/buffer/mesh.mjs';
-import { BufferSource } from '../webxr/js/buffer/buffersource.mjs';
-import { Material } from '../webxr/js/materials/material.mjs';
-import { WglShader, ModShader } from '../webxr/js/render/shader.mjs';
-import { WglVao } from '../webxr/js/render/vao.mjs';
-import { WglBuffer } from '../webxr/js/render/buffer.mjs';
-import { Animation } from '../webxr/js/animation.mjs';
-import { PbrMaterial } from '../webxr/js/gltf2-loader.mjs';
+import { create } from 'zustand'
+
 import { Scene } from '../webxr/js/scene.mjs';
-import Stats from 'stats-gl'
+import { Renderer } from './renderer.js';
+import { Env } from '../webxr/js/viewlayer/env.mjs';
 
 
-// create a new Stats object
-const stats = new Stats({
-  logsPerSecond: 20,
-  samplesLog: 100,
-  samplesGraph: 10,
-  precision: 2,
-  horizontal: true,
-  minimal: false,
-  mode: 0
-});
+type State = {
+  renderer: Renderer | null;
+  env: Env;
+}
 
 
 const GL = WebGL2RenderingContext;
 
 
-class Env {
-  buffer: Float32Array = new Float32Array(16 * 4 + 4 + 4);
-  view: OrbitView;
-  projection: PerspectiveProjection;
-  lightPosDir: vec4;
-  lightColor: vec4;
-
-  constructor() {
-    this.view = new OrbitView(
-      new mat4(this.buffer.subarray(0, 16)),
-      vec3.fromValues(0, 0, 5));
-
-    this.projection = new PerspectiveProjection(
-      new mat4(this.buffer.subarray(32, 48)));
-
-    this.lightPosDir = new vec4(this.buffer.subarray(64, 68));
-    this.lightPosDir.set(1, 1, 1, 0);
-    this.lightColor = new vec4(this.buffer.subarray(68, 72));
-  }
+interface Action {
+  setRenderer(renderer: Renderer): void;
 }
 
 
-const IDENTITY = mat4.identity()
+export const useStore = create<State & Action>((set, get) => ({
+  env: new Env(),
+  renderer: null,
 
-
-export class Renderer {
-
-  meshVaoMap: Map<Mesh, WglVao> = new Map();
-  materialShaderMap: Map<Material, WglShader> = new Map();
-  materialSkinningShaderMap: Map<SubMesh, WglShader> = new Map();
-
-  shader: WglShader | null = null;
-
-  env = new Env();
-  envUbo: WglBuffer;
-
-  skinningUbo: WglBuffer;
-
-  color = vec4.fromValues(0.9, 0.9, 0.9, 1);
-  materialUbo: WglBuffer;
-
-  constructor(
-    public readonly gl: WebGL2RenderingContext,
-    public readonly observer: ResizeObserver,
-  ) {
-    this.envUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
-    this.envUbo.upload(this.env.buffer.buffer);
-    this.materialUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER)
-    this.materialUbo.upload(this.color.array);
-    this.skinningUbo = new WglBuffer(gl, GL.UNIFORM_BUFFER);
-  }
-
-  render(width: number, height: number, scene?: Scene) {
-    stats.begin();
-
-    if (scene) {
-      // update scene
-      const world = scene.world;
-      const seconds = scene.timeSeconds;
-      // console.log(seconds);
-      world.view(Animation).each((entity, animation) => {
-        animation.update(seconds);
-      });
-
-      this.env.projection.resize(width, height);
-      this.envUbo.upload(this.env.buffer);
-      this.materialUbo.upload(this.color.array);
-
-      {
-        const gl = this.gl;
-        gl.clearColor(0.2, 0.2, 0.2, 1);
-
-        gl.enable(GL.DEPTH_TEST);
-        gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-
-        gl.enable(GL.CULL_FACE);
-
-        gl.clearDepth(1);
-        gl.viewport(0, 0, width, height);
-      }
-
-      world.view(mat4, Mesh).each((entity, matrix, mesh) => {
-        const vao = this._getOrCreateVao(mesh);
-
-        vao.bind();
-
-        const skin = world.get(entity, Skin);
-        if (skin) {
-          const matrices = skin.updateSkinningMatrix(
-            (joint) => scene.nodeMap.get(joint)!.matrix)
-          this.skinningUbo.upload(matrices);
-        }
-
-        let offset = 0
-        for (const submesh of mesh.submeshes) {
-
-          const shader = this._getOrCreateShader(submesh,
-            vao.attributeBinds, skin != null);
-          shader.use();
-
-          // update camera matrix
-          shader.setUbo('uEnv', this.envUbo, 0);
-          // shader.setUbo('uMaterial', this.materialUbo, 1);
-          if (skin) {
-            shader.setUbo('uSkinning', this.skinningUbo, 1);
-          }
-          shader.setMatrix('MODEL_MATRIX', IDENTITY);
-
-          vao.draw(submesh.mode, submesh.drawCount, offset);
-          offset += submesh.drawCount;
-        }
-
-        vao.unbind();
-      });
-    }
-
-    stats.end();
-  }
-
-  private _getOrCreateVao(mesh: Mesh): WglVao {
-    {
-      const vao = this.meshVaoMap.get(mesh);
-      if (vao) {
-        return vao;
-      }
-    }
-
-    {
-      let indices: WglBuffer | undefined = undefined;
-      const vboMap: Map<BufferSource, WglBuffer> = new Map();
-      for (const attr of mesh.attributes) {
-        let vbo = vboMap.get(attr.source);
-        if (!vbo) {
-          vbo = new WglBuffer(this.gl, GL.ARRAY_BUFFER)
-          vbo.upload(attr.source.array);
-          vboMap.set(attr.source, vbo);
-        }
-      }
-      if (mesh.indices) {
-        indices = new WglBuffer(this.gl, GL.ELEMENT_ARRAY_BUFFER, mesh.indices.glType);
-        indices.upload(mesh.indices.array);
-      }
-
-      const vao = new WglVao(this.gl, mesh.attributes.map(
-        x => {
-          return {
-            name: x.name,
-            buffer: vboMap.get(x.source)!,
-            bufferStride: x.stride,
-            bufferOffset: x.byteOffset,
-            componentCount: x.componentCount,
-            componentType: x.componentType,
-          }
-        }
-      ), indices);
-      this.meshVaoMap.set(mesh, vao);
-      return vao;
-    }
-  }
-
-  private _getOrCreateShader(
-    submesh: SubMesh, attributeBinds: string[], hasSkinning: boolean): WglShader {
-    let shader = this.materialSkinningShaderMap.get(submesh);
-    if (shader) {
-      return shader;
-    }
-
-    const defines = [...submesh.material.defines]
-    if (hasSkinning) {
-      defines.push(['USE_SKIN', 1])
-    }
-
-    shader = new ModShader(
-      this.gl, submesh.material.shader,
-      defines,
-      false, attributeBinds);
-    this.materialSkinningShaderMap.set(submesh, shader);
-    return shader;
-
-  }
-}
+  setRenderer: (renderer: Renderer): void => set({
+    renderer
+  }),
+}));
 
 
 export default function WebGLCanvas(props: {
   scene?: Scene,
 }) {
   const ref = React.useRef<HTMLCanvasElement>(null);
-  const [renderer, setRenderer] = React.useState<Renderer | null>(null);
+  const env = useStore((state) => state.env)
+  const renderer = useStore((state) => state.renderer)
+  const setRenderer = useStore((state) => state.setRenderer)
+  const [count, setCount] = React.useState(0);
 
-  function getOrCreateState(): Renderer {
+  requestAnimationFrame(() => {
+    setCount(count + 1);
+  });
+
+  // initialize
+  React.useEffect(() => {
     if (renderer) {
-      return renderer;
+      // StrictMode
+      return;
     }
+
     const canvas = ref.current!;
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
@@ -238,45 +66,52 @@ export default function WebGLCanvas(props: {
       throw new Error('no webgl2');
     }
     const statsParent = document.getElementById('stats')!;
-    statsParent.appendChild(stats.container);
-    stats.container.style.position = 'absolute';
-    statsParent.style.position = 'relative';
 
-    const newRenderer = new Renderer(gl, observer);
+    const newRenderer = new Renderer(gl, observer, statsParent);
     setRenderer(newRenderer);
-    return newRenderer;
-  }
+  }, [])
 
+  // render
   React.useEffect(() => {
-    if (!ref.current) {
+    if (!renderer) {
       return;
     }
+    const canvas = ref.current as HTMLCanvasElement;
+    const width = canvas.width;
+    const height = canvas.height;
 
-    const state = getOrCreateState();
+    env.projection.resize(width, height);
+    {
+      const gl = renderer.gl;
+      gl.clearColor(0.2, 0.2, 0.2, 1);
 
-    state.render(ref.current.width, ref.current.height, props.scene);
-  });
+      gl.enable(GL.DEPTH_TEST);
+      gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-  const [count, setCount] = React.useState(0);
-  requestAnimationFrame(() => {
-    setCount(count + 1);
-  });
+      gl.enable(GL.CULL_FACE);
+
+      gl.clearDepth(1);
+      gl.viewport(0, 0, width, height);
+    }
+
+    renderer.render(env.buffer, props.scene);
+  }, [count]);
 
   const handleMouseMove: React.MouseEventHandler<HTMLCanvasElement> = (event) => {
     // Only rotate when the left button is pressed
     if (renderer) {
       if (event.buttons & 1) {
-        renderer.env.view.rotate(event.movementX, event.movementY);
+        env.view.rotate(event.movementX, event.movementY);
       }
       if (event.buttons & 4) {
-        renderer.env.view.shift(event.movementX, event.movementY);
+        env.view.shift(event.movementX, event.movementY);
       }
     }
   };
 
   const handleWheel: React.WheelEventHandler<HTMLCanvasElement> = (event) => {
     if (renderer) {
-      renderer.env.view.dolly(event.deltaY);
+      env.view.dolly(event.deltaY);
     }
   };
 

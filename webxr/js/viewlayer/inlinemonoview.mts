@@ -2,8 +2,6 @@ import { IViewLayer } from './iviewlayer.mjs';
 import { Renderer } from '../render/renderer.mjs';
 import { InlineViewerHelper } from '../util/inline-viewer-helper.mjs';
 import { Scene } from '../scene.mjs';
-import { mat4 } from '../math/gl-matrix.mjs';
-import { Mesh, Skin } from '../buffer/mesh.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -14,6 +12,7 @@ export class InlineMonoView implements IViewLayer {
   renderer: Renderer;
   _inlineViewerHelper: InlineViewerHelper;
   layer: XRWebGLLayer;
+  envUboBuffer = new Float32Array(16 * 4 + 8)
 
   toString(): string {
     return "inline mode";
@@ -63,7 +62,10 @@ export class InlineMonoView implements IViewLayer {
       const view = pose.views[0];
       const vp = this.layer.getViewport(view)!;
       this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
-      this.renderer.drawScene(view, scene);
+
+      this.envUboBuffer.set(view.transform.inverse.matrix);
+      this.envUboBuffer.set(view.projectionMatrix, 32);
+      this.renderer.drawScene(this.envUboBuffer, scene);
     }
   }
 }

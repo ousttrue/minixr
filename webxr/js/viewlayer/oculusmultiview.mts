@@ -15,6 +15,7 @@ export class OculusMultiview implements IViewLayer {
   layer: XRProjectionLayer;
   depthStencilTex: WebGLTexture | null = null;
   xrGLFactory: XRWebGLBinding;
+  envUboBuffer = new Float32Array(16 * 4 + 8)
 
   constructor(
     public readonly session: XRSession,
@@ -80,6 +81,11 @@ export class OculusMultiview implements IViewLayer {
       }
     }
 
-    this.renderer.drawScene(pose.views[0], scene, pose.views[1]);
+    this.envUboBuffer.set(pose.views[0].transform.inverse.matrix);
+    this.envUboBuffer.set(pose.views[0].projectionMatrix, 32);
+    this.envUboBuffer.set(pose.views[1].transform.inverse.matrix, 16);
+    this.envUboBuffer.set(pose.views[1].projectionMatrix, 48);
+
+    this.renderer.drawScene(this.envUboBuffer, scene);
   }
 }

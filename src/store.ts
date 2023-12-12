@@ -11,11 +11,12 @@ type State = {
 }
 
 
-type Action = {
-  setItems: (items: DataTransferItemList) => void
-  setLoader: (loader: Gltf2Loader) => void
-  setScene: (scene: Scene) => void
+interface Action {
+  setItems(items: DataTransferItemList): void
+  setLoader(loader: Gltf2Loader): void
+  setScene(scene: Scene): void
 }
+
 
 function processBytes(get, set, bytes: ArrayBuffer) {
   try {
@@ -38,6 +39,7 @@ function processBytes(get, set, bytes: ArrayBuffer) {
   }
 }
 
+
 export const useStore = create<State & Action>((set, get) => ({
   status: 'no file',
   loader: null,
@@ -45,6 +47,7 @@ export const useStore = create<State & Action>((set, get) => ({
 
   setItems: async (items: DataTransferItemList) => {
     if (items.length == 1) {
+      // FileSystemApi
       const handle = await items[0].getAsFileSystemHandle();
       if (handle instanceof FileSystemFileHandle) {
         const file = await handle.getFile();
@@ -57,6 +60,7 @@ export const useStore = create<State & Action>((set, get) => ({
         set({
           status: 'directory',
         })
+        // FileSystemApi
         for await (const [key, value] of handle.entries()) {
           if (key.endsWith(".glb")) {
             const file = await value.getFile();

@@ -60,13 +60,6 @@ export class Renderer {
   private _textureFactory: TextureFactory;
   skinningUbo: WglBuffer;
 
-  // layout (std140) uniform uEnv {
-  //   mat4 uView[2];
-  //   mat4 uProjection[2];
-  //   vec4 uLightPosDir;
-  //   vec4 uLightColor;
-  // };
-  envUboBuffer = new Float32Array(16 * 4 + 4 + 4);
   envUbo: WglBuffer;
 
   constructor(
@@ -188,19 +181,18 @@ export class Renderer {
     return vao;
   }
 
+  // layout (std140) uniform uEnv {
+  //   mat4 uView[2];
+  //   mat4 uProjection[2];
+  //   vec4 uLightPosDir;
+  //   vec4 uLightColor;
+  // };
   drawScene(
-    view: XRView,
+    envUboBuffer: Float32Array,
     scene: Scene,
-    rightView?: XRView,
   ) {
     {
-      this.envUboBuffer.set(view.transform.inverse.matrix);
-      this.envUboBuffer.set(view.projectionMatrix, 32);
-      if (rightView) {
-        this.envUboBuffer.set(rightView.transform.inverse.matrix, 16);
-        this.envUboBuffer.set(rightView.projectionMatrix, 48);
-      }
-      this.envUbo.upload(this.envUboBuffer);
+      this.envUbo.upload(envUboBuffer);
     }
 
     const state = {
@@ -210,23 +202,20 @@ export class Renderer {
     }
     scene.world.view(mat4, Mesh).each((entity, matrix, primitive) => {
       const skin = scene.world.get(entity, Skin)
-      this._drawMesh(view, scene, matrix, primitive, state, rightView, skin);
+      this._drawMesh(scene, matrix, primitive, state, skin);
     });
   }
 
   private _drawMesh(
-    view: XRView,
     scene: Scene,
     matrix: mat4, mesh: Mesh,
     state: {
       prevProgram: WglShader | null,
       prevMaterial: Material | null,
     },
-    rightView?: XRView,
     skin?: Skin,
   ) {
     let gl = this.gl;
-
 
     // update ubo
     mesh.uboMap.forEach((value, key) => {
@@ -238,7 +227,6 @@ export class Renderer {
         (joint) => scene.nodeMap.get(joint)!.matrix)
       this.skinningUbo.upload(matrices);
     }
-
 
     const vao = this._getOrCreateMesh(mesh);
     vao.bind();

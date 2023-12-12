@@ -24,7 +24,7 @@ which XRSession. Also handles the necessary logic for enabling mouse/touch-based
 view rotation for inline sessions if desired.
 */
 
-import { vec3, mat4 } from '../math/gl-matrix.mjs';
+import { mat4 } from '../math/gl-matrix.mjs';
 
 const toOrigin = mat4.fromTranslation(0, 1.6, 0)
 const restorOrigin = mat4.fromTranslation(0, -1.6, 0)
@@ -51,7 +51,7 @@ export class InlineViewerHelper {
     this.baseRefSpace = referenceSpace;
     this.refSpace = referenceSpace;
 
-    // canvas.style.cursor = 'grab';
+    canvas.style.cursor = 'grab';
 
     canvas.addEventListener('mousemove', (event) => {
       // Only rotate when the left button is pressed
