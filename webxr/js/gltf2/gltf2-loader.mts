@@ -11,16 +11,19 @@ const GL = WebGLRenderingContext; // For enums
 
 const VERTEX_SOURCE = `
 
-layout(location = 0) in vec3 POSITION;
-layout(location = 1) in vec3 NORMAL;
-layout(location = 2) in vec2 TEXCOORD_0;
+in vec3 POSITION;
+in vec3 NORMAL;
+in vec2 TEXCOORD_0;
+#ifdef USE_NORMAL_MAP
+in vec4 TANGENT;
+#endif
 #ifdef USE_VERTEX_COLOR
-layout(location = 3) in vec4 COLOR_0;
+in vec4 COLOR_0;
 #endif
 
 #ifdef USE_SKIN
-layout(location = 3) in vec4 sJoints;
-layout(location = 4) in vec4 sWeights;
+in vec4 sJoints;
+in vec4 sWeights;
 
 layout (std140) uniform uSkinning {
   mat4 uSkin[256];
@@ -52,7 +55,6 @@ out vec3 vView; // Vector from vertex to camera.
 out vec2 vTex;
 
 #ifdef USE_NORMAL_MAP
-in vec4 TANGENT;
 out mat3 vTBN;
 #else
 out vec3 vNorm;
@@ -302,9 +304,10 @@ function hasAttribute(primitives: Mesh[], name: string) {
 function toInterleavedSubmesh(primitives: Mesh[],
   totalVertexCount: number, totalIndexCount: number): Mesh {
 
-  // create interleaved vertex(POSITION + NORMAL + TEXCOORD_0)
+  // create interleaved vertex(POSITION + NORMAL + TEXCOORD_0 + (TANGENT) + (COLOR_0))
   const hasColorVertex = hasAttribute(primitives, 'COLOR_0');
-  const components = hasColorVertex ? 12 : 8;
+  const hasTangent = hasAttribute(primitives, 'TANGENT');
+  const components = hasColorVertex ? 16 : 12;
   const stride = components * 4;
   const vertices = new BufferSource(
     components, new Float32Array(totalVertexCount * components));
@@ -341,6 +344,20 @@ function toInterleavedSubmesh(primitives: Mesh[],
       false
     ),
   ]
+  let offset = 32;
+  if (hasTangent) {
+    attributes.push(
+      new MeshVertexAttribute(
+        'TANGENT',
+        vertices,
+        4,
+        GL.FLOAT,
+        stride,
+        offset,
+        false
+      ))
+    offset += 16
+  }
   if (hasColorVertex) {
     attributes.push(
       new MeshVertexAttribute(
@@ -349,10 +366,11 @@ function toInterleavedSubmesh(primitives: Mesh[],
         4,
         GL.FLOAT,
         stride,
-        32,
+        offset,
         false
       ),
     )
+    offset += 16
   }
   if (hasAttribute(primitives, 'JOINTS_0')) {
     // joints(xyzw), weights(xyzw)
