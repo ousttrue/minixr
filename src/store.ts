@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { Scene } from '../webxr/js/scene.mjs';
-import { Glb } from '../webxr/js/glb.mjs';
-import { Gltf2Loader } from '../webxr/js/gltf2-loader.mjs';
+import { Glb } from '../webxr/js/gltf2/glb.mjs';
+import { Gltf2Loader } from '../webxr/js/gltf2/gltf2-loader.mjs';
 
 
 type State = {
@@ -18,7 +18,10 @@ interface Action {
 }
 
 
-function processBytes(get, set, bytes: ArrayBuffer) {
+function processBytes(
+  get: () => State & Action,
+  set: (store: Partial<State & Action>) => void,
+  bytes: ArrayBuffer) {
   try {
     const glb = Glb.parse(bytes);
     const loader = new Gltf2Loader(glb.json, { binaryChunk: glb.bin });
@@ -48,6 +51,7 @@ export const useStore = create<State & Action>((set, get) => ({
   setItems: async (items: DataTransferItemList) => {
     if (items.length == 1) {
       // FileSystemApi
+      // @ts-ignore
       const handle = await items[0].getAsFileSystemHandle();
       if (handle instanceof FileSystemFileHandle) {
         const file = await handle.getFile();
@@ -61,6 +65,7 @@ export const useStore = create<State & Action>((set, get) => ({
           status: 'directory',
         })
         // FileSystemApi
+        // @ts-ignore
         for await (const [key, value] of handle.entries()) {
           if (key.endsWith(".glb")) {
             const file = await value.getFile();

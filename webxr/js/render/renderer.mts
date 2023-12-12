@@ -89,15 +89,12 @@ export class Renderer {
       return shader;
     }
 
-    if (meshDefines.length > 0) {
-      const a = 0;
-    }
-
     const defines = [...meshDefines, ...submesh.material.defines]
     if (hasSkinning) {
       defines.push(['USE_SKIN', 1])
     }
 
+    console.log(defines)
     shader = new ModShader(
       this.gl, submesh.material.shader,
       defines,

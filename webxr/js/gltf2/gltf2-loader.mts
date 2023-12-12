@@ -1,10 +1,10 @@
-import { Material, ProgramDefine } from './materials/material.mjs';
-import { ImageTexture, ColorTexture } from './materials/texture.mjs';
-import { Mesh, SubMesh, MeshVertexAttribute, Skin } from './buffer/mesh.mjs';
-import { BufferSource } from './buffer/buffersource.mjs';
 import type * as GLTF2 from './GLTF2.d.ts';
 import { Glb } from './glb.mjs';
-import { vec2, vec3, vec4, quat, mat4 } from './math/gl-matrix.mjs';
+import { Material, ProgramDefine } from '../materials/material.mjs';
+import { ImageTexture, ColorTexture } from '../materials/texture.mjs';
+import { Mesh, SubMesh, MeshVertexAttribute, Skin } from '../buffer/mesh.mjs';
+import { BufferSource } from '../buffer/buffersource.mjs';
+import { vec2, vec3, vec4 } from '../math/gl-matrix.mjs';
 
 
 const VERTEX_SOURCE = `
