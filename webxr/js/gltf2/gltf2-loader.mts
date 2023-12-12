@@ -514,7 +514,7 @@ export class Gltf2Loader {
       }
       if (isDataUri(buffer.uri)) {
         // decode base64
-        const base64String = this.json.uri.replace('data:application/octet-stream;base64,', '');
+        const base64String = buffer.uri.replace('data:application/octet-stream;base64,', '');
         const bytes = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
         this.urlBytesMap[buffer.uri] = bytes;
         return bytes;
