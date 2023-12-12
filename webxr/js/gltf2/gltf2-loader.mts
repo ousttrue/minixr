@@ -263,22 +263,12 @@ const DEFAULT_MATERIAL = new PbrMaterial('glTF-default-material')
 
 type IndexBuffer = Uint8Array | Uint16Array | Uint32Array;
 
-function isAbsoluteUri(uri: string): boolean {
-  const absRegEx = new RegExp('^' + window.location.protocol, 'i');
-  return !!uri.match(absRegEx);
-}
 
 function isDataUri(uri: string): boolean {
   const dataRegEx = /^data:/;
   return !!uri.match(dataRegEx);
 }
 
-function resolveUri(uri: string, baseUrl: string): string {
-  if (isAbsoluteUri(uri) || isDataUri(uri)) {
-    return uri;
-  }
-  return baseUrl + uri;
-}
 
 function getComponentCount(type: string): number {
   switch (type) {
@@ -450,6 +440,18 @@ function getProgramDefines(material: GLTF2.Material): ProgramDefine[] {
   return programDefines;
 }
 
+
+class UrlFileSystem {
+  constructor(public readonly baseUrl: string) { }
+
+  async get(uri: string): Promise<ArrayBuffer> {
+    const response = await fetch(this.baseUrl + uri);
+    const arrayBuffer = await response.arrayBuffer();
+    return arrayBuffer;
+  }
+}
+
+
 /**
  * Gltf2SceneLoader
  * Loads glTF 2.0 scenes into a renderable node tree.
@@ -460,13 +462,13 @@ export class Gltf2Loader {
   materials: Material[] = [];
   meshes: Mesh[] = [];
   skins: Skin[] = [];
-  urlBytesMap: { [key: string]: Uint8Array } = {}
+  urlBytesMap: Map<string, Uint8Array> = new Map();
 
   constructor(
     public readonly json: GLTF2.GlTf,
     public readonly data: {
-      baseUrl?: string,
       binaryChunk?: Uint8Array,
+      fileSystem?: UrlFileSystem,
     },
   ) {
     if (!json.asset) {
@@ -479,7 +481,10 @@ export class Gltf2Loader {
 
   static loadFromBinary(arrayBuffer: ArrayBuffer, baseUrl: string): Gltf2Loader {
     const glb = Glb.parse(arrayBuffer);
-    return new Gltf2Loader(glb.json, { baseUrl, binaryChunk: glb.bin ?? undefined });
+    return new Gltf2Loader(glb.json, {
+      binaryChunk: glb.bin ?? undefined,
+      fileSystem: new UrlFileSystem(baseUrl),
+    });
   }
 
   static async loadFromUrl(url: string): Promise<Gltf2Loader> {
@@ -493,7 +498,9 @@ export class Gltf2Loader {
     const baseUrl = (i !== 0) ? url.substring(0, i + 1) : '';
     if (url.endsWith('.gltf')) {
       const json = await response.json();
-      const loader = new Gltf2Loader(json, { baseUrl });
+      const loader = new Gltf2Loader(json, {
+        fileSystem: new UrlFileSystem(baseUrl),
+      });
       await loader.load();
       return loader;
     } else if (url.endsWith('.glb')) {
@@ -508,28 +515,27 @@ export class Gltf2Loader {
 
   private async _bytesFromBuffer(buffer: GLTF2.Buffer): Promise<Uint8Array> {
     if (buffer.uri) {
-      const bytes = this.urlBytesMap[buffer.uri];
+      const bytes = this.urlBytesMap.get(buffer.uri);
       if (bytes) {
         return bytes;
       }
+
       if (isDataUri(buffer.uri)) {
         // decode base64
         const base64String = buffer.uri.replace('data:application/octet-stream;base64,', '');
         const bytes = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
-        this.urlBytesMap[buffer.uri] = bytes;
+        this.urlBytesMap.set(buffer.uri, bytes);
         return bytes;
       }
       else {
-        if (this.data.baseUrl) {
-          const response = await fetch(resolveUri(buffer.uri, this.data.baseUrl));
-          const arrayBuffer = await response.arrayBuffer();
-          const bytes = new Uint8Array(arrayBuffer);
-          this.urlBytesMap[buffer.uri] = bytes;
-          return bytes;
+        if (!this.data.fileSystem) {
+          throw new Error("no fileSystem");
         }
-        else {
-          throw new Error("no baseUrl");
-        }
+
+        const arrayBuffer = await this.data.fileSystem.get(buffer.uri);
+        const bytes = new Uint8Array(arrayBuffer);
+        this.urlBytesMap.set(buffer.uri, bytes);
+        return bytes;
       }
     }
     else if (this.data.binaryChunk) {
@@ -665,7 +671,10 @@ export class Gltf2Loader {
           if (isDataUri(glImage.uri)) {
             image.src = glImage.uri;
           } else {
-            image.src = `${this.data.baseUrl}${glImage.uri}`;
+            if (!this.data.fileSystem) {
+              throw new Error("no fileSystem");
+            }
+            image.src = `${this.data.fileSystem.baseUrl}${glImage.uri}`;
           }
         } else if (glImage.bufferView != null) {
           if (!this.json.bufferViews) {
@@ -689,7 +698,7 @@ export class Gltf2Loader {
         const texture = new Texture(image,
           glTexture.sampler != null
             ? this.json.samplers![glTexture.sampler]
-            : DefaultSampler,
+            : undefined,
         );
         this.textures.push(texture);
       }

@@ -102,8 +102,10 @@ class AppSession {
       new quat(),
       vec3.fromValues(1, 1, 1)
     )
-    await this._loadGltf('glTF-Sample-Models', 'CesiumMan', m);
-    // await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet', );
+    // await this._loadGltf('glTF-Sample-Models', 'CesiumMan/glTF-Binary/CesiumMan.glb', m);
+    // await this._loadGltf('glTF-Sample-Models', 'CesiumMan/glTF/CesiumMan.gltf', m);
+    // await this._loadGltf('glTF-Sample-Models', 'DamagedHelmet/glTF-Binary/DamagedHelmet.glb', m);
+    await this._loadGltf('glTF-Sample-Models', 'FlightHelmet/glTF/FlightHelmet.gltf', m);
   }
 
   private async _loadGltf(dir: string, name: string, origin?: mat4) {
@@ -114,7 +116,7 @@ class AppSession {
     }
     else if (dir == 'glTF-Sample-Models') {
       const loader = await Gltf2Loader.loadFromUrl(
-        `./glTF-Sample-Models/2.0/${name}/glTF-Binary/${name}.glb`);
+        `./glTF-Sample-Models/2.0/${name}`);
       this.scene = new Scene(this.scene.world);
       await this.scene.load(loader, origin);
     }
