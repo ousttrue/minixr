@@ -459,7 +459,12 @@ function getProgramDefines(material: GLTF2.Material): ProgramDefine[] {
 }
 
 
-class UrlFileSystem {
+export interface IFileSystem {
+  get(uri: string): Promise<ArrayBuffer>;
+}
+
+
+class UrlFileSystem implements IFileSystem {
   constructor(public readonly baseUrl: string) { }
 
   async get(uri: string): Promise<ArrayBuffer> {
@@ -486,7 +491,7 @@ export class Gltf2Loader {
     public readonly json: GLTF2.GlTf,
     public readonly data: {
       binaryChunk?: Uint8Array,
-      fileSystem?: UrlFileSystem,
+      fileSystem?: IFileSystem,
     },
   ) {
     if (!json.asset) {
@@ -692,7 +697,10 @@ export class Gltf2Loader {
             if (!this.data.fileSystem) {
               throw new Error("no fileSystem");
             }
-            image.src = `${this.data.fileSystem.baseUrl}${glImage.uri}`;
+            // image.src = `${this.data.fileSystem.baseUrl}${glImage.uri}`;
+            const bytes = await this.data.fileSystem.get(glImage.uri);
+            const blob = new Blob([bytes], { type: glImage.mimeType });
+            image.src = window.URL.createObjectURL(blob);
           }
         } else if (glImage.bufferView != null) {
           if (!this.json.bufferViews) {

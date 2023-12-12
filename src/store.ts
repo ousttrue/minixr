@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { Scene } from '../webxr/js/scene.mjs';
 import { Glb } from '../webxr/js/gltf2/glb.mjs';
-import { Gltf2Loader } from '../webxr/js/gltf2/gltf2-loader.mjs';
+import { Gltf2Loader, IFileSystem } from '../webxr/js/gltf2/gltf2-loader.mjs';
 
 
 type State = {
@@ -18,10 +18,31 @@ interface Action {
 }
 
 
+class FileSystemHandleFileSystem implements IFileSystem {
+  map: Map<string, FileSystemFileHandle> = new Map();
+
+  constructor() { }
+
+  async get(uri: string): Promise<ArrayBuffer> {
+    const handle = this.map.get(uri);
+    if (!handle) {
+      throw new Error(`${uri} not found`);
+    }
+    const file = await handle.getFile();
+    return await file.arrayBuffer();
+  }
+
+  set(key: string, handle: FileSystemFileHandle) {
+    this.map.set(key, handle);
+  }
+}
+
+
 function processBytes(
   get: () => State & Action,
   set: (store: Partial<State & Action>) => void,
-  bytes: ArrayBuffer) {
+  bytes: ArrayBuffer,
+  fileSystem?: IFileSystem,) {
   try {
     const glb = Glb.parse(bytes);
     const loader = new Gltf2Loader(glb.json, { binaryChunk: glb.bin });
@@ -34,7 +55,7 @@ function processBytes(
     const decoder = new TextDecoder();
     const text = decoder.decode(bytes);
     const json = JSON.parse(text);
-    const loader = new Gltf2Loader(json, {});
+    const loader = new Gltf2Loader(json, { fileSystem });
     get().setLoader(loader);
     set({
       status: 'gltf',
@@ -64,6 +85,8 @@ export const useStore = create<State & Action>((set, get) => ({
         set({
           status: 'directory',
         })
+        const filesystem = new FileSystemHandleFileSystem();
+        let gltf: ArrayBuffer | null = null;
         // FileSystemApi
         // @ts-ignore
         for await (const [key, value] of handle.entries()) {
@@ -72,15 +95,21 @@ export const useStore = create<State & Action>((set, get) => ({
             if (file) {
               const bytes = await file.arrayBuffer();
               processBytes(get, set, bytes);
+              return;
             }
           }
           else if (key.endsWith(".gltf")) {
             const file = await value.getFile();
             if (file) {
-              const bytes = await file.arrayBuffer();
-              processBytes(get, set, bytes);
+              gltf = await file.arrayBuffer();
             }
           }
+          else {
+            filesystem.set(key, value);
+          }
+        }
+        if (gltf) {
+          processBytes(get, set, gltf, filesystem);
         }
       }
       else {
