@@ -193,21 +193,21 @@ class AppSession {
 }
 
 
-export default class App {
+export default class XrApp {
   appSession: AppSession | null = null;
 
   constructor() {
   }
 
   endSession() {
-    console.log('App.endSession');
+    console.log('XrApp.endSession');
     if (this.appSession) {
       this.appSession.shutdown();
     }
   }
 
   async startSession(mode: XRSessionMode, session: XRSession): Promise<void> {
-    console.log('App.startSession', session);
+    console.log('XrApp.startSession', session);
     session.addEventListener('end', _ => {
       this.endSession();
     });

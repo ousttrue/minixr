@@ -1,6 +1,6 @@
 import { JSONEditor } from "vanilla-jsoneditor";
 import { useEffect, useRef } from "react";
-import 'vanilla-jsoneditor/themes/jse-theme-default.css';
+// import 'vanilla-jsoneditor/themes/jse-theme-default.css';
 
 
 export default function JsonTree(props: {

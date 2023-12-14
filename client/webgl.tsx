@@ -2,10 +2,10 @@ import React from 'react';
 import { create } from 'zustand'
 import Stats from 'stats-gl'
 
-import { Scene } from '../webxr/js/scene.mjs';
-import { Renderer } from '../webxr/js/render/renderer.mjs';
-import { Env } from '../webxr/js/viewlayer/env.mjs';
-import { Animation } from '../webxr/js/animation.mjs';
+import { Scene } from './js/scene.mjs';
+import { Renderer } from './js/render/renderer.mjs';
+import { Env } from './js/viewlayer/env.mjs';
+import { Animation } from './js/animation.mjs';
 
 
 const GL = WebGL2RenderingContext;
@@ -80,7 +80,7 @@ export default function WebGLCanvas(props: {
       throw new Error('no webgl2');
     }
     const statsParent = document.getElementById('stats')!;
-    statsParent.appendChild(stats.container);
+    statsParent.appendChild(stats.dom);
     stats.container.style.position = 'absolute';
     statsParent.style.position = 'relative';
 

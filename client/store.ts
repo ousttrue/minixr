@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import { Scene } from '../webxr/js/scene.mjs';
-import { Glb } from '../webxr/js/gltf2/glb.mjs';
-import { Gltf2Loader, IFileSystem } from '../webxr/js/gltf2/gltf2-loader.mjs';
+import { Scene } from './js/scene.mjs';
+import { Glb } from './js/gltf2/glb.mjs';
+import { Gltf2Loader, IFileSystem } from './js/gltf2/gltf2-loader.mjs';
 
 
 type State = {
