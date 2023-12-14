@@ -2,6 +2,24 @@ import * as vite from 'vite'
 import express from 'express';
 import type { Express, Request, Response } from 'express';
 import https from 'https';
+import { networkInterfaces } from "os";
+
+
+function printListen(port: number) {
+  const map = networkInterfaces();
+  for (const key in map) {
+    const interfaces = map[key];
+    if (interfaces) {
+      for (const iface of interfaces) {
+        if (iface.family == 'IPv4') {
+          console.log(`https://${iface.address}:${port}`);
+        }
+      }
+    }
+  }
+}
+
+
 // import { PORT } from './vite.config.js';
 const PORT = 3000;
 
@@ -43,5 +61,10 @@ var options = {
   cert: fs.readFileSync('localhost.pem')
 };
 var server = https.createServer(options, app);
-server.listen(PORT, () => console.log(`https://0.0.0.0:${PORT}`));
+server.listen(PORT, () => {
+
+  printListen(PORT);
+
+})
+
 
