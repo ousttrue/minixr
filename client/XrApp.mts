@@ -69,6 +69,9 @@ class AppSession {
     await this._setupScene();
 
     this.session.requestAnimationFrame((t, f) => this.onXRFrame(t, f));
+
+    const res = await fetch('./api/hello')
+    console.log('[api]', await res.text());
   }
 
   shutdown() {
