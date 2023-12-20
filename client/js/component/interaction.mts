@@ -1,14 +1,11 @@
-import { BoxBuilder } from '../buffer/box-builder.mjs';
-import { vec3, quat, mat4 } from '../math/gl-matrix.mjs';
 import { Spinner } from '../component/spinner.mjs';
 import { World } from '../uecs/index.mjs';
-import { HoverPassive, HoverMaterial } from '../component/hover.mjs';
+import { HoverPassive } from '../component/hover.mjs';
 import { CubeInstancing } from './cube-instance.mjs';
+import type { Updater } from './updater.mjs';
 
 
-const SCALING = mat4.fromScaling(vec3.fromValues(0.25, 0.25, 0.25))
-
-export async function interactionFactory(world: World, instancing: CubeInstancing): Promise<void> {
+export async function interactionFactory(world: World, instancing: CubeInstancing): Promise<Updater> {
 
   const [index, matrix] = instancing.newInstance()
 
@@ -23,5 +20,10 @@ export async function interactionFactory(world: World, instancing: CubeInstancin
 
   world.create(matrix, new Spinner(), hover);
 
-  return Promise.resolve();
+  return Promise.resolve((_session: XRSession, _xrRefSpace: XRReferenceSpace,
+    time: number, frameDelta: number,
+    _frame: XRFrame,
+    world: World) => {
+    Spinner.system(world, time, frameDelta);
+  });
 }

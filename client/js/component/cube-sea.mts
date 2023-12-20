@@ -3,6 +3,7 @@ import { Rotater } from '../component/rotater.mjs';
 import { World } from '../uecs/index.mjs';
 import { HoverPassive } from '../component/hover.mjs';
 import { CubeInstancing } from './cube-instance.mjs';
+import type { Updater } from './updater.mjs';
 
 
 const defaultIndex = 7;
@@ -14,7 +15,7 @@ export async function cubeSeaFactory(
   instancing: CubeInstancing,
   cubeCount: number = 10,
   cubeScale: number = 1.0,
-): Promise<void> {
+): Promise<Updater> {
 
   function createHover(index: number): HoverPassive {
     const hover = new HoverPassive(
@@ -83,5 +84,10 @@ export async function cubeSeaFactory(
     }
   }
 
-  return Promise.resolve();
+  return Promise.resolve((_session: XRSession, _xrRefSpace: XRReferenceSpace,
+    time: number, _frameDelta: number,
+    _frame: XRFrame,
+    world: World) => {
+    Rotater.system(world, time);
+  });
 }
