@@ -15,11 +15,13 @@ type State = {
   stats: Stats;
   env: Env;
   renderer: Renderer | null;
+  count: number;
 }
 
 
 interface Action {
   setRenderer(renderer: Renderer): void;
+  setCount(count: number, width: number, height: number, scene?: Scene): void;
 }
 
 
@@ -36,10 +38,54 @@ export const useGlStore = create<State & Action>((set, get) => ({
   }),
   env: new Env(),
   renderer: null,
+  count: 0,
 
   setRenderer: (renderer: Renderer): void => set({
     renderer
   }),
+
+  setCount: (count: number, width: number, height: number, scene?: Scene) => {
+    const state = get();
+    if (state.count == count) {
+      return;
+    }
+    set({ count })
+
+    // render
+    state.stats.begin();
+
+    const renderer = state.renderer;
+    if (renderer) {
+      state.env.projection.resize(width, height);
+      {
+        const gl = renderer.gl;
+        gl.clearColor(0.2, 0.2, 0.2, 1);
+
+        gl.enable(GL.DEPTH_TEST);
+        gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+
+        gl.enable(GL.CULL_FACE);
+
+        gl.clearDepth(1);
+        gl.viewport(0, 0, width, height);
+      }
+
+      if (scene) {
+        // update scene
+        const world = scene.world;
+        const seconds = scene.timeSeconds;
+        // console.log(seconds);
+        world.view(Animation).each((_entity, animation) => {
+          animation.update(seconds);
+        });
+
+        renderer.drawScene(state.env.buffer, scene);
+      }
+    }
+
+    state.stats.end();
+    state.stats.update();
+  },
 }));
 
 
@@ -51,10 +97,14 @@ export default function WebGLCanvas(props: {
   const renderer = useGlStore((state) => state.renderer)
   const stats = useGlStore((state) => state.stats)
   const setRenderer = useGlStore((state) => state.setRenderer)
-  const [count, setCount] = React.useState(0);
+  const count = useGlStore((state) => state.count)
+  const setCount = useGlStore((state) => state.setCount);
 
   requestAnimationFrame(() => {
-    setCount(count + 1);
+    const canvas = ref.current as HTMLCanvasElement;
+    if (canvas) {
+      setCount(count + 1, canvas.width, canvas.height, props.scene);
+    }
   });
 
   // initialize
@@ -81,53 +131,12 @@ export default function WebGLCanvas(props: {
     }
     const statsParent = document.getElementById('stats')!;
     statsParent.appendChild(stats.dom);
-    stats.container.style.position = 'absolute';
+    stats.dom.style.position = 'absolute';
     statsParent.style.position = 'relative';
 
     const newRenderer = new Renderer(gl);
     setRenderer(newRenderer);
   }, [])
-
-  // render
-  React.useEffect(() => {
-    stats.begin();
-
-    if (!renderer) {
-      return;
-    }
-    const canvas = ref.current as HTMLCanvasElement;
-    const width = canvas.width;
-    const height = canvas.height;
-
-    env.projection.resize(width, height);
-    {
-      const gl = renderer.gl;
-      gl.clearColor(0.2, 0.2, 0.2, 1);
-
-      gl.enable(GL.DEPTH_TEST);
-      gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-
-      gl.enable(GL.CULL_FACE);
-
-      gl.clearDepth(1);
-      gl.viewport(0, 0, width, height);
-    }
-
-    const scene = props.scene;
-    if (scene) {
-      // update scene
-      const world = scene.world;
-      const seconds = scene.timeSeconds;
-      // console.log(seconds);
-      world.view(Animation).each((_entity, animation) => {
-        animation.update(seconds);
-      });
-
-      renderer.drawScene(env.buffer, scene);
-    }
-
-    stats.end();
-  }, [count]);
 
   const handleMouseMove: React.MouseEventHandler<HTMLCanvasElement> = (event) => {
     // Only rotate when the left button is pressed

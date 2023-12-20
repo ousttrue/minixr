@@ -26,13 +26,13 @@ const config = defineConfig({
   ],
 });
 
-// if (fs.existsSync('localhost-key.pem') && fs.existsSync('localhost.pem')) {
-//   config.server = {
-//     https: {
-//       key: fs.readFileSync('./localhost-key.pem'),
-//       cert: fs.readFileSync('./localhost.pem'),
-//     }
-//   };
-// }
+if (fs.existsSync('localhost-key.pem') && fs.existsSync('localhost.pem')) {
+  config.server = {
+    https: {
+      key: fs.readFileSync('./localhost-key.pem'),
+      cert: fs.readFileSync('./localhost.pem'),
+    }
+  };
+}
 
 export default config;
